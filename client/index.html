@@ -121,6 +121,7 @@
                             </div>
                         </div>
                     </form>
+                    
                     <div style="margin-top: 15px;">
                         <button id="add-bot-btn" onclick="addBot()" style="background: #27ae60;">+ Botを追加</button>
                     </div>
@@ -129,31 +130,16 @@
                 <div id="guest-view" style="display: none;">
                     <table id="guest-settings-table" class="guest-table"></table>
                 </div>
-            </div>
-                    </form>
-                    <div style="margin-top: 15px;">
-                        <button id="add-bot-btn" onclick="addBot()" style="background: #27ae60;">+ Botを追加</button>
-                    </div>
-                </div>
-                
-                <div id="guest-view" style="display: none;">
-                    <table id="guest-settings-table" class="guest-table"></table>
-                </div>
-            </div>
-
-            <ul id="player-list"></ul>
+            </div> <ul id="player-list"></ul>
             <button onclick="toggleReady()">準備完了 / 取消</button>
-        </div>
-
-        <div id="game-screen" class="screen" style="display:none;">
+        </div> <div id="game-screen" class="screen" style="display:none;">
             <h2>対局中</h2>
             <div id="game-info"></div>
             <div id="table">
                 <div id="discards"></div>
             </div>
             <div id="my-hand" class="hand"></div>
-            <div id="actions">
-                </div>
+            <div id="actions"></div>
         </div>
     </div>
     <script src="app.js"></script>
