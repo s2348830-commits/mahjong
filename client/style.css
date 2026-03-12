@@ -6,10 +6,10 @@ body { font-family: sans-serif; background-color: #222; color: white; margin: 0;
 /* スマホでも滑らかにスクロールできるようにする */
 .screen { 
     padding: 20px; 
-    height: 100vh;       /* 古いブラウザ用 */
-    height: 100dvh;      /* スマホのURLバーなどを考慮した正確な画面の高さ */
-    overflow-y: auto;    /* 縦方向にはみ出した場合のみスクロールバーを出す */
-    -webkit-overflow-scrolling: touch; /* iOS（iPhone）で滑らかにスクロールさせる */
+    height: 100vh;
+    height: 100dvh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white; border: none; border-radius: 4px; margin: 5px; }
@@ -23,7 +23,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 }
 @media screen and (orientation: portrait) {
     #portrait-warning { display: flex; }
-    #app { display: none !important; } /* 縦画面時はゲームを隠す */
+    #app { display: none !important; }
 }
 
 /* 設定パネル関連 */
@@ -44,11 +44,11 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 .hex-button:hover { filter: brightness(1.1); }
 button#add-bot-btn, button[onclick="toggleReady()"] { font-size: 1.1rem; padding: 8px 16px; border-radius: 8px; background-color: #27ae60; color: white; border: none; cursor: pointer; }
 
-/* 卓と情報表示 */
+/* 卓と情報表示（PC向けベース） */
 #game-info { position: absolute; top: 10px; left: 10px; z-index: 100; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); font-size: 0.9rem; }
 #mahjong-table {
     position: relative; width: 100%;
-    max-width: 95vh; aspect-ratio: 1; /* スマホ横画面でも正方形を維持 */
+    max-width: 95vh; aspect-ratio: 1; /* PCなどでは正方形を維持 */
     margin: 0 auto; background-color: #1e4b30; border: 12px solid #4a3018; border-radius: 12px;
     box-shadow: inset 0 0 60px rgba(0,0,0,0.7), 0 10px 30px rgba(0,0,0,0.8); overflow: hidden;
 }
@@ -62,13 +62,13 @@ button#add-bot-btn, button[onclick="toggleReady()"] { font-size: 1.1rem; padding
 .player-area.left { left: 2%; top: 50%; transform: translateY(-50%) rotate(90deg); }
 .player-area.right { right: 2%; top: 50%; transform: translateY(-50%) rotate(-90deg); }
 
-/* 対面（top）の名前の回転相殺 */
+/* 対面の名前の回転相殺 */
 .player-area.top .player-name { transform: rotate(180deg); margin-bottom: 0; margin-top: 6px; }
 
-/* ★追加: 左家・右家の名前を縦書きにして正立させる */
+/* 左家・右家の名前を縦書きにして正立させる */
 .player-area.left .player-name, .player-area.right .player-name {
     writing-mode: vertical-rl; text-orientation: upright;
-    transform: rotate(-90deg); /* エリア自体の90度回転をキャンセル */
+    transform: rotate(-90deg);
     margin-bottom: 0; margin-top: 6px; letter-spacing: 2px;
 }
 
@@ -90,12 +90,46 @@ button#add-bot-btn, button[onclick="toggleReady()"] { font-size: 1.1rem; padding
 .tile:not(.small):hover { transform: translateY(-8px); }
 .tile.small { width: 23px; height: 32px; border-radius: 2px; box-shadow: 0 1px 3px rgba(0,0,0,0.6); cursor: default; }
 
-/* スマホ等、小さな画面（横画面前提）向けの最適化 */
-@media (max-height: 500px) {
-    .screen { padding: 5px; }
+
+/* =========================================================
+   ★ スマホ専用（横画面フルスクリーン）の最適化
+========================================================= */
+@media (max-height: 500px), screen and (orientation: landscape) and (max-width: 900px) {
+    
+    /* 余白を完全に消す */
+    .screen { padding: 0 !important; }
+    
     #game-info { font-size: 0.75rem; padding: 5px; top: 5px; left: 5px; }
-    .tile { width: 7vh; height: 9.5vh; } /* 画面の高さ基準でリサイズ */
-    .tile.small { width: 4vh; height: 5.5vh; }
-    .discard-area { width: calc(4vh * 6 + 6px); }
-    .player-name { padding: 2px 6px; font-size: 0.7rem; }
+
+    /* 卓を画面いっぱいに広げ、木の枠を消す */
+    #mahjong-table {
+        max-width: none;
+        width: 100vw;
+        height: 100dvh;
+        aspect-ratio: auto; /* 正方形の制約を解除 */
+        border: none;
+        border-radius: 0;
+    }
+
+    /* 卓が長方形になっても、河（中央エリア）は歪まないように絶対位置で中央固定 */
+    #center-discards {
+        top: 50%; left: 50%;
+        bottom: auto; right: auto;
+        transform: translate(-50%, -50%);
+        width: 60vh; /* 高さ基準で正方形を作る */
+        height: 60vh;
+    }
+
+    /* 牌のサイズを高さ（vh）基準で最適化 */
+    .tile { width: 9vh; height: 12.3vh; }
+    .tile.small { width: 4.8vh; height: 6.6vh; }
+    .discard-area { width: calc(4.8vh * 6 + 6px); }
+    
+    .player-name { padding: 2px 6px; font-size: 0.75rem; }
+
+    /* 左右のプレイヤーが画面の端（横長）に配置されるように調整 */
+    .player-area.left { left: 3%; }
+    .player-area.right { right: 3%; }
+    .player-area.bottom { bottom: 1%; }
+    .player-area.top { top: 1%; }
 }
