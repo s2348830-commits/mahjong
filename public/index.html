@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Online Mahjong</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <div id="home-screen" class="screen">
+            <h1>オンライン麻雀ロビー</h1>
+            <button onclick="createRoom()">部屋を作成 (4人)</button>
+            <button onclick="searchRooms()">部屋を検索</button>
+            <ul id="room-list"></ul>
+        </div>
+
+        <div id="room-screen" class="screen" style="display:none;">
+            <h2>部屋待機室</h2>
+            <ul id="player-list"></ul>
+            <button onclick="toggleReady()">準備完了 / 取消</button>
+        </div>
+
+        <div id="game-screen" class="screen" style="display:none;">
+            <h2>対局中</h2>
+            <div id="game-info"></div>
+            <div id="table">
+                <div id="discards"></div>
+            </div>
+            <div id="my-hand" class="hand"></div>
+            <div id="actions">
+                </div>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
