@@ -59,3 +59,59 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     color: #bdc3c7;
     font-size: 0.9em;
 }
+.setting-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+}
+
+.setting-label {
+    display: inline-block;
+    width: 100px;
+    font-weight: bold;
+    color: #bdc3c7;
+}
+
+.setting-group label {
+    margin-right: 15px;
+    cursor: pointer;
+    font-size: 0.95rem;
+}
+
+.num-input {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    width: 80px;
+    font-size: 1rem;
+}
+
+.settings-divider {
+    border: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    margin: 15px 0;
+}
+
+/* ゲスト用の確認テーブル */
+.guest-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.guest-table td {
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.guest-table .label {
+    width: 120px;
+    color: #bdc3c7;
+}
+
+.guest-table .value {
+    color: #f1c40f;
+    font-weight: bold;
+}

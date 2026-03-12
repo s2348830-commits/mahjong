@@ -1,6 +1,9 @@
 let ws;
 let myPlayerId = null;
 
+// ==========================================
+// 1. 通信・初期設定
+// ==========================================
 function connect() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     ws = new WebSocket(`${protocol}//${window.location.host}`);
@@ -17,12 +20,9 @@ function sendAction(type, payload = {}) {
     }
 }
 
-// UI遷移
-function showScreen(screenId) {
-    document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
-    document.getElementById(screenId).style.display = 'block';
-}
-
+// ==========================================
+// 2. サーバーからのメッセージ処理
+// ==========================================
 function handleServerMessage(data) {
     switch (data.type) {
         case 'CONNECTED':
@@ -34,173 +34,162 @@ function handleServerMessage(data) {
         case 'ROOM_STATE':
             updateRoomState(data.payload);
             break;
+        case 'KICKED':
+            alert('ホストによって部屋からキックされました。');
+            showScreen('home-screen');
+            searchRooms(); // 部屋一覧を更新
+            break;
     }
 }
 
-// アクション送信系
-function createRoom() { sendAction('CREATE_ROOM', { roomName: "テスト部屋", maxPlayers: 4 }); }
+// ==========================================
+// 3. ユーザーアクション（送信系）
+// ==========================================
+function createRoom() { 
+    sendAction('CREATE_ROOM', { roomName: "テスト部屋", maxPlayers: 4 }); 
+}
 function searchRooms() { sendAction('SEARCH_ROOMS'); }
 function joinRoom(roomId) { sendAction('JOIN_ROOM', { roomId }); }
 function toggleReady() { sendAction('TOGGLE_READY'); }
 function discardTile(index) { sendAction('DISCARD', { tileIndex: index }); }
 
-// 描画系
-function renderRoomList(rooms) {
-    const list = document.getElementById('room-list');
-    list.innerHTML = rooms.map(r => `<li>${r.name} (${r.currentPlayers}/${r.maxPlayers}) <button onclick="joinRoom('${r.id}')">参加</button></li>`).join('');
-}
-
-function changeRule(maxPlayers) {
-    sendAction('CHANGE_RULE', { maxPlayers: parseInt(maxPlayers) });
-}
-
-// --- updateRoomState関数を以下のように書き換える ---
-function updateRoomState(state) {
-    if (state.status === 'LOBBY') {
-        showScreen('room-screen');
-        
-        document.getElementById('room-name-display').innerText = state.roomName;
-        const isHost = state.hostId === myPlayerId;
-        
-        document.getElementById('host-controls').style.display = isHost ? 'block' : 'none';
-        document.getElementById('guest-view').style.display = isHost ? 'none' : 'block';
-        
-        const ruleText = state.maxPlayers === 4 ? '4人麻雀 (4麻)' : '3人麻雀 (3麻)';
-        document.getElementById('current-rule-display').innerText = ruleText;
-        
-        // --- 修正箇所：ホストのラジオボタン制御 ---
-        if (isHost) {
-            const radio3 = document.querySelector(`input[name="player-count"][value="3"]`);
-            const radio4 = document.querySelector(`input[name="player-count"][value="4"]`);
-            
-            // サーバーの現在の設定を反映
-            if (state.maxPlayers === 3) radio3.checked = true;
-            if (state.maxPlayers === 4) radio4.checked = true;
-
-            // ★ 部屋に4人いる場合は「3麻」を無効化（disabled）する
-            if (state.players.length >= 4) {
-                radio3.disabled = true;
-                radio3.parentElement.style.color = "#888"; // 文字色をグレーにして押せない感を出す
-                radio3.parentElement.title = "すでに4人入室しているため3麻に変更できません";
-            } else {
-                radio3.disabled = false;
-                radio3.parentElement.style.color = "#fff";
-                radio3.parentElement.title = "";
-            }
-        }
-        // ----------------------------------------
-
-        document.getElementById('player-list').innerHTML = state.players.map(p => {
-            const hostIcon = p.id === state.hostId ? '👑 ' : '';
-            const readyText = p.isReady ? '<span style="color:#2ecc71;">(準備完了)</span>' : '(準備中)';
-            return `<li>${hostIcon}Player: ${p.id} ${readyText}</li>`;
-        }).join('');
-
-    } else if (state.status === 'PLAYING') {
-        showScreen('game-screen');
-        renderGame(state.game);
-    }
-}
-
-function renderGame(game) {
-    const isMyTurn = game.turnPlayerId === myPlayerId;
-    document.getElementById('game-info').innerHTML = `
-        残り山牌: ${game.wallCount} <br>
-        <span class="${isMyTurn ? 'turn-indicator' : ''}">
-            ${isMyTurn ? 'あなたの番です' : '相手の番です...'}
-        </span>
-    `;
-
-    // 自分の手牌描画
-    const handDiv = document.getElementById('my-hand');
-    handDiv.innerHTML = '';
-    const myHand = game.hands[myPlayerId] || [];
-    
-    myHand.forEach((tile, index) => {
-        const tileDiv = document.createElement('div');
-        tileDiv.className = `tile ${tile === 'back' ? 'back' : ''}`;
-        tileDiv.innerText = tile;
-        if (isMyTurn && tile !== 'back') {
-            tileDiv.onclick = () => discardTile(index);
-        }
-        handDiv.appendChild(tileDiv);
-    });
-}
+// キックとBot追加
 function kickPlayer(targetId) {
     if (confirm(`${targetId} をキックしますか？`)) {
         sendAction('KICK_PLAYER', { targetId });
     }
 }
+function addBot() { sendAction('ADD_BOT'); }
 
-function addBot() {
-    sendAction('ADD_BOT');
+// 設定フォームが変更された時に呼ばれる関数（ホストのみ）
+function syncSettings() {
+    // 詳細設定の開閉制御
+    const isAdvanced = document.querySelector('input[name="advanced"]:checked').value === 'true';
+    document.getElementById('advanced-settings').style.display = isAdvanced ? 'block' : 'none';
+
+    // フォームの値をすべて取得
+    const newSettings = {
+        mode: parseInt(document.querySelector('input[name="mode"]:checked').value),
+        length: document.querySelector('input[name="length"]:checked').value,
+        thinkTime: document.querySelector('input[name="thinkTime"]:checked').value,
+        advanced: isAdvanced,
+        startPoints: parseInt(document.getElementById('startPoints').value) || 25000,
+        targetPoints: parseInt(document.getElementById('targetPoints').value) || 30000,
+        tobi: document.querySelector('input[name="tobi"]:checked').value === 'true',
+        localYaku: document.querySelector('input[name="localYaku"]:checked').value === 'true',
+        akaDora: parseInt(document.querySelector('input[name="akaDora"]:checked').value),
+        kuitan: document.querySelector('input[name="kuitan"]:checked').value === 'true',
+        cpuLevel: document.querySelector('input[name="cpuLevel"]:checked').value,
+        openHands: document.querySelector('input[name="openHands"]:checked').value === 'true'
+    };
+
+    sendAction('CHANGE_SETTINGS', newSettings);
 }
 
-// --- handleServerMessage 関数に KICKED を追加 ---
-function handleServerMessage(data) {
-    switch (data.type) {
-        case 'CONNECTED':
-            myPlayerId = data.payload.playerId;
-            break;
-        case 'ROOM_LIST':
-            renderRoomList(data.payload);
-            break;
-        case 'ROOM_STATE':
-            updateRoomState(data.payload);
-            break;
-        // ★追加: 自分がキックされた場合の処理
-        case 'KICKED':
-            alert('ホストによって部屋からキックされました。');
-            showScreen('home-screen');
-            searchRooms(); // 部屋一覧を更新しておく
-            break;
-    }
+// ==========================================
+// 4. UI 描画系
+// ==========================================
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+    document.getElementById(screenId).style.display = 'block';
 }
 
-// --- updateRoomState 関数の該当部分を修正 ---
+function renderRoomList(rooms) {
+    const list = document.getElementById('room-list');
+    list.innerHTML = rooms.map(r => `<li>${r.name} (${r.currentPlayers}/${r.maxPlayers}) <button onclick="joinRoom('${r.id}')">参加</button></li>`).join('');
+}
+
+// ゲスト用に設定値を日本語に変換する辞書
+const SETTING_LABELS = {
+    mode: { 4: '四人麻雀', 3: '三人麻雀' },
+    length: { 'one': '一局戦', 'east': '東風戦', 'south': '半荘戦', 'cpu': 'CPU戦' },
+    bool: { true: '有効', false: '無効' },
+    akaDora: { 0: '赤無し', 3: '赤ドラ3', 4: '赤ドラ4' },
+    cpuLevel: { 'easy': '簡単', 'normal': '普通' }
+};
+
 function updateRoomState(state) {
     if (state.status === 'LOBBY') {
         showScreen('room-screen');
-        
         document.getElementById('room-name-display').innerText = state.roomName;
-        const isHost = state.hostId === myPlayerId;
         
+        const isHost = state.hostId === myPlayerId;
         document.getElementById('host-controls').style.display = isHost ? 'block' : 'none';
         document.getElementById('guest-view').style.display = isHost ? 'none' : 'block';
         
-        const ruleText = state.maxPlayers === 4 ? '4人麻雀 (4麻)' : '3人麻雀 (3麻)';
-        document.getElementById('current-rule-display').innerText = ruleText;
-        
-        if (isHost) {
-            const radio3 = document.querySelector(`input[name="player-count"][value="3"]`);
-            const radio4 = document.querySelector(`input[name="player-count"][value="4"]`);
+        // --- ホスト用UIの更新 ---
+        if (isHost && state.settings) {
+            const s = state.settings;
+            // サーバーからの設定をラジオボタンや入力欄に反映
+            const setRadio = (name, value) => {
+                const el = document.querySelector(`input[name="${name}"][value="${value}"]`);
+                if (el) el.checked = true;
+            };
             
-            if (state.maxPlayers === 3) radio3.checked = true;
-            if (state.maxPlayers === 4) radio4.checked = true;
+            setRadio('mode', s.mode);
+            setRadio('length', s.length);
+            setRadio('thinkTime', s.thinkTime);
+            setRadio('advanced', s.advanced);
+            
+            document.getElementById('startPoints').value = s.startPoints;
+            document.getElementById('targetPoints').value = s.targetPoints;
+            
+            setRadio('tobi', s.tobi);
+            setRadio('localYaku', s.localYaku);
+            setRadio('akaDora', s.akaDora);
+            setRadio('kuitan', s.kuitan);
+            setRadio('cpuLevel', s.cpuLevel);
+            setRadio('openHands', s.openHands);
 
+            // 詳細設定の表示制御
+            document.getElementById('advanced-settings').style.display = s.advanced ? 'block' : 'none';
+
+            // 人数制限による3麻のブロック処理
+            const radio3 = document.querySelector(`input[name="mode"][value="3"]`);
             if (state.players.length >= 4) {
                 radio3.disabled = true;
                 radio3.parentElement.style.color = "#888";
             } else {
                 radio3.disabled = false;
-                radio3.parentElement.style.color = "#fff";
+                radio3.parentElement.style.color = "";
             }
 
-            // ★追加: 部屋が満員の場合はBot追加ボタンを押せなくする
+            // Bot追加ボタンの制限
             const botBtn = document.getElementById('add-bot-btn');
             if (botBtn) {
-                botBtn.disabled = state.players.length >= state.maxPlayers;
+                botBtn.disabled = state.players.length >= s.mode;
                 botBtn.style.opacity = botBtn.disabled ? "0.5" : "1";
             }
+        } 
+        // --- ゲスト用UIの更新 ---
+        else if (!isHost && state.settings) {
+            const s = state.settings;
+            let html = `
+                <tr><td class="label">モード</td><td class="value">${SETTING_LABELS.mode[s.mode]}</td></tr>
+                <tr><td class="label">局数</td><td class="value">${SETTING_LABELS.length[s.length]}</td></tr>
+                <tr><td class="label">思考時間</td><td class="value">${s.thinkTime}秒</td></tr>
+            `;
+            if (s.advanced) {
+                html += `
+                    <tr><td class="label">配給原点</td><td class="value">${s.startPoints}</td></tr>
+                    <tr><td class="label">1位必要点数</td><td class="value">${s.targetPoints}</td></tr>
+                    <tr><td class="label">飛び</td><td class="value">${SETTING_LABELS.bool[s.tobi]}</td></tr>
+                    <tr><td class="label">ローカル役</td><td class="value">${SETTING_LABELS.bool[s.localYaku]}</td></tr>
+                    <tr><td class="label">赤ドラ</td><td class="value">${SETTING_LABELS.akaDora[s.akaDora]}</td></tr>
+                    <tr><td class="label">食い断</td><td class="value">${SETTING_LABELS.bool[s.kuitan]}</td></tr>
+                    <tr><td class="label">CPU</td><td class="value">${SETTING_LABELS.cpuLevel[s.cpuLevel]}</td></tr>
+                    <tr><td class="label">手牌表示</td><td class="value">${SETTING_LABELS.bool[s.openHands]}</td></tr>
+                `;
+            }
+            document.getElementById('guest-settings-table').innerHTML = html;
         }
 
-        // ★修正: プレイヤー一覧の描画（キックボタンとBot表示を追加）
+        // --- プレイヤー一覧の描画 ---
         document.getElementById('player-list').innerHTML = state.players.map(p => {
             const hostIcon = p.id === state.hostId ? '👑 ' : '';
             const isBot = p.isAI ? '<span class="bot-label">[CPU]</span> ' : '';
             const readyText = p.isReady ? '<span style="color:#2ecc71;">(準備完了)</span>' : '(準備中)';
             
-            // 自分がホストで、かつ相手が自分自身ではない場合に「✖」ボタンを表示
             let kickBtn = '';
             if (isHost && p.id !== myPlayerId) {
                 kickBtn = `<span class="kick-btn" title="キックする" onclick="kickPlayer('${p.id}')">✖</span>`;
@@ -216,4 +205,33 @@ function updateRoomState(state) {
         renderGame(state.game);
     }
 }
+
+// ==========================================
+// 5. ゲーム画面描画
+// ==========================================
+function renderGame(game) {
+    const isMyTurn = game.turnPlayerId === myPlayerId;
+    document.getElementById('game-info').innerHTML = `
+        残り山牌: ${game.wallCount} <br>
+        <span class="${isMyTurn ? 'turn-indicator' : ''}">
+            ${isMyTurn ? 'あなたの番です' : '相手の番です...'}
+        </span>
+    `;
+
+    const handDiv = document.getElementById('my-hand');
+    handDiv.innerHTML = '';
+    const myHand = game.hands[myPlayerId] || [];
+    
+    myHand.forEach((tile, index) => {
+        const tileDiv = document.createElement('div');
+        tileDiv.className = `tile ${tile === 'back' ? 'back' : ''}`;
+        tileDiv.innerText = tile;
+        if (isMyTurn && tile !== 'back') {
+            tileDiv.onclick = () => discardTile(index);
+        }
+        handDiv.appendChild(tileDiv);
+    });
+}
+
+// 起動時に接続
 connect();

@@ -21,19 +21,83 @@
                 <h3>ゲーム設定</h3>
                 
                 <div id="host-controls" style="display: none;">
-                    <label>
-                        <input type="radio" name="player-count" value="4" onchange="changeRule(4)"> 4人麻雀 (4麻)
-                    </label>
-                    <label>
-                        <input type="radio" name="player-count" value="3" onchange="changeRule(3)"> 3人麻雀 (3麻)
-                    </label>
+                    <form id="settings-form" onchange="syncSettings()">
+                        <div class="setting-group">
+                            <label class="setting-label">モード</label>
+                            <label><input type="radio" name="mode" value="4"> 四人麻雀</label>
+                            <label><input type="radio" name="mode" value="3"> 三人麻雀</label>
+                        </div>
+                        <div class="setting-group">
+                            <label class="setting-label">局数</label>
+                            <label><input type="radio" name="length" value="one"> 一局戦</label>
+                            <label><input type="radio" name="length" value="east"> 東風戦</label>
+                            <label><input type="radio" name="length" value="south"> 半荘戦</label>
+                            <label><input type="radio" name="length" value="cpu"> CPU戦</label>
+                        </div>
+                        <div class="setting-group">
+                            <label class="setting-label">思考時間</label>
+                            <label><input type="radio" name="thinkTime" value="3+5"> 3+5秒</label>
+                            <label><input type="radio" name="thinkTime" value="5+10"> 5+10秒</label>
+                            <label><input type="radio" name="thinkTime" value="5+20"> 5+20秒</label>
+                            <label><input type="radio" name="thinkTime" value="60+0"> 60+0秒</label>
+                            <label><input type="radio" name="thinkTime" value="300+0"> 300+0秒</label>
+                        </div>
+                        <div class="setting-group">
+                            <label class="setting-label">詳細設定</label>
+                            <label><input type="radio" name="advanced" value="false"> 無効</label>
+                            <label><input type="radio" name="advanced" value="true"> 有効</label>
+                        </div>
+
+                        <div id="advanced-settings" style="display: none;">
+                            <hr class="settings-divider">
+                            <div class="setting-group">
+                                <label class="setting-label">配給原点</label>
+                                <input type="number" id="startPoints" value="25000" step="100" class="num-input">
+                            </div>
+                            <div class="setting-group">
+                                <label class="setting-label">1位必要点数</label>
+                                <input type="number" id="targetPoints" value="30000" step="100" class="num-input">
+                            </div>
+                            <div class="setting-group">
+                                <label class="setting-label">飛び</label>
+                                <label><input type="radio" name="tobi" value="false"> 無効</label>
+                                <label><input type="radio" name="tobi" value="true"> 有効</label>
+                            </div>
+                            <div class="setting-group">
+                                <label class="setting-label">ローカル役</label>
+                                <label><input type="radio" name="localYaku" value="false"> 無効</label>
+                                <label><input type="radio" name="localYaku" value="true"> 有効</label>
+                            </div>
+                            <div class="setting-group">
+                                <label class="setting-label">赤ドラ</label>
+                                <label><input type="radio" name="akaDora" value="0"> 赤無し</label>
+                                <label><input type="radio" name="akaDora" value="3"> 赤ドラ3</label>
+                                <label><input type="radio" name="akaDora" value="4"> 赤ドラ4</label>
+                            </div>
+                            <div class="setting-group">
+                                <label class="setting-label">食い断</label>
+                                <label><input type="radio" name="kuitan" value="false"> 無効</label>
+                                <label><input type="radio" name="kuitan" value="true"> 有効</label>
+                            </div>
+                            <div class="setting-group">
+                                <label class="setting-label">CPU</label>
+                                <label><input type="radio" name="cpuLevel" value="easy"> 簡単</label>
+                                <label><input type="radio" name="cpuLevel" value="normal"> 普通</label>
+                            </div>
+                            <div class="setting-group">
+                                <label class="setting-label">手牌表示</label>
+                                <label><input type="radio" name="openHands" value="false"> 無効</label>
+                                <label><input type="radio" name="openHands" value="true"> 有効</label>
+                            </div>
+                        </div>
+                    </form>
                     <div style="margin-top: 15px;">
                         <button id="add-bot-btn" onclick="addBot()" style="background: #27ae60;">+ Botを追加</button>
                     </div>
                 </div>
                 
                 <div id="guest-view" style="display: none;">
-                    ルール: <span id="current-rule-display" class="highlight-text">4人麻雀</span>
+                    <table id="guest-settings-table" class="guest-table"></table>
                 </div>
             </div>
 

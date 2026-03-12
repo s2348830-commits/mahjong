@@ -4,21 +4,32 @@ class Room {
     constructor(id, name) {
         this.id = id;
         this.name = name;
-        this.maxPlayers = 4; // デフォルトは4麻
-        this.hostId = null;  // ホストのプレイヤーID
+        this.hostId = null;
         this.players = new Map();
         this.status = 'LOBBY';
         this.game = null;
+
+        // ★追加: ルームの全設定を管理するオブジェクト
+        this.settings = {
+            mode: 4,              // 4: 4人麻雀, 3: 3人麻雀
+            length: 'east',       // 'one':一局, 'east':東風, 'south':半荘, 'cpu':CPU
+            thinkTime: '5+10',    // '3+5', '5+10', '5+20', '60+0', '300+0'
+            advanced: false,      // 詳細設定の有効/無効
+            startPoints: 25000,
+            targetPoints: 30000,
+            tobi: true,           // 飛び
+            localYaku: false,     // ローカル役
+            akaDora: 3,           // 0, 3, 4
+            kuitan: true,         // 食い断
+            cpuLevel: 'normal',   // 'easy', 'normal'
+            openHands: false      // 手牌表示
+        };
+        this.maxPlayers = this.settings.mode; // 互換性のため保持
     }
 
     join(playerId, ws) {
-        // 部屋が満員の場合は参加させない
         if (this.players.size >= this.maxPlayers && !this.players.has(playerId)) return;
-
-        // 最初の参加者をホストに設定
-        if (this.players.size === 0) {
-            this.hostId = playerId;
-        }
+        if (this.players.size === 0) this.hostId = playerId;
 
         if (this.players.has(playerId)) {
             const player = this.players.get(playerId);
@@ -28,7 +39,6 @@ class Room {
         } else {
             this.players.set(playerId, { ws, isReady: false, isAI: false, disconnectTimeout: null });
         }
-        
         this.broadcastState();
     }
 
@@ -42,24 +52,28 @@ class Room {
                 this.checkStartGame();
                 this.broadcastState();
             }
-            // ホストのみルール変更可能
-            else if (action.type === 'CHANGE_RULE' && playerId === this.hostId) {
-                const newMax = action.payload.maxPlayers;
-                if (newMax >= this.players.size && (newMax === 3 || newMax === 4)) {
-                    this.maxPlayers = newMax;
-                    this.players.forEach(p => p.isReady = false);
-                    this.broadcastState();
-                }
+            // ★変更: 新しい設定変更処理
+            else if (action.type === 'CHANGE_SETTINGS' && playerId === this.hostId) {
+                const newSettings = action.payload;
+                
+                // 4人いるのに3麻に変更しようとした場合はブロック
+                if (newSettings.mode < this.players.size) return;
+
+                // 設定を上書き
+                this.settings = { ...this.settings, ...newSettings };
+                this.maxPlayers = this.settings.mode; // 内部の最大人数も更新
+                
+                // 設定が変わったら全員の準備を解除
+                this.players.forEach(p => p.isReady = false);
+                this.broadcastState();
             }
             else if (action.type === 'KICK_PLAYER' && playerId === this.hostId) {
                 const targetId = action.payload.targetId;
                 if (targetId !== this.hostId && this.players.has(targetId)) {
                     const targetPlayer = this.players.get(targetId);
-                    
                     if (!targetPlayer.isAI && targetPlayer.ws) {
                         targetPlayer.ws.send(JSON.stringify({ type: 'KICKED' }));
                     }
-                    
                     this.players.delete(targetId);
                     this.broadcastState();
                 }
@@ -67,11 +81,9 @@ class Room {
             else if (action.type === 'ADD_BOT' && playerId === this.hostId) {
                 if (this.players.size < this.maxPlayers) {
                     const botId = 'Bot_' + Math.floor(Math.random() * 10000);
-                    // Botは最初から「準備完了」状態にしておく
                     this.players.set(botId, { ws: null, isReady: true, isAI: true, disconnectTimeout: null });
-                    
                     this.broadcastState();
-                    this.checkStartGame(); 
+                    this.checkStartGame();
                 }
             }
         } else if (this.status === 'PLAYING') {
@@ -90,11 +102,6 @@ class Room {
         }
     }
 
-    handleDisconnect(playerId) {
-        // (省略: 前回のコードと同じ)
-        // ※もしホストが切断した場合は、他のプレイヤーにホスト権限を移譲する処理を追加するとより実用的です。
-    }
-
     broadcastState() {
         this.players.forEach((playerInfo, pId) => {
             if (!playerInfo.ws || playerInfo.ws.readyState !== 1) return;
@@ -102,8 +109,8 @@ class Room {
             const state = {
                 roomId: this.id,
                 roomName: this.name,
-                hostId: this.hostId,      // ホスト情報をクライアントに送る
-                maxPlayers: this.maxPlayers, // 現在のルール(3 or 4)
+                hostId: this.hostId,
+                settings: this.settings, // ★全設定を送信
                 status: this.status,
                 players: Array.from(this.players.entries()).map(([id, p]) => ({
                     id, isReady: p.isReady, isAI: p.isAI
@@ -113,7 +120,6 @@ class Room {
             if (this.status === 'PLAYING' && this.game) {
                 state.game = this.game.getClientState(pId);
             }
-
             playerInfo.ws.send(JSON.stringify({ type: 'ROOM_STATE', payload: state }));
         });
     }
