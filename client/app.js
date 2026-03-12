@@ -59,26 +59,37 @@ function updateRoomState(state) {
     if (state.status === 'LOBBY') {
         showScreen('room-screen');
         
-        // 部屋名を表示
         document.getElementById('room-name-display').innerText = state.roomName;
-
         const isHost = state.hostId === myPlayerId;
         
-        // UIの出し分け
         document.getElementById('host-controls').style.display = isHost ? 'block' : 'none';
         document.getElementById('guest-view').style.display = isHost ? 'none' : 'block';
         
-        // 現在のルールのテキスト表示
         const ruleText = state.maxPlayers === 4 ? '4人麻雀 (4麻)' : '3人麻雀 (3麻)';
         document.getElementById('current-rule-display').innerText = ruleText;
         
-        // 自分がホストの場合、ラジオボタンの選択状態をサーバーと同期する
+        // --- 修正箇所：ホストのラジオボタン制御 ---
         if (isHost) {
-            const radio = document.querySelector(`input[name="player-count"][value="${state.maxPlayers}"]`);
-            if (radio) radio.checked = true;
-        }
+            const radio3 = document.querySelector(`input[name="player-count"][value="3"]`);
+            const radio4 = document.querySelector(`input[name="player-count"][value="4"]`);
+            
+            // サーバーの現在の設定を反映
+            if (state.maxPlayers === 3) radio3.checked = true;
+            if (state.maxPlayers === 4) radio4.checked = true;
 
-        // プレイヤー一覧の描画（ホストには王冠マークをつける）
+            // ★ 部屋に4人いる場合は「3麻」を無効化（disabled）する
+            if (state.players.length >= 4) {
+                radio3.disabled = true;
+                radio3.parentElement.style.color = "#888"; // 文字色をグレーにして押せない感を出す
+                radio3.parentElement.title = "すでに4人入室しているため3麻に変更できません";
+            } else {
+                radio3.disabled = false;
+                radio3.parentElement.style.color = "#fff";
+                radio3.parentElement.title = "";
+            }
+        }
+        // ----------------------------------------
+
         document.getElementById('player-list').innerHTML = state.players.map(p => {
             const hostIcon = p.id === state.hostId ? '👑 ' : '';
             const readyText = p.isReady ? '<span style="color:#2ecc71;">(準備完了)</span>' : '(準備中)';
