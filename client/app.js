@@ -234,18 +234,29 @@ function renderGame(game) {
     const handDiv = document.getElementById('my-hand');
     handDiv.innerHTML = '';
     
-    // 手牌の理牌（ソート: 萬子→筒子→索子→字牌）
-    const myRawHand = game.hands[myPlayerId] || [];
-    const myHand = myRawHand.sort((a, b) => {
-        if (a === 'back' || b === 'back') return 0;
+    // --- ★修正: サーバーの元のインデックスを記憶したまま理牌（ソート）する ---
+    const serverHand = game.hands[myPlayerId] || [];
+    
+    // 1. { tileCode: '1m', originalIndex: 0 } のようなオブジェクトの配列に変換
+    const handWithIndices = serverHand.map((tileCode, index) => {
+        return { tileCode: tileCode, originalIndex: index };
+    });
+
+    // 2. そのオブジェクトの配列をソートする
+    const myHand = handWithIndices.sort((a, b) => {
+        if (a.tileCode === 'back' || b.tileCode === 'back') return 0;
         const suitOrder = { m: 0, p: 1, s: 2, z: 3 }; 
-        const suitA = a.slice(-1); const suitB = b.slice(-1);
-        const numA = parseInt(a); const numB = parseInt(b);
+        const suitA = a.tileCode.slice(-1); const suitB = b.tileCode.slice(-1);
+        const numA = parseInt(a.tileCode); const numB = parseInt(b.tileCode);
         if (suitOrder[suitA] !== suitOrder[suitB]) return suitOrder[suitA] - suitOrder[suitB];
         return numA - numB;
     });
     
-    myHand.forEach((tileCode, index) => {
+    // 3. 描画処理
+    myHand.forEach((item) => {
+        const tileCode = item.tileCode;
+        const originalIndex = item.originalIndex; // 元のインデックスを取り出す
+
         const tileDiv = document.createElement('div');
         tileDiv.className = 'tile';
         
@@ -255,14 +266,14 @@ function renderGame(game) {
             const [col, row] = spriteInfo;
             const xPos = X_PERCENTAGES[col]; 
             const yPos = Y_PERCENTAGES[row];
-            
             tileDiv.style.backgroundPosition = `${xPos}% ${yPos}%`;
         }
         
         if (isMyTurn && tileCode !== 'back') {
             tileDiv.onclick = () => {
                 if (confirm(`この牌を捨てますか？`)) {
-                    discardTile(index);
+                    // ★修正: 画面上の順番ではなく、サーバー上の正しいインデックスを送信！
+                    discardTile(originalIndex);
                 }
             };
         }
