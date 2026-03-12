@@ -38,7 +38,6 @@ wss.on('connection', (ws) => {
                 }
                 break;
             default:
-                // 部屋内でのアクション（準備、打牌など）はRoomに委譲
                 if (currentRoomId) {
                     const roomObj = roomManager.getRoom(currentRoomId);
                     if (roomObj) roomObj.handleAction(playerId, data);
@@ -49,7 +48,14 @@ wss.on('connection', (ws) => {
     ws.on('close', () => {
         if (currentRoomId) {
             const roomObj = roomManager.getRoom(currentRoomId);
-            if (roomObj) roomObj.handleDisconnect(playerId);
+            if (roomObj) {
+                roomObj.handleDisconnect(playerId);
+                
+                // ★修正: 部屋の人数が0人になったら部屋そのものを削除する
+                if (roomObj.players.size === 0) {
+                    roomManager.rooms.delete(currentRoomId);
+                }
+            }
         }
     });
 });
