@@ -5,3 +5,36 @@ button { padding: 10px 20px; cursor: pointer; background: #3498db; color: white;
 .tile { width: 40px; height: 60px; background: #ecf0f1; color: black; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: pointer; font-weight: bold; }
 .tile.back { background: #e67e22; color: transparent; }
 .turn-indicator { color: #f1c40f; font-weight: bold; }
+.settings-panel {
+    background-color: rgba(0, 0, 0, 0.7); /* 黒の半透明(70%) */
+    color: #ffffff;
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.settings-panel h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+    padding-bottom: 5px;
+}
+
+.settings-panel label {
+    margin-right: 15px;
+    cursor: pointer;
+    font-size: 1.1rem;
+}
+
+.settings-panel input[type="radio"] {
+    cursor: pointer;
+}
+
+.highlight-text {
+    font-weight: bold;
+    color: #f1c40f; /* ゲスト用の確認テキストは少し目立たせる */
+    font-size: 1.1rem;
+}

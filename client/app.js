@@ -50,12 +50,41 @@ function renderRoomList(rooms) {
     list.innerHTML = rooms.map(r => `<li>${r.name} (${r.currentPlayers}/${r.maxPlayers}) <button onclick="joinRoom('${r.id}')">参加</button></li>`).join('');
 }
 
+function changeRule(maxPlayers) {
+    sendAction('CHANGE_RULE', { maxPlayers: parseInt(maxPlayers) });
+}
+
+// --- updateRoomState関数を以下のように書き換える ---
 function updateRoomState(state) {
     if (state.status === 'LOBBY') {
         showScreen('room-screen');
-        document.getElementById('player-list').innerHTML = state.players.map(p => 
-            `<li>Player: ${p.id} ${p.isReady ? '(準備完了)' : '(準備中)'}</li>`
-        ).join('');
+        
+        // 部屋名を表示
+        document.getElementById('room-name-display').innerText = state.roomName;
+
+        const isHost = state.hostId === myPlayerId;
+        
+        // UIの出し分け
+        document.getElementById('host-controls').style.display = isHost ? 'block' : 'none';
+        document.getElementById('guest-view').style.display = isHost ? 'none' : 'block';
+        
+        // 現在のルールのテキスト表示
+        const ruleText = state.maxPlayers === 4 ? '4人麻雀 (4麻)' : '3人麻雀 (3麻)';
+        document.getElementById('current-rule-display').innerText = ruleText;
+        
+        // 自分がホストの場合、ラジオボタンの選択状態をサーバーと同期する
+        if (isHost) {
+            const radio = document.querySelector(`input[name="player-count"][value="${state.maxPlayers}"]`);
+            if (radio) radio.checked = true;
+        }
+
+        // プレイヤー一覧の描画（ホストには王冠マークをつける）
+        document.getElementById('player-list').innerHTML = state.players.map(p => {
+            const hostIcon = p.id === state.hostId ? '👑 ' : '';
+            const readyText = p.isReady ? '<span style="color:#2ecc71;">(準備完了)</span>' : '(準備中)';
+            return `<li>${hostIcon}Player: ${p.id} ${readyText}</li>`;
+        }).join('');
+
     } else if (state.status === 'PLAYING') {
         showScreen('game-screen');
         renderGame(state.game);

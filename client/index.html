@@ -15,7 +15,25 @@
         </div>
 
         <div id="room-screen" class="screen" style="display:none;">
-            <h2>部屋待機室</h2>
+            <h2>部屋待機室: <span id="room-name-display"></span></h2>
+            
+            <div id="room-settings" class="settings-panel">
+                <h3>ゲーム設定</h3>
+                
+                <div id="host-controls" style="display: none;">
+                    <label>
+                        <input type="radio" name="player-count" value="4" onchange="changeRule(4)"> 4人麻雀 (4麻)
+                    </label>
+                    <label>
+                        <input type="radio" name="player-count" value="3" onchange="changeRule(3)"> 3人麻雀 (3麻)
+                    </label>
+                </div>
+                
+                <div id="guest-view" style="display: none;">
+                    ルール: <span id="current-rule-display" class="highlight-text">4人麻雀</span>
+                </div>
+            </div>
+
             <ul id="player-list"></ul>
             <button onclick="toggleReady()">準備完了 / 取消</button>
         </div>
