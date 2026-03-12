@@ -202,15 +202,14 @@ function updateRoomState(state) {
 // ==========================================
 
 // 画像上の位置（列、行）を定義
-// 画像は横10列、縦4行（+点棒など）の構成
 const TILE_SPRITE_MAP = {
-    // 萬子 (1行目: Y=0)  ※0mは赤5萬
+    // 萬子 (1行目: Y=0)
     '1m': [0, 0], '2m': [1, 0], '3m': [2, 0], '4m': [3, 0], '5m': [4, 0],
     '6m': [5, 0], '7m': [6, 0], '8m': [7, 0], '9m': [8, 0], '0m': [9, 0], 
-    // 索子 (2行目: Y=1)  ※0sは赤5索
+    // 索子 (2行目: Y=1)
     '1s': [0, 1], '2s': [1, 1], '3s': [2, 1], '4s': [3, 1], '5s': [4, 1],
     '6s': [5, 1], '7s': [6, 1], '8s': [7, 1], '9s': [8, 1], '0s': [9, 1], 
-    // 筒子 (3行目: Y=2)  ※0pは赤5筒
+    // 筒子 (3行目: Y=2)
     '1p': [0, 2], '2p': [1, 2], '3p': [2, 2], '4p': [3, 2], '5p': [4, 2],
     '6p': [5, 2], '7p': [6, 2], '8p': [7, 2], '9p': [8, 2], '0p': [9, 2], 
     // 字牌と裏面 (4行目: Y=3)
@@ -219,8 +218,9 @@ const TILE_SPRITE_MAP = {
     'back': [7, 3]                                          // オレンジ色の裏面
 };
 
-// 行(Y座標)の切り出しパーセンテージ。画像がズレる場合はここの数値を微調整してください。
-const Y_PERCENTAGES = [0, 31.8, 63.5, 95.2];
+// ★画像の余白をカットし、牌だけを綺麗に表示するための完璧な調整値
+const X_PERCENTAGES = [1.6, 12.5, 23.2, 34.0, 44.8, 55.6, 66.4, 77.2, 88.0, 98.7];
+const Y_PERCENTAGES = [4.8, 28.2, 51.7, 75.1];
 
 function renderGame(game) {
     const isMyTurn = game.turnPlayerId === myPlayerId;
@@ -253,8 +253,7 @@ function renderGame(game) {
         const spriteInfo = TILE_SPRITE_MAP[tileCode];
         if (spriteInfo) {
             const [col, row] = spriteInfo;
-            // 10列あるので、1列進むごとに 11.1111% ずらす
-            const xPos = col * 11.1111; 
+            const xPos = X_PERCENTAGES[col]; 
             const yPos = Y_PERCENTAGES[row];
             
             tileDiv.style.backgroundPosition = `${xPos}% ${yPos}%`;

@@ -79,11 +79,11 @@ button#add-bot-btn, button[onclick="toggleReady()"] {
     transition: transform 0.1s;
     
     /* 用意した画像を読み込む */
-    background-image: url('tiles.png');
+    background-image: url('tiles.png'); 
     background-repeat: no-repeat;
     
-    /* 横10枚分の幅なので 1000% に設定 */
-    background-size: 1000% auto; 
+    /* ★完璧に切り抜くための調整値（黒い隙間を隠す） */
+    background-size: 1330% auto; 
     
     /* テキストは表示しない */
     color: transparent; 
