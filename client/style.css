@@ -44,11 +44,11 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 .hex-button:hover { filter: brightness(1.1); }
 button#add-bot-btn, button[onclick="toggleReady()"] { font-size: 1.1rem; padding: 8px 16px; border-radius: 8px; background-color: #27ae60; color: white; border: none; cursor: pointer; }
 
-/* 卓と情報表示（PC向けベース） */
+/* 卓と情報表示 */
 #game-info { position: absolute; top: 10px; left: 10px; z-index: 100; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); font-size: 0.9rem; }
 #mahjong-table {
     position: relative; width: 100%;
-    max-width: 95vh; aspect-ratio: 1; /* PCなどでは正方形を維持 */
+    max-width: 95vh; aspect-ratio: 1;
     margin: 0 auto; background-color: #1e4b30; border: 12px solid #4a3018; border-radius: 12px;
     box-shadow: inset 0 0 60px rgba(0,0,0,0.7), 0 10px 30px rgba(0,0,0,0.8); overflow: hidden;
 }
@@ -56,6 +56,11 @@ button#add-bot-btn, button[onclick="toggleReady()"] { font-size: 1.1rem; padding
 /* プレイヤーエリア */
 .player-area { position: absolute; display: flex; flex-direction: column; align-items: center; z-index: 10; }
 .player-name { background: rgba(0, 0, 0, 0.7); padding: 4px 12px; border-radius: 6px; margin-bottom: 6px; font-weight: bold; color: #fff; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.5); font-size: 0.85rem; }
+
+/* ★修正: 相手のエリアは「名前」と「手牌」の配置を逆転させて、名前を外側にする */
+.player-area.top, .player-area.left, .player-area.right {
+    flex-direction: column-reverse;
+}
 
 .player-area.bottom { bottom: 2%; left: 50%; transform: translateX(-50%); }
 .player-area.top { top: 2%; left: 50%; transform: translateX(-50%) rotate(180deg); }
@@ -74,7 +79,14 @@ button#add-bot-btn, button[onclick="toggleReady()"] { font-size: 1.1rem; padding
 
 /* 河（捨て牌エリア） */
 #center-discards { position: absolute; top: 22%; left: 22%; right: 22%; bottom: 22%; background-color: rgba(0, 0, 0, 0.15); border-radius: 10px; }
-.discard-area { position: absolute; display: flex; flex-wrap: wrap; width: calc(23px * 6 + 10px); align-content: flex-start; gap: 1px; }
+
+/* ★修正: 高さを固定（3段分）することで、牌が上に押し上げられず、必ず上から下へ並ぶようにする */
+.discard-area {
+    position: absolute; display: flex; flex-wrap: wrap; 
+    width: calc(23px * 6 + 10px); 
+    height: 98px; /* 32px(牌の高さ) * 3段 + 2px(隙間) */
+    align-content: flex-start; gap: 1px; 
+}
 .discard-area.bottom { bottom: 4%; left: 50%; transform: translateX(-50%); }
 .discard-area.top { top: 4%; left: 50%; transform: translateX(-50%) rotate(180deg); }
 .discard-area.left { left: 4%; top: 50%; transform: translateY(-50%) rotate(90deg); }
@@ -87,47 +99,40 @@ button#add-bot-btn, button[onclick="toggleReady()"] { font-size: 1.1rem; padding
     background-image: url('tiles.png'); background-repeat: no-repeat; background-size: 1330% auto; 
     color: transparent; font-size: 0; box-shadow: 0 2px 5px rgba(0,0,0,0.5);
 }
-.tile:not(.small):hover { transform: translateY(-8px); }
+
 .tile.small { width: 23px; height: 32px; border-radius: 2px; box-shadow: 0 1px 3px rgba(0,0,0,0.6); cursor: default; }
 
+/* ★追加: 選択中の牌のスタイル（黄色い枠と浮き上がり） */
+.tile.selected-tile {
+    transform: translateY(-15px) !important; /* 大きく浮かせる */
+    box-shadow: 0 0 0 3px #f1c40f, 0 5px 10px rgba(0,0,0,0.6) !important; /* 黄色い縁取り */
+}
 
-/* =========================================================
-   ★ スマホ専用（横画面フルスクリーン）の最適化
-========================================================= */
+/* スマホ等、小さな画面（横画面前提）向けの最適化 */
 @media (max-height: 500px), screen and (orientation: landscape) and (max-width: 900px) {
-    
-    /* 余白を完全に消す */
     .screen { padding: 0 !important; }
-    
     #game-info { font-size: 0.75rem; padding: 5px; top: 5px; left: 5px; }
 
-    /* 卓を画面いっぱいに広げ、木の枠を消す */
     #mahjong-table {
-        max-width: none;
-        width: 100vw;
-        height: 100dvh;
-        aspect-ratio: auto; /* 正方形の制約を解除 */
-        border: none;
-        border-radius: 0;
+        max-width: none; width: 100vw; height: 100dvh; aspect-ratio: auto; border: none; border-radius: 0;
     }
 
-    /* 卓が長方形になっても、河（中央エリア）は歪まないように絶対位置で中央固定 */
     #center-discards {
-        top: 50%; left: 50%;
-        bottom: auto; right: auto;
-        transform: translate(-50%, -50%);
-        width: 60vh; /* 高さ基準で正方形を作る */
-        height: 60vh;
+        top: 50%; left: 50%; bottom: auto; right: auto;
+        transform: translate(-50%, -50%); width: 60vh; height: 60vh;
     }
 
-    /* 牌のサイズを高さ（vh）基準で最適化 */
     .tile { width: 9vh; height: 12.3vh; }
     .tile.small { width: 4.8vh; height: 6.6vh; }
-    .discard-area { width: calc(4.8vh * 6 + 6px); }
+    
+    /* ★修正: スマホ時も河の高さを固定 */
+    .discard-area { 
+        width: calc(4.8vh * 6 + 6px); 
+        height: calc(6.6vh * 3 + 2px); 
+    }
     
     .player-name { padding: 2px 6px; font-size: 0.75rem; }
 
-    /* 左右のプレイヤーが画面の端（横長）に配置されるように調整 */
     .player-area.left { left: 3%; }
     .player-area.right { right: 3%; }
     .player-area.bottom { bottom: 1%; }

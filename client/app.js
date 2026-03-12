@@ -2,12 +2,15 @@ let ws;
 let myPlayerId = null;
 let currentPlayers = [];
 
-// ★アニメーション・状態管理用の変数
+// アニメーション・状態管理用の変数
 let lastDiscardOrigin = { x: 0, y: 0 };
 let previousDiscardsCount = {};
 let currentRoomStatus = 'LOBBY';
-let dealAnimationStep = -1; // -1はアニメーション無し（全表示）
+let dealAnimationStep = -1;
 let lastGameState = null;
+
+// ★追加: 選択中の牌を記憶する変数
+let selectedTileIndex = -1;
 
 function connect() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -70,30 +73,29 @@ function renderRoomList(rooms) {
     document.getElementById('room-list').innerHTML = rooms.map(r => `<li>${r.name} (${r.currentPlayers}/${r.maxPlayers}) <button onclick="joinRoom('${r.id}')">参加</button></li>`).join('');
 }
 
-// ★追加: 4枚ずつ配牌するアニメーション
+// 4枚ずつ配牌するアニメーション
 function animateDealing() {
-    const sequence = [4, 8, 12, 14]; // 配牌の枚数推移
+    const sequence = [4, 8, 12, 14];
     let stepIndex = 0;
     
     const interval = setInterval(() => {
         stepIndex++;
         if (stepIndex >= sequence.length) {
             clearInterval(interval);
-            dealAnimationStep = -1; // アニメーション終了（全表示）
+            dealAnimationStep = -1;
         } else {
             dealAnimationStep = sequence[stepIndex];
         }
         if (lastGameState) renderGame(lastGameState);
-    }, 400); // 0.4秒ごとに4枚ずつドサッ！と増える
+    }, 400);
 }
 
 function updateRoomState(state) {
     if (state.players) currentPlayers = state.players.map(p => p.id);
 
-    // ★追加: ロビーからPLAYINGに切り替わった瞬間を検知して配牌アニメ開始
     if (currentRoomStatus === 'LOBBY' && state.status === 'PLAYING') {
         currentRoomStatus = 'PLAYING';
-        dealAnimationStep = 4; // 最初は4枚から
+        dealAnimationStep = 4;
         animateDealing();
     } else {
         currentRoomStatus = state.status;
@@ -159,7 +161,7 @@ function createTileElement(tileCode, isSmall = false) {
 }
 
 function renderGame(game) {
-    lastGameState = game; // アニメーション用に記憶
+    lastGameState = game;
     document.getElementById('game-info').innerHTML = `
         <div style="color:#f1c40f;">残り山: ${game.wallCount}</div>
         <div style="font-size:0.8rem; margin-top:5px;">現在: Player ${game.turnPlayerId}</div>
@@ -168,6 +170,11 @@ function renderGame(game) {
     const numPlayers = currentPlayers.length;
     const myIndex = currentPlayers.indexOf(myPlayerId);
     const posMap = numPlayers === 3 ? ['bottom', 'right', 'left'] : ['bottom', 'right', 'top', 'left'];
+
+    // ★自分の番じゃなくなったら選択を解除する
+    if (game.turnPlayerId !== myPlayerId) {
+        selectedTileIndex = -1;
+    }
 
     ['bottom', 'right', 'top', 'left'].forEach(pos => {
         document.getElementById(`area-${pos}`).style.display = 'none';
@@ -189,7 +196,6 @@ function renderGame(game) {
         const handDiv = document.getElementById(`hand-${pos}`);
         handDiv.innerHTML = '';
         
-        // ★修正: 配牌アニメーション中は枚数を制限する
         const rawHand = game.hands[pid] || [];
         let displayRawHand = rawHand;
         if (dealAnimationStep !== -1) {
@@ -212,13 +218,24 @@ function renderGame(game) {
         displayHand.forEach((item) => {
             const tileDiv = createTileElement(item.tileCode, pos !== 'bottom');
             
-            // アニメーション中でなく、自分の番なら打牌可能
+            // ★選択状態の見た目を反映
+            if (pid === myPlayerId && selectedTileIndex === item.originalIndex) {
+                tileDiv.classList.add('selected-tile');
+            }
+            
+            // ★2段階タップ処理
             if (pid === myPlayerId && isTurn && item.tileCode !== 'back' && dealAnimationStep === -1) {
                 tileDiv.onclick = () => {
-                    if (confirm(`この牌を捨てますか？`)) {
+                    if (selectedTileIndex === item.originalIndex) {
+                        // 2回目のタップ：打牌する
                         const rect = tileDiv.getBoundingClientRect();
                         lastDiscardOrigin = { x: rect.left, y: rect.top };
                         discardTile(item.originalIndex);
+                        selectedTileIndex = -1; // 選択リセット
+                    } else {
+                        // 1回目のタップ：選択する
+                        selectedTileIndex = item.originalIndex;
+                        renderGame(game); // 再描画して黄色い枠をつける
                     }
                 };
             }
@@ -243,7 +260,6 @@ function renderGame(game) {
         previousDiscardsCount[pid] = discards.length;
     });
 
-    // ★修正: アニメーションの描画タイミングをずらし、確実に「相手のエリア」から飛ばす
     requestAnimationFrame(() => {
         requestAnimationFrame(() => {
             document.querySelectorAll('.new-discard').forEach(el => {
@@ -254,14 +270,11 @@ function renderGame(game) {
                 let startX = targetRect.left;
                 let startY = targetRect.top;
 
-                // 自分の打牌ならクリックした手牌の位置から
                 if (pid === myPlayerId && lastDiscardOrigin.x !== 0) {
                     startX = lastDiscardOrigin.x;
                     startY = lastDiscardOrigin.y;
                     lastDiscardOrigin = { x: 0, y: 0 };
-                } 
-                // 相手の打牌なら、その人の「プレイヤーエリア」の中央から
-                else {
+                } else {
                     const relIdx = (currentPlayers.indexOf(pid) - currentPlayers.indexOf(myPlayerId) + currentPlayers.length) % currentPlayers.length;
                     const posMap = currentPlayers.length === 3 ? ['bottom', 'right', 'left'] : ['bottom', 'right', 'top', 'left'];
                     const pos = posMap[relIdx];
@@ -277,11 +290,9 @@ function renderGame(game) {
                 const deltaX = startX - targetRect.left;
                 const deltaY = startY - targetRect.top;
                 
-                // 元の位置にワープ
                 el.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(1.5)`;
                 el.style.transition = 'none';
 
-                // 次のフレームで河へ移動アニメーション
                 requestAnimationFrame(() => {
                     el.style.transform = 'translate(0, 0) scale(1)';
                     el.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)';
