@@ -115,3 +115,60 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     color: #f1c40f;
     font-weight: bold;
 }
+
+/* ボタンコンテナ */
+.setting-button-group {
+    display: flex;
+    gap: 0; /* ボタン間の隙間をなくす */
+}
+
+/* 基本的なボタンのスタイル（画像に基づく） */
+.hex-button {
+    font-size: 1.1rem;
+    font-weight: bold;
+    padding: 8px 16px;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    /* 六角形の角を作成 */
+    clip-path: polygon(10% 0%, 90% 0%, 100% 15%, 100% 85%, 90% 100%, 10% 100%, 0% 85%, 0% 15%);
+    /* ベベル効果 */
+    box-shadow: inset 2px 2px 4px rgba(255, 255, 255, 0.3),
+                inset -2px -2px 4px rgba(0, 0, 0, 0.5);
+    transition: background-color 0.2s, color 0.2s;
+}
+
+/* 非選択状態（紺色） */
+.hex-button.unselected {
+    background-color: #2c3e50; /* 紺色 */
+    color: #ffffff; /* 白色テキスト */
+}
+
+/* 選択状態（オレンジ） */
+.hex-button.selected {
+    background-color: #f39c12; /* オレンジ色 */
+    color: #2c3e50; /* 紺色テキスト */
+}
+
+/* ホバー時の効果 */
+.hex-button:hover {
+    filter: brightness(1.1);
+}
+
+/* Bot追加ボタンなど、他のボタンとの調和 */
+button#add-bot-btn,
+button[onclick="toggleReady()"] {
+    font-size: 1.1rem;
+    padding: 8px 16px;
+    border-radius: 8px; /* 角を丸く */
+    background-color: #27ae60; /* 緑色 */
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+/* ゲストテーブルの値をオレンジに */
+.guest-table .value {
+    color: #f39c12; /* オレンジ */
+    font-weight: bold;
+}

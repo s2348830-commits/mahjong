@@ -61,26 +61,36 @@ function kickPlayer(targetId) {
 }
 function addBot() { sendAction('ADD_BOT'); }
 
-// 設定フォームが変更された時に呼ばれる関数（ホストのみ）
+// --- 設定関連のアクション ---
+
+// ボタンがクリックされた時に隠しinputの値を書き換えて送信をトリガーする
+function changeSettingRadio(name, value) {
+    const hiddenInput = document.querySelector(`input[name="${name}"]`);
+    if (hiddenInput) {
+        hiddenInput.value = value;
+        syncSettings();
+    }
+}
+
+// フォームの値をすべて取得してサーバーに同期する（ホストのみ）
 function syncSettings() {
-    // 詳細設定の開閉制御
-    const isAdvanced = document.querySelector('input[name="advanced"]:checked').value === 'true';
+    // 隠しinputから値を取得（文字列として取得されるため、真偽値に変換）
+    const isAdvanced = document.querySelector('input[name="advanced"]').value === 'true';
     document.getElementById('advanced-settings').style.display = isAdvanced ? 'block' : 'none';
 
-    // フォームの値をすべて取得
     const newSettings = {
-        mode: parseInt(document.querySelector('input[name="mode"]:checked').value),
-        length: document.querySelector('input[name="length"]:checked').value,
-        thinkTime: document.querySelector('input[name="thinkTime"]:checked').value,
+        mode: parseInt(document.querySelector('input[name="mode"]').value),
+        length: document.querySelector('input[name="length"]').value,
+        thinkTime: document.querySelector('input[name="thinkTime"]').value,
         advanced: isAdvanced,
         startPoints: parseInt(document.getElementById('startPoints').value) || 25000,
         targetPoints: parseInt(document.getElementById('targetPoints').value) || 30000,
-        tobi: document.querySelector('input[name="tobi"]:checked').value === 'true',
-        localYaku: document.querySelector('input[name="localYaku"]:checked').value === 'true',
-        akaDora: parseInt(document.querySelector('input[name="akaDora"]:checked').value),
-        kuitan: document.querySelector('input[name="kuitan"]:checked').value === 'true',
-        cpuLevel: document.querySelector('input[name="cpuLevel"]:checked').value,
-        openHands: document.querySelector('input[name="openHands"]:checked').value === 'true'
+        tobi: document.querySelector('input[name="tobi"]').value === 'true',
+        localYaku: document.querySelector('input[name="localYaku"]').value === 'true',
+        akaDora: parseInt(document.querySelector('input[name="akaDora"]').value),
+        kuitan: document.querySelector('input[name="kuitan"]').value === 'true',
+        cpuLevel: document.querySelector('input[name="cpuLevel"]').value,
+        openHands: document.querySelector('input[name="openHands"]').value === 'true'
     };
 
     sendAction('CHANGE_SETTINGS', newSettings);
@@ -120,10 +130,27 @@ function updateRoomState(state) {
         // --- ホスト用UIの更新 ---
         if (isHost && state.settings) {
             const s = state.settings;
-            // サーバーからの設定をラジオボタンや入力欄に反映
+            
+            // サーバーからの設定をUIのボタンと隠しinputに反映する関数
             const setRadio = (name, value) => {
-                const el = document.querySelector(`input[name="${name}"][value="${value}"]`);
-                if (el) el.checked = true;
+                // 隠しinputの値を更新
+                const hiddenInput = document.querySelector(`input[name="${name}"]`);
+                if (hiddenInput) hiddenInput.value = value;
+                
+                // 対象グループのすべてのボタンの選択状態をリセット
+                const allButtons = document.querySelectorAll(`button[onclick^="changeSettingRadio('${name}'"]`);
+                allButtons.forEach(btn => {
+                    btn.classList.remove('selected');
+                    btn.classList.add('unselected');
+                });
+                
+                // 該当する値のボタンだけを選択状態（オレンジ）にする
+                const valStr = typeof value === 'string' ? `'${value}'` : value;
+                const targetBtn = document.querySelector(`button[onclick="changeSettingRadio('${name}', ${valStr})"]`);
+                if (targetBtn) {
+                    targetBtn.classList.remove('unselected');
+                    targetBtn.classList.add('selected');
+                }
             };
             
             setRadio('mode', s.mode);
@@ -145,13 +172,17 @@ function updateRoomState(state) {
             document.getElementById('advanced-settings').style.display = s.advanced ? 'block' : 'none';
 
             // 人数制限による3麻のブロック処理
-            const radio3 = document.querySelector(`input[name="mode"][value="3"]`);
-            if (state.players.length >= 4) {
-                radio3.disabled = true;
-                radio3.parentElement.style.color = "#888";
-            } else {
-                radio3.disabled = false;
-                radio3.parentElement.style.color = "";
+            const button3 = document.querySelector(`button[onclick="changeSettingRadio('mode', 3)"]`);
+            if (button3) {
+                if (state.players.length >= 4) {
+                    button3.disabled = true;
+                    button3.style.opacity = "0.5";
+                    button3.title = "すでに4人入室しているため3麻に変更できません";
+                } else {
+                    button3.disabled = false;
+                    button3.style.opacity = "1";
+                    button3.title = "";
+                }
             }
 
             // Bot追加ボタンの制限

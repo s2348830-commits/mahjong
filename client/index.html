@@ -24,28 +24,40 @@
                     <form id="settings-form" onchange="syncSettings()">
                         <div class="setting-group">
                             <label class="setting-label">モード</label>
-                            <label><input type="radio" name="mode" value="4"> 四人麻雀</label>
-                            <label><input type="radio" name="mode" value="3"> 三人麻雀</label>
+                            <div class="setting-button-group">
+                                <button type="button" class="hex-button unselected" onclick="changeSettingRadio('mode', 4)">四人麻雀</button>
+                                <button type="button" class="hex-button unselected" onclick="changeSettingRadio('mode', 3)">三人麻雀</button>
+                                <input type="hidden" name="mode" value="4">
+                            </div>
                         </div>
                         <div class="setting-group">
                             <label class="setting-label">局数</label>
-                            <label><input type="radio" name="length" value="one"> 一局戦</label>
-                            <label><input type="radio" name="length" value="east"> 東風戦</label>
-                            <label><input type="radio" name="length" value="south"> 半荘戦</label>
-                            <label><input type="radio" name="length" value="cpu"> CPU戦</label>
+                            <div class="setting-button-group">
+                                <button type="button" class="hex-button unselected" onclick="changeSettingRadio('length', 'one')">一局戦</button>
+                                <button type="button" class="hex-button unselected" onclick="changeSettingRadio('length', 'east')">東風戦</button>
+                                <button type="button" class="hex-button unselected" onclick="changeSettingRadio('length', 'south')">半荘戦</button>
+                                <button type="button" class="hex-button unselected" onclick="changeSettingRadio('length', 'cpu')">CPU戦</button>
+                                <input type="hidden" name="length" value="east">
+                            </div>
                         </div>
                         <div class="setting-group">
                             <label class="setting-label">思考時間</label>
-                            <label><input type="radio" name="thinkTime" value="3+5"> 3+5秒</label>
-                            <label><input type="radio" name="thinkTime" value="5+10"> 5+10秒</label>
-                            <label><input type="radio" name="thinkTime" value="5+20"> 5+20秒</label>
-                            <label><input type="radio" name="thinkTime" value="60+0"> 60+0秒</label>
-                            <label><input type="radio" name="thinkTime" value="300+0"> 300+0秒</label>
+                            <div class="setting-button-group">
+                                <button type="button" class="hex-button unselected" onclick="changeSettingRadio('thinkTime', '3+5')">3+5秒</button>
+                                <button type="button" class="hex-button unselected" onclick="changeSettingRadio('thinkTime', '5+10')">5+10秒</button>
+                                <button type="button" class="hex-button unselected" onclick="changeSettingRadio('thinkTime', '5+20')">5+20秒</button>
+                                <button type="button" class="hex-button unselected" onclick="changeSettingRadio('thinkTime', '60+0')">60+0秒</button>
+                                <button type="button" class="hex-button unselected" onclick="changeSettingRadio('thinkTime', '300+0')">300+0秒</button>
+                                <input type="hidden" name="thinkTime" value="5+10">
+                            </div>
                         </div>
                         <div class="setting-group">
                             <label class="setting-label">詳細設定</label>
-                            <label><input type="radio" name="advanced" value="false"> 無効</label>
-                            <label><input type="radio" name="advanced" value="true"> 有効</label>
+                            <div class="setting-button-group">
+                                <button type="button" class="hex-button unselected" onclick="changeSettingRadio('advanced', false)">無効</button>
+                                <button type="button" class="hex-button unselected" onclick="changeSettingRadio('advanced', true)">有効</button>
+                                <input type="hidden" name="advanced" value="false">
+                            </div>
                         </div>
 
                         <div id="advanced-settings" style="display: none;">
@@ -60,36 +72,64 @@
                             </div>
                             <div class="setting-group">
                                 <label class="setting-label">飛び</label>
-                                <label><input type="radio" name="tobi" value="false"> 無効</label>
-                                <label><input type="radio" name="tobi" value="true"> 有効</label>
+                                <div class="setting-button-group">
+                                    <button type="button" class="hex-button unselected" onclick="changeSettingRadio('tobi', false)">無効</button>
+                                    <button type="button" class="hex-button unselected" onclick="changeSettingRadio('tobi', true)">有効</button>
+                                    <input type="hidden" name="tobi" value="true">
+                                </div>
                             </div>
                             <div class="setting-group">
                                 <label class="setting-label">ローカル役</label>
-                                <label><input type="radio" name="localYaku" value="false"> 無効</label>
-                                <label><input type="radio" name="localYaku" value="true"> 有効</label>
+                                <div class="setting-button-group">
+                                    <button type="button" class="hex-button unselected" onclick="changeSettingRadio('localYaku', false)">無効</button>
+                                    <button type="button" class="hex-button unselected" onclick="changeSettingRadio('localYaku', true)">有効</button>
+                                    <input type="hidden" name="localYaku" value="false">
+                                </div>
                             </div>
                             <div class="setting-group">
                                 <label class="setting-label">赤ドラ</label>
-                                <label><input type="radio" name="akaDora" value="0"> 赤無し</label>
-                                <label><input type="radio" name="akaDora" value="3"> 赤ドラ3</label>
-                                <label><input type="radio" name="akaDora" value="4"> 赤ドラ4</label>
+                                <div class="setting-button-group">
+                                    <button type="button" class="hex-button unselected" onclick="changeSettingRadio('akaDora', 0)">赤無し</button>
+                                    <button type="button" class="hex-button unselected" onclick="changeSettingRadio('akaDora', 3)">赤ドラ3</button>
+                                    <button type="button" class="hex-button unselected" onclick="changeSettingRadio('akaDora', 4)">赤ドラ4</button>
+                                    <input type="hidden" name="akaDora" value="3">
+                                </div>
                             </div>
                             <div class="setting-group">
                                 <label class="setting-label">食い断</label>
-                                <label><input type="radio" name="kuitan" value="false"> 無効</label>
-                                <label><input type="radio" name="kuitan" value="true"> 有効</label>
+                                <div class="setting-button-group">
+                                    <button type="button" class="hex-button unselected" onclick="changeSettingRadio('kuitan', false)">無効</button>
+                                    <button type="button" class="hex-button unselected" onclick="changeSettingRadio('kuitan', true)">有効</button>
+                                    <input type="hidden" name="kuitan" value="true">
+                                </div>
                             </div>
                             <div class="setting-group">
                                 <label class="setting-label">CPU</label>
-                                <label><input type="radio" name="cpuLevel" value="easy"> 簡単</label>
-                                <label><input type="radio" name="cpuLevel" value="normal"> 普通</label>
+                                <div class="setting-button-group">
+                                    <button type="button" class="hex-button unselected" onclick="changeSettingRadio('cpuLevel', 'easy')">簡単</button>
+                                    <button type="button" class="hex-button unselected" onclick="changeSettingRadio('cpuLevel', 'normal')">普通</button>
+                                    <input type="hidden" name="cpuLevel" value="normal">
+                                </div>
                             </div>
                             <div class="setting-group">
                                 <label class="setting-label">手牌表示</label>
-                                <label><input type="radio" name="openHands" value="false"> 無効</label>
-                                <label><input type="radio" name="openHands" value="true"> 有効</label>
+                                <div class="setting-button-group">
+                                    <button type="button" class="hex-button unselected" onclick="changeSettingRadio('openHands', false)">無効</button>
+                                    <button type="button" class="hex-button unselected" onclick="changeSettingRadio('openHands', true)">有効</button>
+                                    <input type="hidden" name="openHands" value="false">
+                                </div>
                             </div>
                         </div>
+                    </form>
+                    <div style="margin-top: 15px;">
+                        <button id="add-bot-btn" onclick="addBot()" style="background: #27ae60;">+ Botを追加</button>
+                    </div>
+                </div>
+                
+                <div id="guest-view" style="display: none;">
+                    <table id="guest-settings-table" class="guest-table"></table>
+                </div>
+            </div>
                     </form>
                     <div style="margin-top: 15px;">
                         <button id="add-bot-btn" onclick="addBot()" style="background: #27ae60;">+ Botを追加</button>

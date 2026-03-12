@@ -102,6 +102,31 @@ class Room {
         }
     }
 
+    handleDisconnect(playerId) {
+        const player = this.players.get(playerId);
+        if (player) {
+            if (this.status === 'PLAYING') {
+                // 対局中の切断：60秒後にAIへ交代
+                player.disconnectTimeout = setTimeout(() => {
+                    player.isAI = true;
+                    this.broadcastState();
+                    if (this.game && this.game.triggerAILogic) {
+                        this.game.triggerAILogic(playerId);
+                    }
+                }, 60000);
+            } else {
+                // ロビーでの切断：部屋から完全に削除
+                this.players.delete(playerId);
+                
+                // もし抜けたのがホストだった場合、残っている誰かにホスト権限を移譲する
+                if (playerId === this.hostId && this.players.size > 0) {
+                    this.hostId = Array.from(this.players.keys())[0];
+                }
+            }
+            this.broadcastState();
+        }
+    }
+
     broadcastState() {
         this.players.forEach((playerInfo, pId) => {
             if (!playerInfo.ws || playerInfo.ws.readyState !== 1) return;
@@ -124,4 +149,5 @@ class Room {
         });
     }
 }
+
 module.exports = Room;
