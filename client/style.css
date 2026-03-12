@@ -1,121 +1,145 @@
-body { font-family: sans-serif; background-color: #42502c; color: white; }
-.screen { padding: 20px; }
+body { font-family: sans-serif; background-color: #222; color: white; margin: 0; }
+.screen { padding: 20px; min-height: 100vh; }
 button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white; border: none; border-radius: 4px; margin: 5px; }
 
-/* --- 設定パネル・ロビーUI --- */
-.settings-panel {
-    background-color: rgba(0, 0, 0, 0.7);
-    color: #ffffff;
-    padding: 15px 20px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-}
-
-.settings-panel h3 {
-    margin-top: 0;
-    margin-bottom: 15px;
-    font-size: 1.2rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-    padding-bottom: 5px;
-}
-
+/* --- 設定パネル等（省略せずに記載） --- */
+.settings-panel { background-color: rgba(0, 0, 0, 0.7); padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid rgba(255, 255, 255, 0.2); }
+.settings-panel h3 { margin-top: 0; margin-bottom: 15px; font-size: 1.2rem; border-bottom: 1px solid rgba(255, 255, 255, 0.3); padding-bottom: 5px; }
 .settings-panel label { margin-right: 15px; cursor: pointer; font-size: 1.1rem; }
-.settings-panel input[type="radio"] { cursor: pointer; }
-
-.highlight-text { font-weight: bold; color: #ffffff; font-size: 1.1rem; }
-
-.kick-btn {
-    color: #e74c3c; cursor: pointer; font-weight: bold; margin-right: 10px;
-    user-select: none; font-size: 1.2rem; display: inline-block; width: 20px; text-align: center;
-}
+.kick-btn { color: #e74c3c; cursor: pointer; font-weight: bold; margin-right: 10px; user-select: none; font-size: 1.2rem; display: inline-block; width: 20px; text-align: center; }
 .kick-btn:hover { color: #c0392b; transform: scale(1.2); }
-
 .bot-label { color: #bdc3c7; font-size: 0.9em; }
-
 .setting-group { display: flex; align-items: center; margin-bottom: 8px; font-size: 0.95rem; }
 .setting-label { display: inline-block; width: 100px; font-weight: bold; color: #bdc3c7; }
-.setting-group label { margin-right: 15px; cursor: pointer; font-size: 0.95rem; }
-
-.num-input {
-    background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.3);
-    color: white; padding: 4px 8px; border-radius: 4px; width: 80px; font-size: 1rem;
-}
-
+.num-input { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.3); color: white; padding: 4px 8px; border-radius: 4px; width: 80px; font-size: 1rem; }
 .settings-divider { border: 0; border-top: 1px solid rgba(255, 255, 255, 0.2); margin: 15px 0; }
-
 .guest-table { width: 100%; border-collapse: collapse; }
 .guest-table td { padding: 6px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
 .guest-table .label { width: 120px; color: #bdc3c7; }
 .guest-table .value { color: #f1c40f; font-weight: bold; }
-
 .setting-button-group { display: flex; flex-wrap: wrap; gap: 4px; }
-
-.hex-button {
-    font-size: 1.1rem; font-weight: bold; padding: 8px 16px; border: none; cursor: pointer; position: relative;
-    clip-path: polygon(10% 0%, 90% 0%, 100% 15%, 100% 85%, 90% 100%, 10% 100%, 0% 85%, 0% 15%);
-    box-shadow: inset 2px 2px 4px rgba(255, 255, 255, 0.3), inset -2px -2px 4px rgba(0, 0, 0, 0.5);
-    transition: background-color 0.2s, color 0.2s;
-}
+.hex-button { font-size: 1.1rem; font-weight: bold; padding: 8px 16px; border: none; cursor: pointer; position: relative; clip-path: polygon(10% 0%, 90% 0%, 100% 15%, 100% 85%, 90% 100%, 10% 100%, 0% 85%, 0% 15%); box-shadow: inset 2px 2px 4px rgba(255, 255, 255, 0.3), inset -2px -2px 4px rgba(0, 0, 0, 0.5); transition: background-color 0.2s, color 0.2s; }
 .hex-button.unselected { background-color: #2c3e50; color: #ffffff; }
 .hex-button.selected { background-color: #f39c12; color: #2c3e50; }
 .hex-button:hover { filter: brightness(1.1); }
+button#add-bot-btn, button[onclick="toggleReady()"] { font-size: 1.1rem; padding: 8px 16px; border-radius: 8px; background-color: #27ae60; color: white; border: none; cursor: pointer; }
 
-button#add-bot-btn, button[onclick="toggleReady()"] {
-    font-size: 1.1rem; padding: 8px 16px; border-radius: 8px; background-color: #27ae60; color: white; border: none; cursor: pointer;
+
+/* ==========================================
+   ★ 麻雀卓のレイアウト（テーブル、河、配牌）
+========================================== */
+#game-info {
+    position: absolute; top: 10px; left: 10px; z-index: 100;
+    background: rgba(0,0,0,0.6); padding: 10px; border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.2); font-size: 0.9rem;
 }
 
-/* --- 対局画面・麻雀牌（画像スプライト） --- */
-.turn-indicator { color: #f1c40f; font-weight: bold; }
+#mahjong-table {
+    position: relative;
+    width: 100%;
+    max-width: 90vh; /* 画面に収まるように正方形を維持 */
+    aspect-ratio: 1;
+    margin: 0 auto;
+    background-color: #1e4b30; /* マットの深い緑色 */
+    border: 15px solid #4a3018; /* 卓の木の枠 */
+    border-radius: 12px;
+    box-shadow: inset 0 0 60px rgba(0,0,0,0.7), 0 10px 30px rgba(0,0,0,0.8);
+    overflow: hidden;
+}
 
-.hand { display: flex; gap: 2px; margin-top: 20px; justify-content: center; }
+/* --- プレイヤーエリア（手牌＋名前） --- */
+.player-area {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 10;
+}
 
+.player-name {
+    background: rgba(0, 0, 0, 0.7);
+    padding: 4px 12px;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    font-weight: bold;
+    color: #fff;
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    font-size: 0.85rem;
+}
+
+/* 4方向の配置（Top, Left, Rightは卓の中心に向けて回転） */
+.player-area.bottom { bottom: 2%; left: 50%; transform: translateX(-50%); }
+.player-area.top { top: 2%; left: 50%; transform: translateX(-50%) rotate(180deg); }
+.player-area.left { left: 2%; top: 50%; transform: translateY(-50%) rotate(90deg); }
+.player-area.right { right: 2%; top: 50%; transform: translateY(-50%) rotate(-90deg); }
+
+/* 回転した席でも名前の文字だけは読めるように逆回転させる */
+.player-area.top .player-name { transform: rotate(180deg); margin-bottom: 0; margin-top: 6px; }
+.player-area.left .player-name { transform: rotate(-90deg); margin-bottom: 0; margin-top: 6px; }
+.player-area.right .player-name { transform: rotate(90deg); margin-bottom: 0; margin-top: 6px; }
+
+/* --- 中央の河（捨て牌置き場） --- */
+#center-discards {
+    position: absolute;
+    top: 22%; left: 22%; right: 22%; bottom: 22%;
+    background-color: rgba(0, 0, 0, 0.15); /* 中央を少し暗く */
+    border-radius: 10px;
+}
+
+.discard-area {
+    position: absolute;
+    display: flex;
+    flex-wrap: wrap; /* 6枚で自動的に改行（2段目、3段目へ） */
+    width: calc(23px * 6 + 10px); /* 牌の幅(23px)×6枚 ＋ 隙間 */
+    align-content: flex-start;
+    gap: 1px;
+}
+
+/* 河の4方向配置 */
+.discard-area.bottom { bottom: 4%; left: 50%; transform: translateX(-50%); }
+.discard-area.top { top: 4%; left: 50%; transform: translateX(-50%) rotate(180deg); }
+.discard-area.left { left: 4%; top: 50%; transform: translateY(-50%) rotate(90deg); }
+.discard-area.right { right: 4%; top: 50%; transform: translateY(-50%) rotate(-90deg); }
+
+/* --- 牌のデザイン（画像スプライト） --- */
+.hand { display: flex; gap: 1px; justify-content: center; }
+
+/* 自分の手牌（大） */
 .tile {
-    width: 44px;
-    height: 60px; /* 画像の縦横比に合わせて調整 */
-    border-radius: 4px;
-    cursor: pointer;
-    transition: transform 0.1s;
-    
-    /* 用意した画像を読み込む */
-    background-image: url('tiles.png'); 
-    background-repeat: no-repeat;
-    
-    /* ★完璧に切り抜くための調整値（黒い隙間を隠す） */
+    width: 44px; height: 60px;
+    border-radius: 4px; cursor: pointer; transition: transform 0.1s;
+    background-image: url('tiles.png'); background-repeat: no-repeat;
     background-size: 1330% auto; 
-    
-    /* テキストは表示しない */
-    color: transparent; 
-    font-size: 0;
-    
-    /* 立体感を出す影 */
-    box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+    color: transparent; font-size: 0;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+}
+.tile:not(.small):hover { transform: translateY(-8px); }
+
+/* 相手の配牌 ＆ 捨て牌（小） */
+.tile.small {
+    width: 23px; height: 32px;
+    border-radius: 2px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.6);
+    cursor: default;
+}
+.tile.small:hover { transform: none; } /* 小さい牌はホバーで浮かない */
+
+/* ★打牌時のアニメーション（フワッと落ちる） */
+@keyframes dropTile {
+    0% { opacity: 0; transform: scale(1.5) translateY(-20px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.tile.dropped {
+    animation: dropTile 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.tile:hover {
-    transform: translateY(-5px);
-}
-
-/* --- スマホ対応（レスポンシブ） --- */
+/* スマホ用の微調整 */
 * { box-sizing: border-box; touch-action: manipulation; }
-
 @media (max-width: 600px) {
-    .screen { padding: 10px; }
-    h1, h2, h3 { font-size: 1.2rem; }
-
-    .setting-group {
-        flex-direction: column; align-items: flex-start; margin-bottom: 15px;
-        background: rgba(0,0,0,0.2); padding: 8px; border-radius: 8px;
-    }
-    .setting-label {
-        margin-bottom: 8px; width: 100%; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px;
-    }
-    .hex-button { font-size: 0.9rem; padding: 6px 12px; }
-
-    /* スマホ画面に合わせて牌のサイズを動的に縮小 */
-    .tile {
-        width: 6.5vw;
-        height: 9.0vw;
-    }
+    .tile { width: 7.5vw; height: 10.3vw; }
+    .tile.small { width: 4.5vw; height: 6.2vw; }
+    .discard-area { width: calc(4.5vw * 6 + 2vw); }
+    .player-name { padding: 2px 6px; font-size: 0.7rem; }
+    #game-info { font-size: 0.75rem; padding: 5px; }
 }

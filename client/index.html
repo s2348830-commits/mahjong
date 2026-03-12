@@ -20,7 +20,6 @@
             
             <div id="room-settings" class="settings-panel">
                 <h3>ゲーム設定</h3>
-                
                 <div id="host-controls" style="display: none;">
                     <form id="settings-form" onchange="syncSettings()">
                         <div class="setting-group">
@@ -63,14 +62,8 @@
 
                         <div id="advanced-settings" style="display: none;">
                             <hr class="settings-divider">
-                            <div class="setting-group">
-                                <label class="setting-label">配給原点</label>
-                                <input type="number" id="startPoints" value="25000" step="100" class="num-input">
-                            </div>
-                            <div class="setting-group">
-                                <label class="setting-label">1位必要点数</label>
-                                <input type="number" id="targetPoints" value="30000" step="100" class="num-input">
-                            </div>
+                            <div class="setting-group"><label class="setting-label">配給原点</label><input type="number" id="startPoints" value="25000" step="100" class="num-input"></div>
+                            <div class="setting-group"><label class="setting-label">1位必要点数</label><input type="number" id="targetPoints" value="30000" step="100" class="num-input"></div>
                             <div class="setting-group">
                                 <label class="setting-label">飛び</label>
                                 <div class="setting-button-group">
@@ -122,25 +115,46 @@
                             </div>
                         </div>
                     </form>
-                    
-                    <div style="margin-top: 15px;">
-                        <button id="add-bot-btn" onclick="addBot()" style="background: #27ae60;">+ Botを追加</button>
-                    </div>
+                    <div style="margin-top: 15px;"><button id="add-bot-btn" onclick="addBot()">+ Botを追加</button></div>
                 </div>
                 
-                <div id="guest-view" style="display: none;">
-                    <table id="guest-settings-table" class="guest-table"></table>
-                </div>
-            </div> <ul id="player-list"></ul>
-            <button onclick="toggleReady()">準備完了 / 取消</button>
-        </div> <div id="game-screen" class="screen" style="display:none;">
-            <h2>対局中</h2>
-            <div id="game-info"></div>
-            <div id="table">
-                <div id="discards"></div>
+                <div id="guest-view" style="display: none;"><table id="guest-settings-table" class="guest-table"></table></div>
             </div>
-            <div id="my-hand" class="hand"></div>
-            <div id="actions"></div>
+
+            <ul id="player-list"></ul>
+            <button onclick="toggleReady()" style="font-size: 1.2rem; background: #e67e22; padding: 12px 30px;">準備完了 / 取消</button>
+        </div>
+
+        <div id="game-screen" class="screen" style="display:none; padding: 0; background: #111;">
+            
+            <div id="game-info"></div>
+
+            <div id="mahjong-table">
+                <div id="area-top" class="player-area top" style="display:none;">
+                    <div class="player-name" id="name-top"></div>
+                    <div id="hand-top" class="hand"></div>
+                </div>
+                <div id="area-left" class="player-area left" style="display:none;">
+                    <div class="player-name" id="name-left"></div>
+                    <div id="hand-left" class="hand"></div>
+                </div>
+                <div id="area-right" class="player-area right" style="display:none;">
+                    <div class="player-name" id="name-right"></div>
+                    <div id="hand-right" class="hand"></div>
+                </div>
+                <div id="area-bottom" class="player-area bottom">
+                    <div class="player-name" id="name-bottom"></div>
+                    <div id="hand-bottom" class="hand"></div>
+                </div>
+
+                <div id="center-discards">
+                    <div id="discard-top" class="discard-area top" style="display:none;"></div>
+                    <div id="discard-left" class="discard-area left" style="display:none;"></div>
+                    <div id="discard-right" class="discard-area right" style="display:none;"></div>
+                    <div id="discard-bottom" class="discard-area bottom"></div>
+                </div>
+            </div>
+
         </div>
     </div>
     <script src="app.js"></script>
