@@ -1,12 +1,10 @@
 body { font-family: sans-serif; background-color: #42502c; color: white; }
 .screen { padding: 20px; }
 button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white; border: none; border-radius: 4px; margin: 5px; }
-.hand { display: flex; gap: 5px; margin-top: 20px; }
-.tile { width: 40px; height: 60px; background: #ecf0f1; color: black; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: pointer; font-weight: bold; }
-.tile.back { background: #e67e22; color: transparent; }
-.turn-indicator { color: #f1c40f; font-weight: bold; }
+
+/* --- 設定パネル・ロビーUI --- */
 .settings-panel {
-    background-color: rgba(0, 0, 0, 0.7); /* 黒の半透明(70%) */
+    background-color: rgba(0, 0, 0, 0.7);
     color: #ffffff;
     padding: 15px 20px;
     border-radius: 8px;
@@ -23,215 +21,101 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     padding-bottom: 5px;
 }
 
-.settings-panel label {
-    margin-right: 15px;
-    cursor: pointer;
-    font-size: 1.1rem;
-}
+.settings-panel label { margin-right: 15px; cursor: pointer; font-size: 1.1rem; }
+.settings-panel input[type="radio"] { cursor: pointer; }
 
-.settings-panel input[type="radio"] {
-    cursor: pointer;
-}
+.highlight-text { font-weight: bold; color: #ffffff; font-size: 1.1rem; }
 
-.highlight-text {
-    font-weight: bold;
-    color: #ffffff; /* ゲスト用の確認テキストは少し目立たせる */
-    font-size: 1.1rem;
-}
 .kick-btn {
-    color: #e74c3c;
-    cursor: pointer;
-    font-weight: bold;
-    margin-right: 10px;
-    user-select: none;
-    font-size: 1.2rem;
-    display: inline-block;
-    width: 20px;
-    text-align: center;
+    color: #e74c3c; cursor: pointer; font-weight: bold; margin-right: 10px;
+    user-select: none; font-size: 1.2rem; display: inline-block; width: 20px; text-align: center;
 }
+.kick-btn:hover { color: #c0392b; transform: scale(1.2); }
 
-.kick-btn:hover {
-    color: #c0392b;
-    transform: scale(1.2);
-}
+.bot-label { color: #bdc3c7; font-size: 0.9em; }
 
-.bot-label {
-    color: #bdc3c7;
-    font-size: 0.9em;
-}
-.setting-group {
-    display: flex;
-    align-items: center;
-    margin-bottom: 8px;
-    font-size: 0.95rem;
-}
-
-.setting-label {
-    display: inline-block;
-    width: 100px;
-    font-weight: bold;
-    color: #bdc3c7;
-}
-
-.setting-group label {
-    margin-right: 15px;
-    cursor: pointer;
-    font-size: 0.95rem;
-}
+.setting-group { display: flex; align-items: center; margin-bottom: 8px; font-size: 0.95rem; }
+.setting-label { display: inline-block; width: 100px; font-weight: bold; color: #bdc3c7; }
+.setting-group label { margin-right: 15px; cursor: pointer; font-size: 0.95rem; }
 
 .num-input {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    color: white;
-    padding: 4px 8px;
-    border-radius: 4px;
-    width: 80px;
-    font-size: 1rem;
+    background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white; padding: 4px 8px; border-radius: 4px; width: 80px; font-size: 1rem;
 }
 
-.settings-divider {
-    border: 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
-    margin: 15px 0;
-}
+.settings-divider { border: 0; border-top: 1px solid rgba(255, 255, 255, 0.2); margin: 15px 0; }
 
-/* ゲスト用の確認テーブル */
-.guest-table {
-    width: 100%;
-    border-collapse: collapse;
-}
+.guest-table { width: 100%; border-collapse: collapse; }
+.guest-table td { padding: 6px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+.guest-table .label { width: 120px; color: #bdc3c7; }
+.guest-table .value { color: #f1c40f; font-weight: bold; }
 
-.guest-table td {
-    padding: 6px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
+.setting-button-group { display: flex; flex-wrap: wrap; gap: 4px; }
 
-.guest-table .label {
-    width: 120px;
-    color: #bdc3c7;
-}
-
-.guest-table .value {
-    color: #f1c40f;
-    font-weight: bold;
-}
-
-/* ボタンコンテナ */
-.setting-button-group {
-    display: flex;
-    gap: 0; /* ボタン間の隙間をなくす */
-}
-
-/* 基本的なボタンのスタイル（画像に基づく） */
 .hex-button {
-    font-size: 1.1rem;
-    font-weight: bold;
-    padding: 8px 16px;
-    border: none;
-    cursor: pointer;
-    position: relative;
-    /* 六角形の角を作成 */
+    font-size: 1.1rem; font-weight: bold; padding: 8px 16px; border: none; cursor: pointer; position: relative;
     clip-path: polygon(10% 0%, 90% 0%, 100% 15%, 100% 85%, 90% 100%, 10% 100%, 0% 85%, 0% 15%);
-    /* ベベル効果 */
-    box-shadow: inset 2px 2px 4px rgba(255, 255, 255, 0.3),
-                inset -2px -2px 4px rgba(0, 0, 0, 0.5);
+    box-shadow: inset 2px 2px 4px rgba(255, 255, 255, 0.3), inset -2px -2px 4px rgba(0, 0, 0, 0.5);
     transition: background-color 0.2s, color 0.2s;
 }
+.hex-button.unselected { background-color: #2c3e50; color: #ffffff; }
+.hex-button.selected { background-color: #f39c12; color: #2c3e50; }
+.hex-button:hover { filter: brightness(1.1); }
 
-/* 非選択状態（紺色） */
-.hex-button.unselected {
-    background-color: #2c3e50; /* 紺色 */
-    color: #ffffff; /* 白色テキスト */
+button#add-bot-btn, button[onclick="toggleReady()"] {
+    font-size: 1.1rem; padding: 8px 16px; border-radius: 8px; background-color: #27ae60; color: white; border: none; cursor: pointer;
 }
 
-/* 選択状態（オレンジ） */
-.hex-button.selected {
-    background-color: #f39c12; /* オレンジ色 */
-    color: #2c3e50; /* 紺色テキスト */
-}
+/* --- 対局画面・麻雀牌（画像スプライト） --- */
+.turn-indicator { color: #f1c40f; font-weight: bold; }
 
-/* ホバー時の効果 */
-.hex-button:hover {
-    filter: brightness(1.1);
-}
+.hand { display: flex; gap: 2px; margin-top: 20px; justify-content: center; }
 
-/* Bot追加ボタンなど、他のボタンとの調和 */
-button#add-bot-btn,
-button[onclick="toggleReady()"] {
-    font-size: 1.1rem;
-    padding: 8px 16px;
-    border-radius: 8px; /* 角を丸く */
-    background-color: #27ae60; /* 緑色 */
-    color: white;
-    border: none;
+.tile {
+    width: 44px;
+    height: 60px; /* 画像の縦横比に合わせて調整 */
+    border-radius: 4px;
     cursor: pointer;
+    transition: transform 0.1s;
+    
+    /* 用意した画像を読み込む */
+    background-image: url('tiles.png');
+    background-repeat: no-repeat;
+    
+    /* 横10枚分の幅なので 1000% に設定 */
+    background-size: 1000% auto; 
+    
+    /* テキストは表示しない */
+    color: transparent; 
+    font-size: 0;
+    
+    /* 立体感を出す影 */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.4);
 }
 
-/* ゲストテーブルの値をオレンジに */
-.guest-table .value {
-    color: #f39c12; /* オレンジ */
-    font-weight: bold;
-}
-/* ==========================================
-   スマホ対応（レスポンシブデザイン）の追記
-========================================== */
-
-/* 全要素の幅計算にpadding等を含める（はみ出し防止） */
-* {
-    box-sizing: border-box;
-    touch-action: manipulation; /* スマホでのタップ遅延を解消 */
+.tile:hover {
+    transform: translateY(-5px);
 }
 
-/* ボタンが画面端に到達したら自動で改行（折り返し）させる */
-.setting-button-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px; 
-}
+/* --- スマホ対応（レスポンシブ） --- */
+* { box-sizing: border-box; touch-action: manipulation; }
 
-/* --- 画面幅が600px以下（スマホサイズ）の時だけ適用されるスタイル --- */
 @media (max-width: 600px) {
-    .screen {
-        padding: 10px; /* スマホ画面を広く使うために余白を減らす */
-    }
+    .screen { padding: 10px; }
+    h1, h2, h3 { font-size: 1.2rem; }
 
-    h1, h2, h3 {
-        font-size: 1.2rem;
-    }
-
-    /* 設定画面：ラベル（項目名）を上に、ボタンを下に並べて押しやすくする */
     .setting-group {
-        flex-direction: column;
-        align-items: flex-start;
-        margin-bottom: 15px;
-        background: rgba(0,0,0,0.2);
-        padding: 8px;
-        border-radius: 8px;
+        flex-direction: column; align-items: flex-start; margin-bottom: 15px;
+        background: rgba(0,0,0,0.2); padding: 8px; border-radius: 8px;
     }
-
     .setting-label {
-        margin-bottom: 8px;
-        width: 100%;
-        border-bottom: 1px solid rgba(255,255,255,0.1);
-        padding-bottom: 4px;
+        margin-bottom: 8px; width: 100%; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px;
     }
+    .hex-button { font-size: 0.9rem; padding: 6px 12px; }
 
-    /* 六角形ボタンのサイズをスマホ用に少しコンパクトに */
-    .hex-button {
-        font-size: 0.9rem;
-        padding: 6px 12px;
-    }
-
-    /* 麻雀牌が14枚横に並ぶように、画面幅(vw)を使って動的に縮小 */
-    .hand {
-        gap: 2px;
-        justify-content: center;
-    }
-
+    /* スマホ画面に合わせて牌のサイズを動的に縮小 */
     .tile {
-        width: 6.5vw;   /* 画面幅の6.5% */
-        height: 9.5vw;  /* 画面幅の9.5% */
-        font-size: 3.5vw;
-        border-radius: 2px;
+        width: 6.5vw;
+        height: 9.0vw;
     }
 }

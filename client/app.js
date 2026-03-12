@@ -37,7 +37,7 @@ function handleServerMessage(data) {
         case 'KICKED':
             alert('ホストによって部屋からキックされました。');
             showScreen('home-screen');
-            searchRooms(); // 部屋一覧を更新
+            searchRooms();
             break;
     }
 }
@@ -45,15 +45,12 @@ function handleServerMessage(data) {
 // ==========================================
 // 3. ユーザーアクション（送信系）
 // ==========================================
-function createRoom() { 
-    sendAction('CREATE_ROOM', { roomName: "テスト部屋", maxPlayers: 4 }); 
-}
+function createRoom() { sendAction('CREATE_ROOM', { roomName: "テスト部屋", maxPlayers: 4 }); }
 function searchRooms() { sendAction('SEARCH_ROOMS'); }
 function joinRoom(roomId) { sendAction('JOIN_ROOM', { roomId }); }
 function toggleReady() { sendAction('TOGGLE_READY'); }
 function discardTile(index) { sendAction('DISCARD', { tileIndex: index }); }
 
-// キックとBot追加
 function kickPlayer(targetId) {
     if (confirm(`${targetId} をキックしますか？`)) {
         sendAction('KICK_PLAYER', { targetId });
@@ -61,9 +58,6 @@ function kickPlayer(targetId) {
 }
 function addBot() { sendAction('ADD_BOT'); }
 
-// --- 設定関連のアクション ---
-
-// ボタンがクリックされた時に隠しinputの値を書き換えて送信をトリガーする
 function changeSettingRadio(name, value) {
     const hiddenInput = document.querySelector(`input[name="${name}"]`);
     if (hiddenInput) {
@@ -72,9 +66,7 @@ function changeSettingRadio(name, value) {
     }
 }
 
-// フォームの値をすべて取得してサーバーに同期する（ホストのみ）
 function syncSettings() {
-    // 隠しinputから値を取得（文字列として取得されるため、真偽値に変換）
     const isAdvanced = document.querySelector('input[name="advanced"]').value === 'true';
     document.getElementById('advanced-settings').style.display = isAdvanced ? 'block' : 'none';
 
@@ -92,7 +84,6 @@ function syncSettings() {
         cpuLevel: document.querySelector('input[name="cpuLevel"]').value,
         openHands: document.querySelector('input[name="openHands"]').value === 'true'
     };
-
     sendAction('CHANGE_SETTINGS', newSettings);
 }
 
@@ -109,7 +100,6 @@ function renderRoomList(rooms) {
     list.innerHTML = rooms.map(r => `<li>${r.name} (${r.currentPlayers}/${r.maxPlayers}) <button onclick="joinRoom('${r.id}')">参加</button></li>`).join('');
 }
 
-// ゲスト用に設定値を日本語に変換する辞書
 const SETTING_LABELS = {
     mode: { 4: '四人麻雀', 3: '三人麻雀' },
     length: { 'one': '一局戦', 'east': '東風戦', 'south': '半荘戦', 'cpu': 'CPU戦' },
@@ -127,24 +117,18 @@ function updateRoomState(state) {
         document.getElementById('host-controls').style.display = isHost ? 'block' : 'none';
         document.getElementById('guest-view').style.display = isHost ? 'none' : 'block';
         
-        // --- ホスト用UIの更新 ---
         if (isHost && state.settings) {
             const s = state.settings;
-            
-            // サーバーからの設定をUIのボタンと隠しinputに反映する関数
             const setRadio = (name, value) => {
-                // 隠しinputの値を更新
                 const hiddenInput = document.querySelector(`input[name="${name}"]`);
                 if (hiddenInput) hiddenInput.value = value;
                 
-                // 対象グループのすべてのボタンの選択状態をリセット
                 const allButtons = document.querySelectorAll(`button[onclick^="changeSettingRadio('${name}'"]`);
                 allButtons.forEach(btn => {
                     btn.classList.remove('selected');
                     btn.classList.add('unselected');
                 });
                 
-                // 該当する値のボタンだけを選択状態（オレンジ）にする
                 const valStr = typeof value === 'string' ? `'${value}'` : value;
                 const targetBtn = document.querySelector(`button[onclick="changeSettingRadio('${name}', ${valStr})"]`);
                 if (targetBtn) {
@@ -153,47 +137,28 @@ function updateRoomState(state) {
                 }
             };
             
-            setRadio('mode', s.mode);
-            setRadio('length', s.length);
-            setRadio('thinkTime', s.thinkTime);
-            setRadio('advanced', s.advanced);
-            
-            document.getElementById('startPoints').value = s.startPoints;
-            document.getElementById('targetPoints').value = s.targetPoints;
-            
-            setRadio('tobi', s.tobi);
-            setRadio('localYaku', s.localYaku);
-            setRadio('akaDora', s.akaDora);
-            setRadio('kuitan', s.kuitan);
-            setRadio('cpuLevel', s.cpuLevel);
-            setRadio('openHands', s.openHands);
+            setRadio('mode', s.mode); setRadio('length', s.length); setRadio('thinkTime', s.thinkTime); setRadio('advanced', s.advanced);
+            document.getElementById('startPoints').value = s.startPoints; document.getElementById('targetPoints').value = s.targetPoints;
+            setRadio('tobi', s.tobi); setRadio('localYaku', s.localYaku); setRadio('akaDora', s.akaDora);
+            setRadio('kuitan', s.kuitan); setRadio('cpuLevel', s.cpuLevel); setRadio('openHands', s.openHands);
 
-            // 詳細設定の表示制御
             document.getElementById('advanced-settings').style.display = s.advanced ? 'block' : 'none';
 
-            // 人数制限による3麻のブロック処理
             const button3 = document.querySelector(`button[onclick="changeSettingRadio('mode', 3)"]`);
             if (button3) {
                 if (state.players.length >= 4) {
-                    button3.disabled = true;
-                    button3.style.opacity = "0.5";
-                    button3.title = "すでに4人入室しているため3麻に変更できません";
+                    button3.disabled = true; button3.style.opacity = "0.5"; button3.title = "すでに4人入室しているため3麻に変更できません";
                 } else {
-                    button3.disabled = false;
-                    button3.style.opacity = "1";
-                    button3.title = "";
+                    button3.disabled = false; button3.style.opacity = "1"; button3.title = "";
                 }
             }
 
-            // Bot追加ボタンの制限
             const botBtn = document.getElementById('add-bot-btn');
             if (botBtn) {
                 botBtn.disabled = state.players.length >= s.mode;
                 botBtn.style.opacity = botBtn.disabled ? "0.5" : "1";
             }
-        } 
-        // --- ゲスト用UIの更新 ---
-        else if (!isHost && state.settings) {
+        } else if (!isHost && state.settings) {
             const s = state.settings;
             let html = `
                 <tr><td class="label">モード</td><td class="value">${SETTING_LABELS.mode[s.mode]}</td></tr>
@@ -215,20 +180,15 @@ function updateRoomState(state) {
             document.getElementById('guest-settings-table').innerHTML = html;
         }
 
-        // --- プレイヤー一覧の描画 ---
         document.getElementById('player-list').innerHTML = state.players.map(p => {
             const hostIcon = p.id === state.hostId ? '👑 ' : '';
             const isBot = p.isAI ? '<span class="bot-label">[CPU]</span> ' : '';
             const readyText = p.isReady ? '<span style="color:#2ecc71;">(準備完了)</span>' : '(準備中)';
-            
             let kickBtn = '';
             if (isHost && p.id !== myPlayerId) {
                 kickBtn = `<span class="kick-btn" title="キックする" onclick="kickPlayer('${p.id}')">✖</span>`;
             }
-
-            return `<li style="margin-bottom: 10px; display: flex; align-items: center;">
-                        ${kickBtn}${hostIcon}${isBot}Player: ${p.id} <span style="margin-left: 10px;">${readyText}</span>
-                    </li>`;
+            return `<li style="margin-bottom: 10px; display: flex; align-items: center;">${kickBtn}${hostIcon}${isBot}Player: ${p.id} <span style="margin-left: 10px;">${readyText}</span></li>`;
         }).join('');
 
     } else if (state.status === 'PLAYING') {
@@ -238,31 +198,77 @@ function updateRoomState(state) {
 }
 
 // ==========================================
-// 5. ゲーム画面描画
+// 5. ゲーム画面描画（スプライト対応）
 // ==========================================
+
+// 画像上の位置（列、行）を定義
+// 画像は横10列、縦4行（+点棒など）の構成
+const TILE_SPRITE_MAP = {
+    // 萬子 (1行目: Y=0)  ※0mは赤5萬
+    '1m': [0, 0], '2m': [1, 0], '3m': [2, 0], '4m': [3, 0], '5m': [4, 0],
+    '6m': [5, 0], '7m': [6, 0], '8m': [7, 0], '9m': [8, 0], '0m': [9, 0], 
+    // 索子 (2行目: Y=1)  ※0sは赤5索
+    '1s': [0, 1], '2s': [1, 1], '3s': [2, 1], '4s': [3, 1], '5s': [4, 1],
+    '6s': [5, 1], '7s': [6, 1], '8s': [7, 1], '9s': [8, 1], '0s': [9, 1], 
+    // 筒子 (3行目: Y=2)  ※0pは赤5筒
+    '1p': [0, 2], '2p': [1, 2], '3p': [2, 2], '4p': [3, 2], '5p': [4, 2],
+    '6p': [5, 2], '7p': [6, 2], '8p': [7, 2], '9p': [8, 2], '0p': [9, 2], 
+    // 字牌と裏面 (4行目: Y=3)
+    '1z': [0, 3], '2z': [1, 3], '3z': [2, 3], '4z': [3, 3], // 東南西北
+    '5z': [4, 3], '6z': [5, 3], '7z': [6, 3],               // 白發中
+    'back': [7, 3]                                          // オレンジ色の裏面
+};
+
+// 行(Y座標)の切り出しパーセンテージ。画像がズレる場合はここの数値を微調整してください。
+const Y_PERCENTAGES = [0, 31.8, 63.5, 95.2];
+
 function renderGame(game) {
     const isMyTurn = game.turnPlayerId === myPlayerId;
     document.getElementById('game-info').innerHTML = `
-        残り山牌: ${game.wallCount} <br>
+        残り山牌: <span style="font-weight:bold;color:#f1c40f;">${game.wallCount}</span> <br>
         <span class="${isMyTurn ? 'turn-indicator' : ''}">
-            ${isMyTurn ? 'あなたの番です' : '相手の番です...'}
+            ${isMyTurn ? '★ あなたの番です' : '相手の番です...'}
         </span>
     `;
 
     const handDiv = document.getElementById('my-hand');
     handDiv.innerHTML = '';
-    const myHand = game.hands[myPlayerId] || [];
     
-    myHand.forEach((tile, index) => {
+    // 手牌の理牌（ソート: 萬子→筒子→索子→字牌）
+    const myRawHand = game.hands[myPlayerId] || [];
+    const myHand = myRawHand.sort((a, b) => {
+        if (a === 'back' || b === 'back') return 0;
+        const suitOrder = { m: 0, p: 1, s: 2, z: 3 }; 
+        const suitA = a.slice(-1); const suitB = b.slice(-1);
+        const numA = parseInt(a); const numB = parseInt(b);
+        if (suitOrder[suitA] !== suitOrder[suitB]) return suitOrder[suitA] - suitOrder[suitB];
+        return numA - numB;
+    });
+    
+    myHand.forEach((tileCode, index) => {
         const tileDiv = document.createElement('div');
-        tileDiv.className = `tile ${tile === 'back' ? 'back' : ''}`;
-        tileDiv.innerText = tile;
-        if (isMyTurn && tile !== 'back') {
-            tileDiv.onclick = () => discardTile(index);
+        tileDiv.className = 'tile';
+        
+        // 座標マッピングから切り抜き位置を計算
+        const spriteInfo = TILE_SPRITE_MAP[tileCode];
+        if (spriteInfo) {
+            const [col, row] = spriteInfo;
+            // 10列あるので、1列進むごとに 11.1111% ずらす
+            const xPos = col * 11.1111; 
+            const yPos = Y_PERCENTAGES[row];
+            
+            tileDiv.style.backgroundPosition = `${xPos}% ${yPos}%`;
+        }
+        
+        if (isMyTurn && tileCode !== 'back') {
+            tileDiv.onclick = () => {
+                if (confirm(`この牌を捨てますか？`)) {
+                    discardTile(index);
+                }
+            };
         }
         handDiv.appendChild(tileDiv);
     });
 }
 
-// 起動時に接続
 connect();
