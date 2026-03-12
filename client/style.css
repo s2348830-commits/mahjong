@@ -1,140 +1,94 @@
-/* 全体のサイズ計算をはみ出さないように安定させる */
 * { box-sizing: border-box; touch-action: manipulation; }
+body { font-family: sans-serif; background-color: #111; color: white; margin: 0; overflow: hidden; }
 
-body { font-family: sans-serif; background-color: #222; color: white; margin: 0; overflow: hidden; }
-
-/* スマホでも滑らかにスクロールできるようにする */
 .screen { 
-    padding: 20px; 
-    height: 100vh;
-    height: 100dvh;
-    overflow-y: auto;
+    padding: 20px; height: 100dvh; overflow-y: auto;
     -webkit-overflow-scrolling: touch;
 }
 
-button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white; border: none; border-radius: 4px; margin: 5px; }
-
-/* 縦画面時の警告 */
-#portrait-warning {
-    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: #111; color: #fff; z-index: 10000;
-    align-items: center; justify-content: center; text-align: center;
-    font-size: 1.5rem; font-weight: bold;
+/* ロード画面 */
+#loading-screen {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: #1e4b30; z-index: 20000; display: flex; align-items: center; justify-content: center;
 }
-@media screen and (orientation: portrait) {
-    #portrait-warning { display: flex; }
-    #app { display: none !important; }
+.spinner { width: 50px; height: 50px; border: 5px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 1s infinite linear; margin: 0 auto 20px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loader-content { text-align: center; font-weight: bold; }
+
+/* PC・タブレット：卓のサイズを固定 */
+#mahjong-table {
+    position: relative; 
+    width: 800px; height: 800px; /* PCでは固定サイズ */
+    margin: 20px auto; background-color: #1e4b30; 
+    border: 12px solid #4a3018; border-radius: 12px;
+    box-shadow: inset 0 0 60px rgba(0,0,0,0.7), 0 10px 30px rgba(0,0,0,0.8);
+    overflow: hidden;
 }
 
-/* 設定パネル関連 */
+/* 中央の河：正方形エリア */
+#center-discards {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 50%; height: 50%; /* 卓に対して50%の正方形 */
+    background-color: rgba(0, 0, 0, 0.2); border-radius: 8px;
+}
+
+.discard-area {
+    position: absolute; display: flex; flex-wrap: wrap; 
+    width: calc(23px * 6 + 10px); height: 98px;
+    align-content: flex-start; gap: 1px;
+}
+
+/* 河の配置 */
+.discard-area.bottom { bottom: 5px; left: 50%; transform: translateX(-50%); }
+.discard-area.top    { top: 5px; left: 50%; transform: translateX(-50%) rotate(180deg); }
+.discard-area.left   { left: 5px; top: 50%; transform: translateY(-50%) rotate(90deg); }
+.discard-area.right  { right: 5px; top: 50%; transform: translateY(-50%) rotate(-90deg); }
+
+/* プレイヤー配置 */
+.player-area { position: absolute; display: flex; align-items: center; z-index: 10; }
+.player-area.bottom { bottom: 2%; left: 50%; transform: translateX(-50%); }
+.player-area.top    { top: 2%; left: 50%; transform: translateX(-50%) rotate(180deg); flex-direction: column-reverse; }
+.player-area.left   { left: 2%; top: 50%; transform: translateY(-50%) rotate(90deg); flex-direction: column-reverse; }
+.player-area.right  { right: 2%; top: 50%; transform: translateY(-50%) rotate(-90deg); flex-direction: column-reverse; }
+
+.player-name { background: rgba(0,0,0,0.8); padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; }
+.player-area.left .player-name, .player-area.right .player-name { writing-mode: vertical-rl; text-orientation: upright; transform: rotate(-90deg); }
+
+/* 牌 */
+.hand { display: flex; gap: 1px; }
+.tile {
+    width: 44px; height: 60px; border-radius: 3px; cursor: pointer; transition: transform 0.1s;
+    background-image: url('tiles.png'); background-repeat: no-repeat;
+    background-size: 1330% auto; box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+.tile.small { width: 23px; height: 32px; border-radius: 2px; }
+.tile.selected-tile { transform: translateY(-15px) !important; box-shadow: 0 0 0 3px #f1c40f !important; }
+
+/* スマホ横画面フルスクリーン */
+@media (max-height: 500px), screen and (orientation: landscape) and (max-width: 900px) {
+    #mahjong-table {
+        width: 100vw; height: 100dvh;
+        margin: 0; border: none; border-radius: 0;
+    }
+    #center-discards { width: 60vh; height: 60vh; }
+    .tile { width: 9vh; height: 12.3vh; }
+    .tile.small { width: 4.8vh; height: 6.6vh; }
+    .discard-area { width: calc(4.8vh * 6 + 6px); height: calc(6.6vh * 3 + 2px); }
+    .player-area.left { left: 3%; }
+    .player-area.right { right: 3%; }
+}
+
+/* 縦画面警告 */
+#portrait-warning { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #111; z-index: 30000; align-items: center; justify-content: center; text-align: center; }
+@media screen and (orientation: portrait) { #portrait-warning { display: flex; } #app { display: none; } }
+
+/* 設定パネル他 */
 .settings-panel { background-color: rgba(0, 0, 0, 0.7); padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid rgba(255, 255, 255, 0.2); }
 .settings-panel h3 { margin-top: 0; margin-bottom: 15px; font-size: 1.2rem; border-bottom: 1px solid rgba(255, 255, 255, 0.3); padding-bottom: 5px; }
-.settings-panel label { margin-right: 15px; cursor: pointer; font-size: 1.1rem; }
-.kick-btn { color: #e74c3c; cursor: pointer; font-weight: bold; margin-right: 10px; user-select: none; font-size: 1.2rem; display: inline-block; width: 20px; text-align: center; }
-.kick-btn:hover { color: #c0392b; transform: scale(1.2); }
-.bot-label { color: #bdc3c7; font-size: 0.9em; }
 .setting-group { display: flex; align-items: center; margin-bottom: 8px; font-size: 0.95rem; }
 .setting-label { display: inline-block; width: 100px; font-weight: bold; color: #bdc3c7; }
 .num-input { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.3); color: white; padding: 4px 8px; border-radius: 4px; width: 80px; font-size: 1rem; }
-.settings-divider { border: 0; border-top: 1px solid rgba(255, 255, 255, 0.2); margin: 15px 0; }
 .setting-button-group { display: flex; flex-wrap: wrap; gap: 4px; }
-.hex-button { font-size: 1.1rem; font-weight: bold; padding: 8px 16px; border: none; cursor: pointer; position: relative; clip-path: polygon(10% 0%, 90% 0%, 100% 15%, 100% 85%, 90% 100%, 10% 100%, 0% 85%, 0% 15%); box-shadow: inset 2px 2px 4px rgba(255, 255, 255, 0.3), inset -2px -2px 4px rgba(0, 0, 0, 0.5); transition: background-color 0.2s, color 0.2s; }
-.hex-button.unselected { background-color: #2c3e50; color: #ffffff; }
+.hex-button { font-size: 1.1rem; font-weight: bold; padding: 8px 16px; border: none; cursor: pointer; clip-path: polygon(10% 0%, 90% 0%, 100% 15%, 100% 85%, 90% 100%, 10% 100%, 0% 85%, 0% 15%); background-color: #2c3e50; color: #fff; transition: background-color 0.2s; }
 .hex-button.selected { background-color: #f39c12; color: #2c3e50; }
-.hex-button:hover { filter: brightness(1.1); }
-button#add-bot-btn, button[onclick="toggleReady()"] { font-size: 1.1rem; padding: 8px 16px; border-radius: 8px; background-color: #27ae60; color: white; border: none; cursor: pointer; }
-
-/* 卓と情報表示 */
-#game-info { position: absolute; top: 10px; left: 10px; z-index: 100; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); font-size: 0.9rem; }
-#mahjong-table {
-    position: relative; width: 100%;
-    max-width: 95vh; aspect-ratio: 1;
-    margin: 0 auto; background-color: #1e4b30; border: 12px solid #4a3018; border-radius: 12px;
-    box-shadow: inset 0 0 60px rgba(0,0,0,0.7), 0 10px 30px rgba(0,0,0,0.8); overflow: hidden;
-}
-
-/* プレイヤーエリア */
-.player-area { position: absolute; display: flex; flex-direction: column; align-items: center; z-index: 10; }
-.player-name { background: rgba(0, 0, 0, 0.7); padding: 4px 12px; border-radius: 6px; margin-bottom: 6px; font-weight: bold; color: #fff; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.5); font-size: 0.85rem; }
-
-/* ★修正: 相手のエリアは「名前」と「手牌」の配置を逆転させて、名前を外側にする */
-.player-area.top, .player-area.left, .player-area.right {
-    flex-direction: column-reverse;
-}
-
-.player-area.bottom { bottom: 2%; left: 50%; transform: translateX(-50%); }
-.player-area.top { top: 2%; left: 50%; transform: translateX(-50%) rotate(180deg); }
-.player-area.left { left: 2%; top: 50%; transform: translateY(-50%) rotate(90deg); }
-.player-area.right { right: 2%; top: 50%; transform: translateY(-50%) rotate(-90deg); }
-
-/* 対面の名前の回転相殺 */
-.player-area.top .player-name { transform: rotate(180deg); margin-bottom: 0; margin-top: 6px; }
-
-/* 左家・右家の名前を縦書きにして正立させる */
-.player-area.left .player-name, .player-area.right .player-name {
-    writing-mode: vertical-rl; text-orientation: upright;
-    transform: rotate(-90deg);
-    margin-bottom: 0; margin-top: 6px; letter-spacing: 2px;
-}
-
-/* 河（捨て牌エリア） */
-#center-discards { position: absolute; top: 22%; left: 22%; right: 22%; bottom: 22%; background-color: rgba(0, 0, 0, 0.15); border-radius: 10px; }
-
-/* ★修正: 高さを固定（3段分）することで、牌が上に押し上げられず、必ず上から下へ並ぶようにする */
-.discard-area {
-    position: absolute; display: flex; flex-wrap: wrap; 
-    width: calc(23px * 6 + 10px); 
-    height: 98px; /* 32px(牌の高さ) * 3段 + 2px(隙間) */
-    align-content: flex-start; gap: 1px; 
-}
-.discard-area.bottom { bottom: 4%; left: 50%; transform: translateX(-50%); }
-.discard-area.top { top: 4%; left: 50%; transform: translateX(-50%) rotate(180deg); }
-.discard-area.left { left: 4%; top: 50%; transform: translateY(-50%) rotate(90deg); }
-.discard-area.right { right: 4%; top: 50%; transform: translateY(-50%) rotate(-90deg); }
-
-/* 牌とアニメーション */
-.hand { display: flex; gap: 1px; justify-content: center; }
-.tile {
-    width: 44px; height: 60px; border-radius: 4px; cursor: pointer; transition: transform 0.1s;
-    background-image: url('tiles.png'); background-repeat: no-repeat; background-size: 1330% auto; 
-    color: transparent; font-size: 0; box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-}
-
-.tile.small { width: 23px; height: 32px; border-radius: 2px; box-shadow: 0 1px 3px rgba(0,0,0,0.6); cursor: default; }
-
-/* ★追加: 選択中の牌のスタイル（黄色い枠と浮き上がり） */
-.tile.selected-tile {
-    transform: translateY(-15px) !important; /* 大きく浮かせる */
-    box-shadow: 0 0 0 3px #f1c40f, 0 5px 10px rgba(0,0,0,0.6) !important; /* 黄色い縁取り */
-}
-
-/* スマホ等、小さな画面（横画面前提）向けの最適化 */
-@media (max-height: 500px), screen and (orientation: landscape) and (max-width: 900px) {
-    .screen { padding: 0 !important; }
-    #game-info { font-size: 0.75rem; padding: 5px; top: 5px; left: 5px; }
-
-    #mahjong-table {
-        max-width: none; width: 100vw; height: 100dvh; aspect-ratio: auto; border: none; border-radius: 0;
-    }
-
-    #center-discards {
-        top: 50%; left: 50%; bottom: auto; right: auto;
-        transform: translate(-50%, -50%); width: 60vh; height: 60vh;
-    }
-
-    .tile { width: 9vh; height: 12.3vh; }
-    .tile.small { width: 4.8vh; height: 6.6vh; }
-    
-    /* ★修正: スマホ時も河の高さを固定 */
-    .discard-area { 
-        width: calc(4.8vh * 6 + 6px); 
-        height: calc(6.6vh * 3 + 2px); 
-    }
-    
-    .player-name { padding: 2px 6px; font-size: 0.75rem; }
-
-    .player-area.left { left: 3%; }
-    .player-area.right { right: 3%; }
-    .player-area.bottom { bottom: 1%; }
-    .player-area.top { top: 1%; }
-}

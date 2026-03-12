@@ -1,16 +1,16 @@
 let ws;
 let myPlayerId = null;
 let currentPlayers = [];
-
-// アニメーション・状態管理用の変数
-let lastDiscardOrigin = { x: 0, y: 0 };
-let previousDiscardsCount = {};
-let currentRoomStatus = 'LOBBY';
-let dealAnimationStep = -1;
-let lastGameState = null;
-
-// ★追加: 選択中の牌を記憶する変数
 let selectedTileIndex = -1;
+let dealAnimationStep = -1;
+let currentRoomStatus = 'LOBBY';
+let lastGameState = null;
+let previousDiscardsCount = {};
+let lastDiscardOrigin = { x: 0, y: 0 };
+
+// ★追加: 画像のプリロード
+const tilesImage = new Image();
+tilesImage.src = 'tiles.png';
 
 function connect() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -22,6 +22,14 @@ function sendAction(type, payload = {}) {
     if (ws && ws.readyState === WebSocket.OPEN) { ws.send(JSON.stringify({ type, payload })); }
 }
 
+// ★追加: 選択解除ロジック
+function deselectTile(event) {
+    // 牌そのものをクリックした時は何もしない
+    if (event.target.classList.contains('tile')) return;
+    selectedTileIndex = -1;
+    if (lastGameState) renderGame(lastGameState);
+}
+
 function handleServerMessage(data) {
     switch (data.type) {
         case 'CONNECTED': myPlayerId = data.payload.playerId; break;
@@ -31,81 +39,34 @@ function handleServerMessage(data) {
     }
 }
 
-// アクション系
-function createRoom() { sendAction('CREATE_ROOM', { roomName: "テスト部屋", maxPlayers: 4 }); }
-function searchRooms() { sendAction('SEARCH_ROOMS'); }
-function joinRoom(roomId) { sendAction('JOIN_ROOM', { roomId }); }
-function toggleReady() { sendAction('TOGGLE_READY'); }
-function discardTile(index) { sendAction('DISCARD', { tileIndex: index }); }
-function kickPlayer(targetId) { if (confirm(`キックしますか？`)) sendAction('KICK_PLAYER', { targetId }); }
-function addBot() { sendAction('ADD_BOT'); }
-function changeSettingRadio(name, value) {
-    const el = document.querySelector(`input[name="${name}"]`);
-    if (el) { el.value = value; syncSettings(); }
-}
-
-function syncSettings() {
-    const isAdvanced = document.querySelector('input[name="advanced"]').value === 'true';
-    document.getElementById('advanced-settings').style.display = isAdvanced ? 'block' : 'none';
-    const newSettings = {
-        mode: parseInt(document.querySelector('input[name="mode"]').value),
-        length: document.querySelector('input[name="length"]').value,
-        thinkTime: document.querySelector('input[name="thinkTime"]').value,
-        advanced: isAdvanced,
-        startPoints: parseInt(document.getElementById('startPoints').value) || 25000,
-        targetPoints: parseInt(document.getElementById('targetPoints').value) || 30000,
-        tobi: document.querySelector('input[name="tobi"]').value === 'true',
-        localYaku: document.querySelector('input[name="localYaku"]').value === 'true',
-        akaDora: parseInt(document.querySelector('input[name="akaDora"]').value),
-        kuitan: document.querySelector('input[name="kuitan"]').value === 'true',
-        cpuLevel: document.querySelector('input[name="cpuLevel"]').value,
-        openHands: document.querySelector('input[name="openHands"]').value === 'true'
-    };
-    sendAction('CHANGE_SETTINGS', newSettings);
-}
-
-function showScreen(screenId) {
-    document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
-    document.getElementById(screenId).style.display = 'block';
-}
-
-function renderRoomList(rooms) {
-    document.getElementById('room-list').innerHTML = rooms.map(r => `<li>${r.name} (${r.currentPlayers}/${r.maxPlayers}) <button onclick="joinRoom('${r.id}')">参加</button></li>`).join('');
-}
-
-// 4枚ずつ配牌するアニメーション
-function animateDealing() {
-    const sequence = [4, 8, 12, 14];
-    let stepIndex = 0;
-    
-    const interval = setInterval(() => {
-        stepIndex++;
-        if (stepIndex >= sequence.length) {
-            clearInterval(interval);
-            dealAnimationStep = -1;
-        } else {
-            dealAnimationStep = sequence[stepIndex];
-        }
-        if (lastGameState) renderGame(lastGameState);
-    }, 400);
-}
-
 function updateRoomState(state) {
     if (state.players) currentPlayers = state.players.map(p => p.id);
 
+    // ★PLAYING開始時にロード画面を出す
     if (currentRoomStatus === 'LOBBY' && state.status === 'PLAYING') {
         currentRoomStatus = 'PLAYING';
-        dealAnimationStep = 4;
-        animateDealing();
+        document.getElementById('loading-screen').style.display = 'flex';
+        
+        // 画像が読み込み済みか確認
+        if (tilesImage.complete) {
+            setTimeout(startDeal, 800);
+        } else {
+            tilesImage.onload = startDeal;
+        }
     } else {
         currentRoomStatus = state.status;
+    }
+
+    function startDeal() {
+        document.getElementById('loading-screen').style.display = 'none';
+        dealAnimationStep = 4;
+        animateDealing();
     }
 
     if (state.status === 'LOBBY') {
         showScreen('room-screen');
         document.getElementById('room-name-display').innerText = state.roomName;
         const isHost = state.hostId === myPlayerId;
-        
         const fieldset = document.getElementById('settings-fieldset');
         fieldset.disabled = !isHost;
         document.getElementById('host-only-buttons').style.display = isHost ? 'block' : 'none';
@@ -120,13 +81,12 @@ function updateRoomState(state) {
                     btn.classList.remove('selected'); btn.classList.add('unselected');
                 });
                 const targetBtn = document.querySelector(`button[onclick="changeSettingRadio('${name}', ${typeof value === 'string' ? `'${value}'` : value})"]`);
-                if (targetBtn) { targetBtn.classList.remove('unselected'); targetBtn.classList.add('selected'); }
+                if (targetBtn) targetBtn.classList.add('selected');
             };
             setRadio('mode', s.mode); setRadio('length', s.length); setRadio('thinkTime', s.thinkTime); setRadio('advanced', s.advanced);
             document.getElementById('startPoints').value = s.startPoints; document.getElementById('targetPoints').value = s.targetPoints;
             setRadio('tobi', s.tobi); setRadio('localYaku', s.localYaku); setRadio('akaDora', s.akaDora);
             setRadio('kuitan', s.kuitan); setRadio('cpuLevel', s.cpuLevel); setRadio('openHands', s.openHands);
-
             document.getElementById('advanced-settings').style.display = s.advanced ? 'block' : 'none';
         }
 
@@ -136,7 +96,6 @@ function updateRoomState(state) {
             const kickBtn = (isHost && p.id !== myPlayerId) ? `<span class="kick-btn" onclick="kickPlayer('${p.id}')">✖</span>` : '';
             return `<li style="margin-bottom: 10px; display: flex; align-items: center;">${kickBtn}${hostIcon}Player: ${p.id} <span style="margin-left: 10px;">${readyText}</span></li>`;
         }).join('');
-
     } else if (state.status === 'PLAYING') {
         showScreen('game-screen');
         renderGame(state.game);
@@ -162,19 +121,13 @@ function createTileElement(tileCode, isSmall = false) {
 
 function renderGame(game) {
     lastGameState = game;
-    document.getElementById('game-info').innerHTML = `
-        <div style="color:#f1c40f;">残り山: ${game.wallCount}</div>
-        <div style="font-size:0.8rem; margin-top:5px;">現在: Player ${game.turnPlayerId}</div>
-    `;
+    document.getElementById('game-info').innerHTML = `<div style="color:#f1c40f;">残り山: ${game.wallCount}</div>`;
 
     const numPlayers = currentPlayers.length;
     const myIndex = currentPlayers.indexOf(myPlayerId);
     const posMap = numPlayers === 3 ? ['bottom', 'right', 'left'] : ['bottom', 'right', 'top', 'left'];
 
-    // ★自分の番じゃなくなったら選択を解除する
-    if (game.turnPlayerId !== myPlayerId) {
-        selectedTileIndex = -1;
-    }
+    if (game.turnPlayerId !== myPlayerId) selectedTileIndex = -1;
 
     ['bottom', 'right', 'top', 'left'].forEach(pos => {
         document.getElementById(`area-${pos}`).style.display = 'none';
@@ -184,23 +137,26 @@ function renderGame(game) {
     currentPlayers.forEach((pid, idx) => {
         let relIdx = (idx - myIndex + numPlayers) % numPlayers;
         let pos = posMap[relIdx];
-
         document.getElementById(`area-${pos}`).style.display = 'flex';
         document.getElementById(`discard-${pos}`).style.display = 'flex';
         const isTurn = (game.turnPlayerId === pid);
 
+        // ★自分の名前は非表示にする
         const nameEl = document.getElementById(`name-${pos}`);
-        nameEl.innerHTML = `${pid} ${isTurn ? '<span style="color:#f1c40f;">👈</span>' : ''}`;
-        nameEl.style.color = isTurn ? '#f1c40f' : '#fff';
+        if (nameEl) {
+            if (pid === myPlayerId) {
+                nameEl.style.display = 'none';
+            } else {
+                nameEl.style.display = 'block';
+                nameEl.innerHTML = `${pid} ${isTurn ? '👈' : ''}`;
+                nameEl.style.color = isTurn ? '#f1c40f' : '#fff';
+            }
+        }
 
         const handDiv = document.getElementById(`hand-${pos}`);
         handDiv.innerHTML = '';
-        
         const rawHand = game.hands[pid] || [];
-        let displayRawHand = rawHand;
-        if (dealAnimationStep !== -1) {
-            displayRawHand = rawHand.slice(0, dealAnimationStep);
-        }
+        let displayRawHand = (dealAnimationStep !== -1) ? rawHand.slice(0, dealAnimationStep) : rawHand;
         
         let displayHand = [];
         if (pid === myPlayerId) {
@@ -208,8 +164,7 @@ function renderGame(game) {
                 if (a.tileCode === 'back' || b.tileCode === 'back') return 0;
                 const suits = { m: 0, p: 1, s: 2, z: 3 }; 
                 const sA = a.tileCode.slice(-1); const sB = b.tileCode.slice(-1);
-                if (suits[sA] !== suits[sB]) return suits[sA] - suits[sB];
-                return parseInt(a.tileCode) - parseInt(b.tileCode);
+                return (suits[sA] - suits[sB]) || (parseInt(a.tileCode) - parseInt(b.tileCode));
             });
         } else {
             displayHand = displayRawHand.map(t => ({ tileCode: t, originalIndex: -1 }));
@@ -217,25 +172,20 @@ function renderGame(game) {
 
         displayHand.forEach((item) => {
             const tileDiv = createTileElement(item.tileCode, pos !== 'bottom');
-            
-            // ★選択状態の見た目を反映
             if (pid === myPlayerId && selectedTileIndex === item.originalIndex) {
                 tileDiv.classList.add('selected-tile');
             }
-            
-            // ★2段階タップ処理
-            if (pid === myPlayerId && isTurn && item.tileCode !== 'back' && dealAnimationStep === -1) {
-                tileDiv.onclick = () => {
+            if (pid === myPlayerId && isTurn && dealAnimationStep === -1) {
+                tileDiv.onclick = (e) => {
+                    e.stopPropagation(); // 卓の選択解除を防ぐ
                     if (selectedTileIndex === item.originalIndex) {
-                        // 2回目のタップ：打牌する
                         const rect = tileDiv.getBoundingClientRect();
                         lastDiscardOrigin = { x: rect.left, y: rect.top };
                         discardTile(item.originalIndex);
-                        selectedTileIndex = -1; // 選択リセット
+                        selectedTileIndex = -1;
                     } else {
-                        // 1回目のタップ：選択する
                         selectedTileIndex = item.originalIndex;
-                        renderGame(game); // 再描画して黄色い枠をつける
+                        renderGame(game);
                     }
                 };
             }
@@ -244,20 +194,16 @@ function renderGame(game) {
 
         const discardDiv = document.getElementById(`discard-${pos}`);
         discardDiv.innerHTML = '';
-        const discards = game.discards[pid] || [];
-        const prevCount = previousDiscardsCount[pid] || 0;
-        
-        discards.forEach((tileCode, dIdx) => {
-            const isNew = (dIdx === discards.length - 1 && discards.length > prevCount);
+        const currentDiscards = game.discards[pid] || [];
+        currentDiscards.forEach((tileCode, dIdx) => {
             const dTile = createTileElement(tileCode, true);
-            
-            if (isNew) {
+            if (dIdx === currentDiscards.length - 1 && currentDiscards.length > (previousDiscardsCount[pid] || 0)) {
                 dTile.classList.add('new-discard');
                 dTile.dataset.pid = pid;
             }
             discardDiv.appendChild(dTile);
         });
-        previousDiscardsCount[pid] = discards.length;
+        previousDiscardsCount[pid] = currentDiscards.length;
     });
 
     requestAnimationFrame(() => {
@@ -266,33 +212,24 @@ function renderGame(game) {
                 el.classList.remove('new-discard');
                 const targetRect = el.getBoundingClientRect();
                 const pid = el.dataset.pid;
-                
-                let startX = targetRect.left;
-                let startY = targetRect.top;
+                let startX = targetRect.left, startY = targetRect.top;
 
                 if (pid === myPlayerId && lastDiscardOrigin.x !== 0) {
-                    startX = lastDiscardOrigin.x;
-                    startY = lastDiscardOrigin.y;
+                    startX = lastDiscardOrigin.x; startY = lastDiscardOrigin.y;
                     lastDiscardOrigin = { x: 0, y: 0 };
                 } else {
                     const relIdx = (currentPlayers.indexOf(pid) - currentPlayers.indexOf(myPlayerId) + currentPlayers.length) % currentPlayers.length;
-                    const posMap = currentPlayers.length === 3 ? ['bottom', 'right', 'left'] : ['bottom', 'right', 'top', 'left'];
-                    const pos = posMap[relIdx];
-                    
+                    const pos = (numPlayers === 3 ? ['bottom', 'right', 'left'] : ['bottom', 'right', 'top', 'left'])[relIdx];
                     const areaEl = document.getElementById(`area-${pos}`);
                     if (areaEl) {
                         const areaRect = areaEl.getBoundingClientRect();
-                        startX = areaRect.left + areaRect.width / 2 - targetRect.width / 2;
-                        startY = areaRect.top + areaRect.height / 2 - targetRect.height / 2;
+                        startX = areaRect.left + areaRect.width / 2;
+                        startY = areaRect.top + areaRect.height / 2;
                     }
                 }
-
-                const deltaX = startX - targetRect.left;
-                const deltaY = startY - targetRect.top;
-                
+                const deltaX = startX - targetRect.left, deltaY = startY - targetRect.top;
                 el.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(1.5)`;
                 el.style.transition = 'none';
-
                 requestAnimationFrame(() => {
                     el.style.transform = 'translate(0, 0) scale(1)';
                     el.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)';
@@ -300,6 +237,60 @@ function renderGame(game) {
             });
         });
     });
+}
+
+function animateDealing() {
+    const sequence = [4, 8, 12, 14];
+    let stepIndex = 0;
+    const interval = setInterval(() => {
+        stepIndex++;
+        if (stepIndex >= sequence.length) {
+            clearInterval(interval);
+            dealAnimationStep = -1;
+        } else {
+            dealAnimationStep = sequence[stepIndex];
+        }
+        if (lastGameState) renderGame(lastGameState);
+    }, 400);
+}
+
+// 他の関数（createRoom, searchRooms, joinRoom, toggleReady, discardTile, kickPlayer, addBot, changeSettingRadio, syncSettings, showScreen, renderRoomList）は維持
+function createRoom() { sendAction('CREATE_ROOM', { roomName: "テスト部屋", maxPlayers: 4 }); }
+function searchRooms() { sendAction('SEARCH_ROOMS'); }
+function joinRoom(roomId) { sendAction('JOIN_ROOM', { roomId }); }
+function toggleReady() { sendAction('TOGGLE_READY'); }
+function discardTile(index) { sendAction('DISCARD', { tileIndex: index }); }
+function kickPlayer(targetId) { if (confirm(`キックしますか？`)) sendAction('KICK_PLAYER', { targetId }); }
+function addBot() { sendAction('ADD_BOT'); }
+function changeSettingRadio(name, value) {
+    const el = document.querySelector(`input[name="${name}"]`);
+    if (el) { el.value = value; syncSettings(); }
+}
+function syncSettings() {
+    const isAdvanced = document.querySelector('input[name="advanced"]').value === 'true';
+    document.getElementById('advanced-settings').style.display = isAdvanced ? 'block' : 'none';
+    const newSettings = {
+        mode: parseInt(document.querySelector('input[name="mode"]').value),
+        length: document.querySelector('input[name="length"]').value,
+        thinkTime: document.querySelector('input[name="thinkTime"]').value,
+        advanced: isAdvanced,
+        startPoints: parseInt(document.getElementById('startPoints').value) || 25000,
+        targetPoints: parseInt(document.getElementById('targetPoints').value) || 30000,
+        tobi: document.querySelector('input[name="tobi"]').value === 'true',
+        localYaku: document.querySelector('input[name="localYaku"]').value === 'true',
+        akaDora: parseInt(document.querySelector('input[name="akaDora"]').value),
+        kuitan: document.querySelector('input[name="kuitan"]').value === 'true',
+        cpuLevel: document.querySelector('input[name="cpuLevel"]').value,
+        openHands: document.querySelector('input[name="openHands"]').value === 'true'
+    };
+    sendAction('CHANGE_SETTINGS', newSettings);
+}
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+    document.getElementById(screenId).style.display = 'block';
+}
+function renderRoomList(rooms) {
+    document.getElementById('room-list').innerHTML = rooms.map(r => `<li>${r.name} (${r.currentPlayers}/${r.maxPlayers}) <button onclick="joinRoom('${r.id}')">参加</button></li>`).join('');
 }
 
 connect();
