@@ -1,8 +1,20 @@
-body { font-family: sans-serif; background-color: #222; color: white; margin: 0; }
-.screen { padding: 20px; min-height: 100vh; }
+body { font-family: sans-serif; background-color: #222; color: white; margin: 0; overflow: hidden; }
+.screen { padding: 20px; min-height: 100vh; overflow-y: auto; }
 button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white; border: none; border-radius: 4px; margin: 5px; }
 
-/* --- 設定パネル等（省略せずに記載） --- */
+/* 縦画面時の警告 */
+#portrait-warning {
+    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: #111; color: #fff; z-index: 10000;
+    align-items: center; justify-content: center; text-align: center;
+    font-size: 1.5rem; font-weight: bold;
+}
+@media screen and (orientation: portrait) {
+    #portrait-warning { display: flex; }
+    #app { display: none !important; } /* 縦画面時はゲームを隠す */
+}
+
+/* 設定パネル関連 */
 .settings-panel { background-color: rgba(0, 0, 0, 0.7); padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid rgba(255, 255, 255, 0.2); }
 .settings-panel h3 { margin-top: 0; margin-bottom: 15px; font-size: 1.2rem; border-bottom: 1px solid rgba(255, 255, 255, 0.3); padding-bottom: 5px; }
 .settings-panel label { margin-right: 15px; cursor: pointer; font-size: 1.1rem; }
@@ -13,10 +25,6 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 .setting-label { display: inline-block; width: 100px; font-weight: bold; color: #bdc3c7; }
 .num-input { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.3); color: white; padding: 4px 8px; border-radius: 4px; width: 80px; font-size: 1rem; }
 .settings-divider { border: 0; border-top: 1px solid rgba(255, 255, 255, 0.2); margin: 15px 0; }
-.guest-table { width: 100%; border-collapse: collapse; }
-.guest-table td { padding: 6px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
-.guest-table .label { width: 120px; color: #bdc3c7; }
-.guest-table .value { color: #f1c40f; font-weight: bold; }
 .setting-button-group { display: flex; flex-wrap: wrap; gap: 4px; }
 .hex-button { font-size: 1.1rem; font-weight: bold; padding: 8px 16px; border: none; cursor: pointer; position: relative; clip-path: polygon(10% 0%, 90% 0%, 100% 15%, 100% 85%, 90% 100%, 10% 100%, 0% 85%, 0% 15%); box-shadow: inset 2px 2px 4px rgba(255, 255, 255, 0.3), inset -2px -2px 4px rgba(0, 0, 0, 0.5); transition: background-color 0.2s, color 0.2s; }
 .hex-button.unselected { background-color: #2c3e50; color: #ffffff; }
@@ -24,122 +32,59 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 .hex-button:hover { filter: brightness(1.1); }
 button#add-bot-btn, button[onclick="toggleReady()"] { font-size: 1.1rem; padding: 8px 16px; border-radius: 8px; background-color: #27ae60; color: white; border: none; cursor: pointer; }
 
-
-/* ==========================================
-   ★ 麻雀卓のレイアウト（テーブル、河、配牌）
-========================================== */
-#game-info {
-    position: absolute; top: 10px; left: 10px; z-index: 100;
-    background: rgba(0,0,0,0.6); padding: 10px; border-radius: 8px;
-    border: 1px solid rgba(255,255,255,0.2); font-size: 0.9rem;
-}
-
+/* 卓と情報表示 */
+#game-info { position: absolute; top: 10px; left: 10px; z-index: 100; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); font-size: 0.9rem; }
 #mahjong-table {
-    position: relative;
-    width: 100%;
-    max-width: 90vh; /* 画面に収まるように正方形を維持 */
-    aspect-ratio: 1;
-    margin: 0 auto;
-    background-color: #1e4b30; /* マットの深い緑色 */
-    border: 15px solid #4a3018; /* 卓の木の枠 */
-    border-radius: 12px;
-    box-shadow: inset 0 0 60px rgba(0,0,0,0.7), 0 10px 30px rgba(0,0,0,0.8);
-    overflow: hidden;
+    position: relative; width: 100%;
+    max-width: 95vh; aspect-ratio: 1; /* スマホ横画面でも正方形を維持 */
+    margin: 0 auto; background-color: #1e4b30; border: 12px solid #4a3018; border-radius: 12px;
+    box-shadow: inset 0 0 60px rgba(0,0,0,0.7), 0 10px 30px rgba(0,0,0,0.8); overflow: hidden;
 }
 
-/* --- プレイヤーエリア（手牌＋名前） --- */
-.player-area {
-    position: absolute;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    z-index: 10;
-}
+/* プレイヤーエリア */
+.player-area { position: absolute; display: flex; flex-direction: column; align-items: center; z-index: 10; }
+.player-name { background: rgba(0, 0, 0, 0.7); padding: 4px 12px; border-radius: 6px; margin-bottom: 6px; font-weight: bold; color: #fff; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.5); font-size: 0.85rem; }
 
-.player-name {
-    background: rgba(0, 0, 0, 0.7);
-    padding: 4px 12px;
-    border-radius: 6px;
-    margin-bottom: 6px;
-    font-weight: bold;
-    color: #fff;
-    white-space: nowrap;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
-    font-size: 0.85rem;
-}
-
-/* 4方向の配置（Top, Left, Rightは卓の中心に向けて回転） */
 .player-area.bottom { bottom: 2%; left: 50%; transform: translateX(-50%); }
 .player-area.top { top: 2%; left: 50%; transform: translateX(-50%) rotate(180deg); }
 .player-area.left { left: 2%; top: 50%; transform: translateY(-50%) rotate(90deg); }
 .player-area.right { right: 2%; top: 50%; transform: translateY(-50%) rotate(-90deg); }
 
-/* 回転した席でも名前の文字だけは読めるように逆回転させる */
+/* 対面（top）の名前の回転相殺 */
 .player-area.top .player-name { transform: rotate(180deg); margin-bottom: 0; margin-top: 6px; }
-.player-area.left .player-name { transform: rotate(-90deg); margin-bottom: 0; margin-top: 6px; }
-.player-area.right .player-name { transform: rotate(90deg); margin-bottom: 0; margin-top: 6px; }
 
-/* --- 中央の河（捨て牌置き場） --- */
-#center-discards {
-    position: absolute;
-    top: 22%; left: 22%; right: 22%; bottom: 22%;
-    background-color: rgba(0, 0, 0, 0.15); /* 中央を少し暗く */
-    border-radius: 10px;
+/* ★追加: 左家・右家の名前を縦書きにして正立させる */
+.player-area.left .player-name, .player-area.right .player-name {
+    writing-mode: vertical-rl; text-orientation: upright;
+    transform: rotate(-90deg); /* エリア自体の90度回転をキャンセル */
+    margin-bottom: 0; margin-top: 6px; letter-spacing: 2px;
 }
 
-.discard-area {
-    position: absolute;
-    display: flex;
-    flex-wrap: wrap; /* 6枚で自動的に改行（2段目、3段目へ） */
-    width: calc(23px * 6 + 10px); /* 牌の幅(23px)×6枚 ＋ 隙間 */
-    align-content: flex-start;
-    gap: 1px;
-}
-
-/* 河の4方向配置 */
+/* 河（捨て牌エリア） */
+#center-discards { position: absolute; top: 22%; left: 22%; right: 22%; bottom: 22%; background-color: rgba(0, 0, 0, 0.15); border-radius: 10px; }
+.discard-area { position: absolute; display: flex; flex-wrap: wrap; width: calc(23px * 6 + 10px); align-content: flex-start; gap: 1px; }
 .discard-area.bottom { bottom: 4%; left: 50%; transform: translateX(-50%); }
 .discard-area.top { top: 4%; left: 50%; transform: translateX(-50%) rotate(180deg); }
 .discard-area.left { left: 4%; top: 50%; transform: translateY(-50%) rotate(90deg); }
 .discard-area.right { right: 4%; top: 50%; transform: translateY(-50%) rotate(-90deg); }
 
-/* --- 牌のデザイン（画像スプライト） --- */
+/* 牌とアニメーション */
 .hand { display: flex; gap: 1px; justify-content: center; }
-
-/* 自分の手牌（大） */
 .tile {
-    width: 44px; height: 60px;
-    border-radius: 4px; cursor: pointer; transition: transform 0.1s;
-    background-image: url('tiles.png'); background-repeat: no-repeat;
-    background-size: 1330% auto; 
-    color: transparent; font-size: 0;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    width: 44px; height: 60px; border-radius: 4px; cursor: pointer; transition: transform 0.1s;
+    background-image: url('tiles.png'); background-repeat: no-repeat; background-size: 1330% auto; 
+    color: transparent; font-size: 0; box-shadow: 0 2px 5px rgba(0,0,0,0.5);
 }
 .tile:not(.small):hover { transform: translateY(-8px); }
+.tile.small { width: 23px; height: 32px; border-radius: 2px; box-shadow: 0 1px 3px rgba(0,0,0,0.6); cursor: default; }
 
-/* 相手の配牌 ＆ 捨て牌（小） */
-.tile.small {
-    width: 23px; height: 32px;
-    border-radius: 2px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.6);
-    cursor: default;
-}
-.tile.small:hover { transform: none; } /* 小さい牌はホバーで浮かない */
-
-/* ★打牌時のアニメーション（フワッと落ちる） */
-@keyframes dropTile {
-    0% { opacity: 0; transform: scale(1.5) translateY(-20px); }
-    100% { opacity: 1; transform: scale(1) translateY(0); }
-}
-.tile.dropped {
-    animation: dropTile 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-/* スマホ用の微調整 */
+/* スマホ等、小さな画面（横画面前提）向けの最適化 */
 * { box-sizing: border-box; touch-action: manipulation; }
-@media (max-width: 600px) {
-    .tile { width: 7.5vw; height: 10.3vw; }
-    .tile.small { width: 4.5vw; height: 6.2vw; }
-    .discard-area { width: calc(4.5vw * 6 + 2vw); }
+@media (max-height: 500px) {
+    .screen { padding: 5px; }
+    #game-info { font-size: 0.75rem; padding: 5px; top: 5px; left: 5px; }
+    .tile { width: 7vh; height: 9.5vh; } /* 画面の高さ基準でリサイズ */
+    .tile.small { width: 4vh; height: 5.5vh; }
+    .discard-area { width: calc(4vh * 6 + 6px); }
     .player-name { padding: 2px 6px; font-size: 0.7rem; }
-    #game-info { font-size: 0.75rem; padding: 5px; }
 }

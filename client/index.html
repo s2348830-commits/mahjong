@@ -2,11 +2,19 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Online Mahjong</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div id="portrait-warning">
+        <div>
+            <p style="font-size: 3rem; margin: 0;">📱🔄</p>
+            <p>スマホを横向きにしてください</p>
+            <p style="font-size: 1rem; font-weight: normal; color: #ccc;">このゲームは横画面専用です</p>
+        </div>
+    </div>
+
     <div id="app">
         <div id="home-screen" class="screen">
             <h1>オンライン麻雀ロビー</h1>
@@ -19,8 +27,9 @@
             <h2>部屋待機室: <span id="room-name-display"></span></h2>
             
             <div id="room-settings" class="settings-panel">
-                <h3>ゲーム設定</h3>
-                <div id="host-controls" style="display: none;">
+                <h3>ゲーム設定 <span id="guest-badge" style="display:none; color:#f39c12; font-size:0.9rem; margin-left:10px;">(ゲスト: 確認のみ)</span></h3>
+                
+                <fieldset id="settings-fieldset" style="border:none; padding:0; margin:0;">
                     <form id="settings-form" onchange="syncSettings()">
                         <div class="setting-group">
                             <label class="setting-label">モード</label>
@@ -115,10 +124,10 @@
                             </div>
                         </div>
                     </form>
-                    <div style="margin-top: 15px;"><button id="add-bot-btn" onclick="addBot()">+ Botを追加</button></div>
+                </fieldset>
+                <div id="host-only-buttons" style="margin-top: 15px;">
+                    <button id="add-bot-btn" onclick="addBot()" style="background: #27ae60;">+ Botを追加</button>
                 </div>
-                
-                <div id="guest-view" style="display: none;"><table id="guest-settings-table" class="guest-table"></table></div>
             </div>
 
             <ul id="player-list"></ul>
@@ -126,7 +135,6 @@
         </div>
 
         <div id="game-screen" class="screen" style="display:none; padding: 0; background: #111;">
-            
             <div id="game-info"></div>
 
             <div id="mahjong-table">
@@ -154,7 +162,6 @@
                     <div id="discard-bottom" class="discard-area bottom"></div>
                 </div>
             </div>
-
         </div>
     </div>
     <script src="app.js"></script>
