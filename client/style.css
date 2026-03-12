@@ -172,3 +172,66 @@ button[onclick="toggleReady()"] {
     color: #f39c12; /* オレンジ */
     font-weight: bold;
 }
+/* ==========================================
+   スマホ対応（レスポンシブデザイン）の追記
+========================================== */
+
+/* 全要素の幅計算にpadding等を含める（はみ出し防止） */
+* {
+    box-sizing: border-box;
+    touch-action: manipulation; /* スマホでのタップ遅延を解消 */
+}
+
+/* ボタンが画面端に到達したら自動で改行（折り返し）させる */
+.setting-button-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px; 
+}
+
+/* --- 画面幅が600px以下（スマホサイズ）の時だけ適用されるスタイル --- */
+@media (max-width: 600px) {
+    .screen {
+        padding: 10px; /* スマホ画面を広く使うために余白を減らす */
+    }
+
+    h1, h2, h3 {
+        font-size: 1.2rem;
+    }
+
+    /* 設定画面：ラベル（項目名）を上に、ボタンを下に並べて押しやすくする */
+    .setting-group {
+        flex-direction: column;
+        align-items: flex-start;
+        margin-bottom: 15px;
+        background: rgba(0,0,0,0.2);
+        padding: 8px;
+        border-radius: 8px;
+    }
+
+    .setting-label {
+        margin-bottom: 8px;
+        width: 100%;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        padding-bottom: 4px;
+    }
+
+    /* 六角形ボタンのサイズをスマホ用に少しコンパクトに */
+    .hex-button {
+        font-size: 0.9rem;
+        padding: 6px 12px;
+    }
+
+    /* 麻雀牌が14枚横に並ぶように、画面幅(vw)を使って動的に縮小 */
+    .hand {
+        gap: 2px;
+        justify-content: center;
+    }
+
+    .tile {
+        width: 6.5vw;   /* 画面幅の6.5% */
+        height: 9.5vw;  /* 画面幅の9.5% */
+        font-size: 3.5vw;
+        border-radius: 2px;
+    }
+}
