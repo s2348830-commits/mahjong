@@ -64,7 +64,7 @@ class Room {
                 this.maxPlayers = this.settings.mode; // 内部の最大人数も更新
                 
                 // 設定が変わったら全員の準備を解除
-                this.players.forEach(p => p.isReady = false);
+                //this.players.forEach(p => p.isReady = false);
                 this.broadcastState();
             }
             else if (action.type === 'KICK_PLAYER' && playerId === this.hostId) {
