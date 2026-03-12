@@ -44,13 +44,34 @@ class Room {
             }
             // ホストのみルール変更可能
             else if (action.type === 'CHANGE_RULE' && playerId === this.hostId) {
-                // 3麻か4麻かを設定（すでに入室している人数より少なくはできないよう制限）
                 const newMax = action.payload.maxPlayers;
                 if (newMax >= this.players.size && (newMax === 3 || newMax === 4)) {
                     this.maxPlayers = newMax;
-                    // ルールが変わったら全員の準備状態をリセットする
                     this.players.forEach(p => p.isReady = false);
                     this.broadcastState();
+                }
+            }
+            else if (action.type === 'KICK_PLAYER' && playerId === this.hostId) {
+                const targetId = action.payload.targetId;
+                if (targetId !== this.hostId && this.players.has(targetId)) {
+                    const targetPlayer = this.players.get(targetId);
+                    
+                    if (!targetPlayer.isAI && targetPlayer.ws) {
+                        targetPlayer.ws.send(JSON.stringify({ type: 'KICKED' }));
+                    }
+                    
+                    this.players.delete(targetId);
+                    this.broadcastState();
+                }
+            }
+            else if (action.type === 'ADD_BOT' && playerId === this.hostId) {
+                if (this.players.size < this.maxPlayers) {
+                    const botId = 'Bot_' + Math.floor(Math.random() * 10000);
+                    // Botは最初から「準備完了」状態にしておく
+                    this.players.set(botId, { ws: null, isReady: true, isAI: true, disconnectTimeout: null });
+                    
+                    this.broadcastState();
+                    this.checkStartGame(); 
                 }
             }
         } else if (this.status === 'PLAYING') {
