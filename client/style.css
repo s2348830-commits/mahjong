@@ -1,9 +1,6 @@
-/* 全体のサイズ計算をはみ出さないように安定させる */
 * { box-sizing: border-box; touch-action: manipulation; }
-
 body { font-family: sans-serif; background-color: #111; color: white; margin: 0; overflow: hidden; }
 
-/* スマホでも滑らかにスクロールできるようにする */
 .screen { 
     padding: 20px; 
     height: 100dvh;
@@ -24,7 +21,6 @@ body { font-family: sans-serif; background-color: #111; color: white; margin: 0;
 
 button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white; border: none; border-radius: 4px; margin: 5px; }
 
-/* 縦画面時の警告 */
 #portrait-warning {
     display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background: #111; color: #fff; z-index: 30000;
@@ -50,41 +46,17 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     overflow: hidden;
 }
 
-/* ★アクションボタンのスタイル */
-#action-buttons {
-    position: absolute; bottom: 25%; left: 50%;
-    transform: translateX(-50%); display: flex; gap: 15px; z-index: 100;
-}
-#action-buttons button {
-    font-size: 1.5rem; padding: 15px 30px; border-radius: 8px;
-    background: linear-gradient(135deg, #e67e22, #d35400); color: white;
-    border: 2px solid #f1c40f; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-    font-weight: bold; cursor: pointer; transition: transform 0.1s;
-}
-#action-buttons button:active { transform: scale(0.95); }
-
-/* ★勝敗表示演出 */
-#result-overlay {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0, 0, 0, 0.8); z-index: 200;
-    display: flex; align-items: center; justify-content: center; text-align: center;
-}
-#result-text {
-    font-size: 4rem; color: #f1c40f; text-shadow: 0 0 20px #e67e22;
-    animation: pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-@keyframes pop {
-    0% { transform: scale(0.5); opacity: 0; }
-    100% { transform: scale(1); opacity: 1; }
-}
-
 #center-discards {
-    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    width: 50%; height: 50%; background-color: rgba(0, 0, 0, 0.15); border-radius: 10px;
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 50%; height: 50%;
+    background-color: rgba(0, 0, 0, 0.15); border-radius: 10px;
 }
+
 .discard-area {
     position: absolute; display: flex; flex-wrap: wrap; 
-    width: calc(23px * 6 + 10px); height: 98px; align-content: flex-start; gap: 1px;
+    width: calc(23px * 6 + 10px); height: 98px;
+    align-content: flex-start; gap: 1px;
 }
 .discard-area.bottom { bottom: 5px; left: 50%; transform: translateX(-50%); }
 .discard-area.top    { top: 5px; left: 50%; transform: translateX(-50%) rotate(180deg); }
@@ -109,8 +81,37 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 .tile.small { width: 23px; height: 32px; border-radius: 2px; }
 .tile.selected-tile { transform: translateY(-15px) !important; box-shadow: 0 0 0 3px #f1c40f !important; }
 
+#action-buttons {
+    position: absolute; bottom: 25%; left: 50%;
+    transform: translateX(-50%); display: flex; gap: 15px; z-index: 100;
+}
+#action-buttons button {
+    font-size: 1.5rem; padding: 15px 30px; border-radius: 8px;
+    background: linear-gradient(135deg, #e67e22, #d35400); color: white;
+    border: 2px solid #f1c40f; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    font-weight: bold; cursor: pointer; transition: transform 0.1s;
+}
+#action-buttons button:active { transform: scale(0.95); }
+
+#result-overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.8); z-index: 200;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+}
+#result-text {
+    font-size: 4rem; color: #f1c40f; text-shadow: 0 0 20px #e67e22;
+    animation: pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+@keyframes pop {
+    0% { transform: scale(0.5); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
 @media (max-height: 500px), screen and (orientation: landscape) and (max-width: 900px) {
-    #mahjong-table { width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; border: none; border-radius: 0; }
+    #mahjong-table {
+        width: 100vw; height: 100dvh; max-width: none; max-height: none;
+        margin: 0; border: none; border-radius: 0;
+    }
     #center-discards { width: 60vh; height: 60vh; }
     .tile { width: 9vh; height: 12.3vh; }
     .tile.small { width: 4.8vh; height: 6.6vh; }

@@ -10,20 +10,20 @@ class Room {
         this.game = null;
 
         this.settings = {
-            mode: 4,
-            length: 'east',
-            thinkTime: '5+10',
-            advanced: false,
+            mode: 4,              
+            length: 'east',       
+            thinkTime: '5+10',    
+            advanced: false,      
             startPoints: 25000,
             targetPoints: 30000,
-            tobi: true,
-            localYaku: false,
-            akaDora: 3,
-            kuitan: true,
-            cpuLevel: 'normal',
-            openHands: false
+            tobi: true,           
+            localYaku: false,     
+            akaDora: 3,           
+            kuitan: true,         
+            cpuLevel: 'normal',   
+            openHands: false      
         };
-        this.maxPlayers = this.settings.mode;
+        this.maxPlayers = this.settings.mode; 
     }
 
     join(playerId, ws) {
@@ -54,9 +54,8 @@ class Room {
             else if (action.type === 'CHANGE_SETTINGS' && playerId === this.hostId) {
                 const newSettings = action.payload;
                 if (newSettings.mode < this.players.size) return;
-
                 this.settings = { ...this.settings, ...newSettings };
-                this.maxPlayers = this.settings.mode;
+                this.maxPlayers = this.settings.mode; 
                 this.broadcastState();
             }
             else if (action.type === 'KICK_PLAYER' && playerId === this.hostId) {
@@ -94,11 +93,10 @@ class Room {
         }
     }
 
-    // ★ゲーム終了時にロビーに戻る処理
     endGame() {
         this.status = 'LOBBY';
         this.game = null;
-        this.players.forEach(p => p.isReady = false); // 全員の準備をリセット
+        this.players.forEach(p => p.isReady = false); 
         this.broadcastState();
     }
 
@@ -131,7 +129,7 @@ class Room {
                 roomId: this.id,
                 roomName: this.name,
                 hostId: this.hostId,
-                settings: this.settings,
+                settings: this.settings, 
                 status: this.status,
                 players: Array.from(this.players.entries()).map(([id, p]) => ({
                     id, isReady: p.isReady, isAI: p.isAI

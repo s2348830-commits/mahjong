@@ -13,7 +13,7 @@ app.use(express.static(path.join(__dirname, '../client')));
 const roomManager = new RoomManager();
 
 wss.on('connection', (ws) => {
-    let playerId = Math.random().toString(36).substr(2, 9); // 簡易ID
+    let playerId = Math.random().toString(36).substr(2, 9);
     let currentRoomId = null;
 
     ws.send(JSON.stringify({ type: 'CONNECTED', payload: { playerId } }));
@@ -51,7 +51,6 @@ wss.on('connection', (ws) => {
             if (roomObj) {
                 roomObj.handleDisconnect(playerId);
                 
-                // ★修正: 部屋の人数が0人になったら部屋そのものを削除する
                 if (roomObj.players.size === 0) {
                     roomManager.rooms.delete(currentRoomId);
                 }

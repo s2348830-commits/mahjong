@@ -3,27 +3,30 @@ class MahjongGame {
         this.room = room;
         this.playerIds = playerIds;
         this.wall = this.generateWall();
-        this.hands = {};
-        this.discards = {};
-        this.melds = {}; // ★追加: 鳴き（ポン）の管理
-        this.turnIndex = 0;
+        
+        // ⑧ データ構造の統一
+        this.players = {};
+        playerIds.forEach(id => {
+            this.players[id] = {
+                hand: [],
+                discards: [],
+                melds: [],
+                riichi: false
+            };
+        });
         
         // 状態管理
+        this.currentTurn = 0; 
+        this.lastDiscardTile = null; 
+        this.lastDiscardPlayer = null;
+        
         this.phase = 'DRAW'; // 'DRAW', 'ACTION_WAIT', 'FINISHED'
-        this.lastDiscard = null; 
         this.actionResponses = {};
+        this.waitingFor = []; // 応答待ちのプレイヤーIDリスト
+        
         this.winner = null;
         this.winningType = null; 
         this.winningYaku = null; 
-        
-        this.riichiPlayers = {};
-
-        playerIds.forEach(id => {
-            this.hands[id] = [];
-            this.discards[id] = [];
-            this.melds[id] = [];
-            this.riichiPlayers[id] = false;
-        });
     }
 
     generateWall() {
@@ -43,22 +46,22 @@ class MahjongGame {
     start() {
         this.playerIds.forEach(id => {
             for (let i = 0; i < 13; i++) {
-                this.hands[id].push(this.wall.pop());
+                this.players[id].hand.push(this.wall.pop());
             }
         });
         this.phase = 'DRAW';
-        this.drawTile(this.playerIds[this.turnIndex]);
+        this.drawTile(this.playerIds[this.currentTurn]);
         this.room.broadcastState();
-        this.triggerAILogic(this.playerIds[this.turnIndex]);
+        this.triggerAILogic(this.playerIds[this.currentTurn]);
     }
 
     drawTile(playerId) {
         if (this.wall.length > 0) {
-            this.hands[playerId].push(this.wall.pop());
+            this.players[playerId].hand.push(this.wall.pop());
         }
     }
 
-    // ★鳴きを含めた和了判定エンジン
+    // ① 役の完全実装
     evaluateHand(tilesFree, playerMelds, isMenzen, winTile, isTsumo, isRiichi, bakaze, jikaze) {
         let counts = {};
         tilesFree.forEach(t => counts[t] = (counts[t] || 0) + 1);
@@ -73,7 +76,7 @@ class MahjongGame {
         });
         let allTilesStr = allTiles.join('');
 
-        // 1. 国士無双 (門前のみ)
+        // 国士無双
         if (isMenzen && tilesFree.length === 14) {
             const yaochu = ['1m','9m','1p','9p','1s','9s','1z','2z','3z','4z','5z','6z','7z'];
             if (yaochu.every(y => counts[y] >= 1)) {
@@ -83,7 +86,7 @@ class MahjongGame {
             }
         }
 
-        // 2. 七対子 (門前のみ)
+        // 七対子
         if (isMenzen && tilesFree.length === 14) {
             let pairs = Object.keys(counts).filter(k => counts[k] === 2).length;
             if (pairs === 7) {
@@ -91,11 +94,15 @@ class MahjongGame {
                 if (!allTilesStr.match(/[19z]/)) { han += 1; yaku.push('タンヤオ'); }
                 if (isRiichi) { han += 1; yaku.push('立直'); }
                 if (isTsumo) { han += 1; yaku.push('門前清自摸和'); }
+                if (!allTilesStr.match(/[m]/) || !allTilesStr.match(/[p]/) || !allTilesStr.match(/[s]/)) {
+                    if (allTilesStr.match(/[z]/)) { han += 3; yaku.push('混一色'); }
+                    else { han += 6; yaku.push('清一色'); }
+                }
                 return { han, yaku };
             }
         }
 
-        // 3. 一般形の探索
+        // 一般形の探索
         let patterns = [];
         const searchStandard = (currentCounts, melds, pair) => {
             let keys = Object.keys(currentCounts).filter(k => currentCounts[k] > 0).sort();
@@ -130,10 +137,9 @@ class MahjongGame {
             }
         };
 
-        // 探索開始 (既存の鳴き面子を初期状態として渡す)
         searchStandard({...counts}, [...playerMelds], null);
 
-        // 4. 役の判定
+        // 役の判定
         for (let pat of patterns) {
             let han = 0; let yaku = [];
             let { melds, pair } = pat;
@@ -142,7 +148,10 @@ class MahjongGame {
             if (isTsumo && isMenzen) { han += 1; yaku.push('門前清自摸和'); }
             if (!allTilesStr.match(/[19z]/)) { han += 1; yaku.push('タンヤオ'); }
 
+            let shuntsu = melds.filter(m => m.type === 'shuntsu');
             let koutsu = melds.filter(m => m.type === 'koutsu');
+
+            // 役牌
             let yakuhaiCount = 0;
             koutsu.forEach(m => {
                 if (m.tile === '5z') { yakuhaiCount++; yaku.push('白'); }
@@ -153,63 +162,110 @@ class MahjongGame {
             });
             han += yakuhaiCount;
 
-            // 染め手
-            let hasZ = allTilesStr.match(/[z]/);
-            if (!allTilesStr.match(/[m]/) || !allTilesStr.match(/[p]/) || !allTilesStr.match(/[s]/)) {
-                let someHan = isMenzen ? 3 : 2;
-                let chinHan = isMenzen ? 6 : 5;
-                if (hasZ) { han += someHan; yaku.push('混一色'); }
-                else { han += chinHan; yaku.push('清一色'); }
+            // 平和
+            if (shuntsu.length === 4 && !['5z','6z','7z',bakaze,jikaze].includes(pair) && isMenzen) {
+                let isRyanmen = shuntsu.some(s => {
+                    if (s.tiles.includes(winTile)) {
+                        let wNum = parseInt(winTile[0]);
+                        let sNums = s.tiles.map(t => parseInt(t[0]));
+                        if ((wNum === sNums[0] && wNum !== 7) || (wNum === sNums[2] && wNum !== 3)) return true;
+                    }
+                    return false;
+                });
+                if (isRyanmen) { han += 1; yaku.push('平和'); }
             }
 
+            // 一盃口
+            if (isMenzen) {
+                let iipeiko = 0;
+                let sStr = shuntsu.map(s => s.tiles.join('')).sort();
+                for(let i=0; i<sStr.length-1; i++) {
+                    if(sStr[i] === sStr[i+1]) { iipeiko++; i++; }
+                }
+                if (iipeiko >= 1) { han += 1; yaku.push('一盃口'); }
+            }
+
+            // 対々和
             if (koutsu.length === 4) { han += 2; yaku.push('対々和'); }
+
+            // チャンタ
+            let isChanta = melds.every(m => m.type === 'koutsu' ? m.tile.match(/[19z]/) : m.tiles.some(t => t.match(/[19]/))) && pair.match(/[19z]/);
+            let hasZ = allTilesStr.match(/[z]/);
+            if (isChanta && !hasZ) { han += (isMenzen?3:2); yaku.push('純全帯幺九'); }
+            else if (isChanta && hasZ) { han += (isMenzen?2:1); yaku.push('混全帯幺九'); }
+
+            // 三色同順・同刻、一気通貫
+            let isSanshoku = false;
+            let isSanshokuDoukoku = false;
+            for (let i=1; i<=7; i++) {
+                if (shuntsu.some(s=>s.tiles[0]===`${i}m`) && shuntsu.some(s=>s.tiles[0]===`${i}p`) && shuntsu.some(s=>s.tiles[0]===`${i}s`)) isSanshoku = true;
+            }
+            for (let i=1; i<=9; i++) {
+                if (koutsu.some(m=>m.tile===`${i}m`) && koutsu.some(m=>m.tile===`${i}p`) && koutsu.some(m=>m.tile===`${i}s`)) isSanshokuDoukoku = true;
+            }
+            let isIttsu = ['m','p','s'].some(suit => shuntsu.some(s=>s.tiles[0]===`1${suit}`) && shuntsu.some(s=>s.tiles[0]===`4${suit}`) && shuntsu.some(s=>s.tiles[0]===`7${suit}`));
+            
+            if (isSanshoku) { han += (isMenzen?2:1); yaku.push('三色同順'); }
+            if (isSanshokuDoukoku) { han += 2; yaku.push('三色同刻'); }
+            if (isIttsu) { han += (isMenzen?2:1); yaku.push('一気通貫'); }
+
+            // 染め手
+            if (!allTilesStr.match(/[m]/) || !allTilesStr.match(/[p]/) || !allTilesStr.match(/[s]/)) {
+                if (hasZ) { han += (isMenzen?3:2); yaku.push('混一色'); }
+                else { han += (isMenzen?6:5); yaku.push('清一色'); }
+            }
+
+            // 大三元・四暗刻
+            if (koutsu.some(m=>m.tile==='5z') && koutsu.some(m=>m.tile==='6z') && koutsu.some(m=>m.tile==='7z')) { han += 13; yaku = ['大三元']; }
+            let closedKoutsuCount = koutsu.length - playerMelds.length;
+            if (!isTsumo && koutsu.some(m => m.tile === winTile)) closedKoutsuCount--; 
+            if (closedKoutsuCount === 4) { han += 13; yaku = ['四暗刻']; }
 
             if (han > maxHan) { maxHan = han; bestYaku = yaku; }
         }
-
         return { han: maxHan, yaku: bestYaku };
     }
 
-    checkYaku(playerId, winTile, isTsumo) {
-        let tilesFree = [...this.hands[playerId]];
+    // ⑦ checkWin(hand) -> 役判定ラッパー
+    checkWin(playerId, winTile, isTsumo) {
+        let player = this.players[playerId];
+        let tilesFree = [...player.hand];
         if (!isTsumo && winTile) tilesFree.push(winTile);
         
-        let playerMelds = this.melds[playerId] || [];
-        let isMenzen = playerMelds.length === 0;
-
         let playerIndex = this.playerIds.indexOf(playerId);
         const winds = ['1z', '2z', '3z', '4z'];
-        let jikaze = winds[playerIndex % 4];
-        let bakaze = '1z';
-
-        let result = this.evaluateHand(tilesFree, playerMelds, isMenzen, winTile, isTsumo, this.riichiPlayers[playerId], bakaze, jikaze);
+        let result = this.evaluateHand(tilesFree, player.melds, player.melds.length === 0, winTile, isTsumo, player.riichi, '1z', winds[playerIndex % 4]);
         return result.han >= 1 ? result : null;
     }
 
-    canRiichi(playerId) {
-        if (this.riichiPlayers[playerId]) return false; 
-        if (this.melds[playerId] && this.melds[playerId].length > 0) return false; // 鳴いている場合はリーチ不可
+    // ⑦ canPon(player, tile)
+    canPon(playerId, tile) {
+        let player = this.players[playerId];
+        if (player.riichi) return false;
+        return player.hand.filter(t => t === tile).length >= 2;
+    }
+
+    // ⑦ canRon(player, tile)
+    canRon(playerId, tile) {
+        return this.checkWin(playerId, tile, false) !== null;
+    }
+
+    // ⑦ isTenpai(hand)
+    isTenpai(playerId) {
+        let player = this.players[playerId];
+        if (player.riichi || player.melds.length > 0) return false; 
         
-        let currentHand = this.hands[playerId];
+        let currentHand = player.hand;
         if (currentHand.length !== 14) return false;
 
-        const allTiles = [
-            '1m','2m','3m','4m','5m','6m','7m','8m','9m',
-            '1p','2p','3p','4p','5p','6p','7p','8p','9p',
-            '1s','2s','3s','4s','5s','6s','7s','8s','9s',
-            '1z','2z','3z','4z','5z','6z','7z'
-        ];
+        const allTiles = ['1m','2m','3m','4m','5m','6m','7m','8m','9m','1p','2p','3p','4p','5p','6p','7p','8p','9p','1s','2s','3s','4s','5s','6s','7s','8s','9s','1z','2z','3z','4z','5z','6z','7z'];
         let uniqueDiscards = [...new Set(currentHand)];
 
-        for (let i = 0; i < uniqueDiscards.length; i++) {
-            let discardTile = uniqueDiscards[i];
+        for (let discardTile of uniqueDiscards) {
             let testHand = [...currentHand];
             testHand.splice(testHand.indexOf(discardTile), 1); 
-            
-            for (let j = 0; j < allTiles.length; j++) {
-                let winTile = allTiles[j];
+            for (let winTile of allTiles) {
                 if (testHand.filter(t => t === winTile).length === 4) continue;
-                
                 let result = this.evaluateHand([...testHand, winTile], [], true, winTile, false, true, '1z', '1z');
                 if (result.han > 0) return true;
             }
@@ -217,65 +273,118 @@ class MahjongGame {
         return false;
     }
 
+    // ⑦ handleDiscard(player, tile)
+    handleDiscard(playerId, tileIndex) {
+        let player = this.players[playerId];
+        const tile = player.hand.splice(tileIndex, 1)[0];
+        player.discards.push(tile);
+        
+        this.lastDiscardTile = tile;
+        this.lastDiscardPlayer = playerId;
+        this.actionResponses = {};
+        this.waitingFor = [];
+        
+        this.playerIds.forEach(id => {
+            if (id !== playerId) {
+                let canR = this.canRon(id, tile);
+                let canP = this.canPon(id, tile);
+                if (canR || canP) {
+                    this.waitingFor.push(id);
+                } else {
+                    this.actionResponses[id] = 'PASS';
+                }
+            }
+        });
+
+        // ⑤ ACTION_WAIT の強化
+        if (this.waitingFor.length > 0) {
+            this.phase = 'ACTION_WAIT';
+            this.room.broadcastState();
+            this.waitingFor.forEach(id => this.triggerAILogic(id));
+        } else {
+            this.phase = 'DRAW';
+            this.currentTurn = (this.currentTurn + 1) % this.playerIds.length;
+            this.drawTile(this.playerIds[this.currentTurn]);
+            this.room.broadcastState();
+            this.triggerAILogic(this.playerIds[this.currentTurn]);
+        }
+    }
+
+    // ⑦ resolveActions() -> 全員の応答を待つ仕組み
+    resolveActions() {
+        let allResponded = this.playerIds.every(id => 
+            id === this.lastDiscardPlayer || this.actionResponses[id]
+        );
+        if (!allResponded) return;
+
+        let ronPlayer = null;
+        let ponPlayer = null;
+
+        // 頭ハネ（近い順）
+        let discardIdx = this.playerIds.indexOf(this.lastDiscardPlayer);
+        for (let i = 1; i < this.playerIds.length; i++) {
+            let idx = (discardIdx + i) % this.playerIds.length;
+            let id = this.playerIds[idx];
+            if (this.actionResponses[id] === 'RON' && !ronPlayer) ronPlayer = id;
+            else if (this.actionResponses[id] === 'PON' && !ponPlayer) ponPlayer = id;
+        }
+
+        if (ronPlayer) {
+            let yakuResult = this.checkWin(ronPlayer, this.lastDiscardTile, false);
+            this.phase = 'FINISHED';
+            this.winner = ronPlayer;
+            this.winningType = 'RON';
+            this.winningYaku = yakuResult;
+            this.players[ronPlayer].hand.push(this.lastDiscardTile);
+            this.room.broadcastState();
+            setTimeout(() => this.room.endGame(), 7000);
+        } else if (ponPlayer) {
+            let player = this.players[ponPlayer];
+            let t = this.lastDiscardTile;
+            let c = 0;
+            for (let i = player.hand.length - 1; i >= 0; i--) {
+                if (player.hand[i] === t && c < 2) {
+                    player.hand.splice(i, 1);
+                    c++;
+                }
+            }
+            player.melds.push({ type: 'koutsu', tile: t });
+            
+            this.currentTurn = this.playerIds.indexOf(ponPlayer);
+            this.phase = 'DRAW';
+            this.actionResponses = {};
+            this.waitingFor = [];
+            this.room.broadcastState();
+            this.triggerAILogic(ponPlayer); // ③ ターン移動後の処理
+        } else {
+            this.phase = 'DRAW';
+            this.currentTurn = (this.currentTurn + 1) % this.playerIds.length;
+            this.drawTile(this.playerIds[this.currentTurn]);
+            this.room.broadcastState();
+            this.triggerAILogic(this.playerIds[this.currentTurn]);
+        }
+    }
+
     handlePlayerAction(playerId, action) {
         if (this.phase === 'FINISHED') return;
 
         if (this.phase === 'DRAW') {
-            if (playerId !== this.playerIds[this.turnIndex]) return;
+            if (playerId !== this.playerIds[this.currentTurn]) return;
 
             if (action.type === 'RIICHI') {
-                if (this.canRiichi(playerId)) {
-                    this.riichiPlayers[playerId] = true;
+                if (this.isTenpai(playerId)) {
+                    this.players[playerId].riichi = true;
                     this.room.broadcastState();
                 }
                 return;
             }
 
             if (action.type === 'DISCARD') {
-                const tileIndex = action.payload.tileIndex;
-                const tile = this.hands[playerId].splice(tileIndex, 1)[0];
-                this.discards[playerId].push(tile);
-                this.lastDiscard = { playerId, tile };
-                
-                this.phase = 'ACTION_WAIT';
-                this.actionResponses = {};
-                
-                let needsWait = false;
-                this.playerIds.forEach(id => {
-                    if (id !== playerId) {
-                        // ロン判定
-                        let canRon = this.checkYaku(id, tile, false);
-                        // ポン判定
-                        let sameCount = this.hands[id].filter(t => t === tile).length;
-                        let canPon = sameCount >= 2 && !this.riichiPlayers[id];
-
-                        if (canRon || canPon) {
-                            needsWait = true;
-                        } else {
-                            this.actionResponses[id] = 'PASS';
-                        }
-                    }
-                });
-
-                if (!needsWait) {
-                    this.phase = 'DRAW';
-                    this.turnIndex = (this.turnIndex + 1) % this.playerIds.length;
-                    this.drawTile(this.playerIds[this.turnIndex]);
-                }
-
-                this.room.broadcastState();
-
-                if (needsWait) {
-                    this.playerIds.forEach(id => {
-                        if (id !== playerId && !this.actionResponses[id]) this.triggerAILogic(id);
-                    });
-                } else {
-                    this.triggerAILogic(this.playerIds[this.turnIndex]);
-                }
-
+                this.handleDiscard(playerId, action.payload.tileIndex);
             } else if (action.type === 'TSUMO') {
-                let lastTile = this.hands[playerId][this.hands[playerId].length - 1];
-                let yakuResult = this.checkYaku(playerId, lastTile, true);
+                let player = this.players[playerId];
+                let lastTile = player.hand[player.hand.length - 1];
+                let yakuResult = this.checkWin(playerId, lastTile, true);
                 if (yakuResult) {
                     this.phase = 'FINISHED';
                     this.winner = playerId;
@@ -287,128 +396,107 @@ class MahjongGame {
             }
         } 
         else if (this.phase === 'ACTION_WAIT') {
-            if (playerId === this.lastDiscard.playerId) return;
+            if (playerId === this.lastDiscardPlayer || !this.waitingFor.includes(playerId)) return;
 
-            if (action.type === 'RON') {
-                let yakuResult = this.checkYaku(playerId, this.lastDiscard.tile, false);
-                if (yakuResult) {
-                    this.phase = 'FINISHED';
-                    this.winner = playerId;
-                    this.winningType = 'RON';
-                    this.winningYaku = yakuResult;
-                    this.hands[playerId].push(this.lastDiscard.tile); 
-                    this.room.broadcastState();
-                    setTimeout(() => this.room.endGame(), 7000);
-                }
-                
-            } else if (action.type === 'PON') {
-                // 手牌から該当の牌を2枚削除
-                let t = this.lastDiscard.tile;
-                let c = 0;
-                for (let i = this.hands[playerId].length - 1; i >= 0; i--) {
-                    if (this.hands[playerId][i] === t && c < 2) {
-                        this.hands[playerId].splice(i, 1);
-                        c++;
-                    }
-                }
-                this.melds[playerId].push({ type: 'koutsu', tile: t });
-                
-                // ターンを移して打牌待ちに強制遷移
-                this.turnIndex = this.playerIds.indexOf(playerId);
-                this.phase = 'DRAW';
-                this.actionResponses = {};
-                this.room.broadcastState();
-
+            if (action.type === 'RON' && this.canRon(playerId, this.lastDiscardTile)) {
+                this.actionResponses[playerId] = 'RON';
+            } else if (action.type === 'PON' && this.canPon(playerId, this.lastDiscardTile)) {
+                this.actionResponses[playerId] = 'PON';
             } else if (action.type === 'PASS') {
                 this.actionResponses[playerId] = 'PASS';
-                const allPassed = this.playerIds.every(id => 
-                    id === this.lastDiscard.playerId || this.actionResponses[id] === 'PASS'
-                );
-
-                if (allPassed) {
-                    this.phase = 'DRAW';
-                    this.turnIndex = (this.turnIndex + 1) % this.playerIds.length;
-                    this.drawTile(this.playerIds[this.turnIndex]);
-                    this.room.broadcastState();
-                    this.triggerAILogic(this.playerIds[this.turnIndex]);
-                }
             }
+            this.resolveActions();
         }
     }
 
     triggerAILogic(playerId) {
+        let player = this.players[playerId];
         const playerInfo = this.room.players.get(playerId);
-        if (!playerInfo || !playerInfo.isAI) return;
+        let isBot = playerInfo && playerInfo.isAI;
+        let isRiichi = player.riichi;
 
-        if (this.phase === 'DRAW' && playerId === this.playerIds[this.turnIndex]) {
-            setTimeout(() => {
-                if (this.phase !== 'DRAW') return;
-                
-                let lastTile = this.hands[playerId][this.hands[playerId].length - 1];
-                if (this.checkYaku(playerId, lastTile, true)) {
-                    this.handlePlayerAction(playerId, { type: 'TSUMO' });
-                } else {
-                    if (this.canRiichi(playerId)) {
-                        this.handlePlayerAction(playerId, { type: 'RIICHI' });
+        if (this.phase === 'DRAW' && playerId === this.playerIds[this.currentTurn]) {
+            // ④ リーチ後は自動でツモ切り
+            if (isBot || isRiichi) {
+                setTimeout(() => {
+                    if (this.phase !== 'DRAW') return;
+                    let lastTile = player.hand[player.hand.length - 1];
+                    let canWin = this.checkWin(playerId, lastTile, true);
+                    
+                    if (canWin) {
+                        this.handlePlayerAction(playerId, { type: 'TSUMO' });
+                    } else {
+                        if (isBot && !isRiichi && this.isTenpai(playerId)) {
+                            this.handlePlayerAction(playerId, { type: 'RIICHI' });
+                        }
+                        this.handlePlayerAction(playerId, { type: 'DISCARD', payload: { tileIndex: player.hand.length - 1 }});
                     }
-                    this.handlePlayerAction(playerId, { type: 'DISCARD', payload: { tileIndex: this.hands[playerId].length - 1 }});
-                }
-            }, 1000);
-        } else if (this.phase === 'ACTION_WAIT' && playerId !== this.lastDiscard.playerId && !this.actionResponses[playerId]) {
-            setTimeout(() => {
-                if (this.phase !== 'ACTION_WAIT') return;
-                
-                if (this.checkYaku(playerId, this.lastDiscard.tile, false)) {
-                    this.handlePlayerAction(playerId, { type: 'RON' });
-                } else {
-                    this.handlePlayerAction(playerId, { type: 'PASS' }); // AIはポンスキップ
-                }
-            }, 800);
+                }, 1000);
+            }
+        } else if (this.phase === 'ACTION_WAIT' && this.waitingFor.includes(playerId)) {
+            if (isBot) {
+                setTimeout(() => {
+                    if (this.phase !== 'ACTION_WAIT') return;
+                    if (this.canRon(playerId, this.lastDiscardTile)) {
+                        this.handlePlayerAction(playerId, { type: 'RON' });
+                    } else {
+                        this.handlePlayerAction(playerId, { type: 'PASS' });
+                    }
+                }, 800);
+            }
         }
     }
 
     getClientState(targetPlayerId) {
         const maskedHands = {};
+        const mappedMelds = {};
+        const mappedDiscards = {};
+        const mappedRiichi = {};
+
         this.playerIds.forEach(id => {
+            let p = this.players[id];
             if (id === targetPlayerId || this.phase === 'FINISHED' || this.room.settings.openHands) {
-                maskedHands[id] = this.hands[id];
+                maskedHands[id] = p.hand;
             } else {
-                maskedHands[id] = this.hands[id].map(() => 'back');
+                maskedHands[id] = p.hand.map(() => 'back');
             }
+            mappedMelds[id] = p.melds;
+            mappedDiscards[id] = p.discards;
+            mappedRiichi[id] = p.riichi;
         });
 
         let allowedActions = [];
-        if (this.phase === 'DRAW' && targetPlayerId === this.playerIds[this.turnIndex]) {
-            // ツモは14枚の時（もしくはポン後以外）に判定
-            if (this.hands[targetPlayerId].length % 3 === 2) {
-                let lastTile = this.hands[targetPlayerId][this.hands[targetPlayerId].length - 1];
-                if (this.checkYaku(targetPlayerId, lastTile, true)) {
-                    allowedActions.push('TSUMO');
-                }
+        if (this.phase === 'DRAW' && targetPlayerId === this.playerIds[this.currentTurn]) {
+            let p = this.players[targetPlayerId];
+            if (p.hand.length % 3 === 2 && !p.riichi) {
+                let lastTile = p.hand[p.hand.length - 1];
+                if (this.checkWin(targetPlayerId, lastTile, true)) allowedActions.push('TSUMO');
+                if (this.isTenpai(targetPlayerId)) allowedActions.push('RIICHI');
+            } else if (p.hand.length % 3 === 2 && p.riichi) {
+                let lastTile = p.hand[p.hand.length - 1];
+                if (this.checkWin(targetPlayerId, lastTile, true)) allowedActions.push('TSUMO');
             }
-            if (this.canRiichi(targetPlayerId)) allowedActions.push('RIICHI');
-        } else if (this.phase === 'ACTION_WAIT' && targetPlayerId !== this.lastDiscard.playerId) {
+        } else if (this.phase === 'ACTION_WAIT' && this.waitingFor.includes(targetPlayerId)) {
             if (!this.actionResponses[targetPlayerId]) {
-                if (this.checkYaku(targetPlayerId, this.lastDiscard.tile, false)) allowedActions.push('RON');
-                let sameCount = this.hands[targetPlayerId].filter(t => t === this.lastDiscard.tile).length;
-                if (sameCount >= 2 && !this.riichiPlayers[targetPlayerId]) allowedActions.push('PON');
+                if (this.canRon(targetPlayerId, this.lastDiscardTile)) allowedActions.push('RON');
+                if (this.canPon(targetPlayerId, this.lastDiscardTile)) allowedActions.push('PON');
                 allowedActions.push('PASS'); 
             }
         }
 
         return {
             phase: this.phase,
-            turnPlayerId: this.playerIds[this.turnIndex],
+            turnPlayerId: this.playerIds[this.currentTurn],
             wallCount: this.wall.length,
             hands: maskedHands,
-            melds: this.melds, // ★ポンした牌をクライアントに送る
-            discards: this.discards,
+            melds: mappedMelds,
+            discards: mappedDiscards,
             allowedActions: allowedActions,
-            lastDiscard: this.lastDiscard,
+            lastDiscard: { playerId: this.lastDiscardPlayer, tile: this.lastDiscardTile },
             winner: this.winner,
             winningType: this.winningType,
             winningYaku: this.winningYaku,
-            riichiPlayers: this.riichiPlayers
+            riichiPlayers: mappedRiichi
         };
     }
 }

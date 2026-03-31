@@ -131,7 +131,7 @@ function renderGame(game) {
     const actionArea = document.getElementById('action-buttons');
     const btnTsumo = document.getElementById('btn-tsumo');
     const btnRon = document.getElementById('btn-ron');
-    const btnPon = document.getElementById('btn-pon'); // ★追加
+    const btnPon = document.getElementById('btn-pon'); 
     const btnRiichi = document.getElementById('btn-riichi');
     const btnPass = document.getElementById('btn-pass');
     const resultOverlay = document.getElementById('result-overlay');
@@ -148,7 +148,7 @@ function renderGame(game) {
             actionArea.style.display = 'flex';
             btnTsumo.style.display = game.allowedActions.includes('TSUMO') ? 'block' : 'none';
             btnRon.style.display = game.allowedActions.includes('RON') ? 'block' : 'none';
-            btnPon.style.display = game.allowedActions.includes('PON') ? 'block' : 'none'; // ★追加
+            btnPon.style.display = game.allowedActions.includes('PON') ? 'block' : 'none'; 
             btnRiichi.style.display = game.allowedActions.includes('RIICHI') ? 'block' : 'none';
             btnPass.style.display = game.allowedActions.includes('PASS') ? 'block' : 'none';
         } else {
@@ -223,7 +223,6 @@ function renderGame(game) {
             handDiv.appendChild(tileDiv);
         });
 
-        // ★追加: 鳴き牌(ポン)の描画
         const meldDiv = document.getElementById(`meld-${pos}`);
         meldDiv.innerHTML = '';
         if (game.melds && game.melds[pid]) {
