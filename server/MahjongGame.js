@@ -58,7 +58,7 @@ class MahjongGame {
         }
     }
 
-    // 鳴きを含めた和了判定エンジン
+    // ★鳴きを含めた和了判定エンジン
     evaluateHand(tilesFree, playerMelds, isMenzen, winTile, isTsumo, isRiichi, bakaze, jikaze) {
         let counts = {};
         tilesFree.forEach(t => counts[t] = (counts[t] || 0) + 1);
@@ -245,7 +245,7 @@ class MahjongGame {
                     if (id !== playerId) {
                         // ロン判定
                         let canRon = this.checkYaku(id, tile, false);
-                        // ポン判定（手牌に同じ牌が2枚以上あるか）
+                        // ポン判定
                         let sameCount = this.hands[id].filter(t => t === tile).length;
                         let canPon = sameCount >= 2 && !this.riichiPlayers[id];
 
