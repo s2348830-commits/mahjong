@@ -132,6 +132,20 @@
         </div>
 
         <div id="game-screen" class="screen" style="display:none; padding: 0;">
+            
+            <div id="winning-tiles-container" style="display:none; position:absolute; top:20px; left:20px; background:rgba(0,0,0,0.7); padding:10px 15px; border-radius:8px; border:1px solid #f1c40f; z-index:150;">
+                <div style="font-size:0.9rem; font-weight:bold; margin-bottom:8px; color:#f1c40f; text-align:center;">待ち牌</div>
+                <div id="winning-tiles-list" class="hand" style="gap:2px;"></div>
+            </div>
+
+            <div id="reach-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:300; justify-content:center; align-items:center;">
+                <div style="background:#1e4b30; padding:20px; border-radius:10px; border:2px solid #f1c40f; text-align:center;">
+                    <h3 style="color:#fff; margin-top:0;">リーチする牌を選んでください</h3>
+                    <div id="reach-hand" class="hand" style="margin-bottom: 20px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px;"></div>
+                    <button onclick="document.getElementById('reach-modal').style.display='none';" style="background:#e74c3c;">キャンセル</button>
+                </div>
+            </div>
+
             <div id="game-info"></div>
 
             <div id="result-overlay" style="display:none;">

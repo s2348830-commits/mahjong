@@ -119,3 +119,16 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     .player-area.left { left: 3%; }
     .player-area.right { right: 3%; }
 }
+
+.reachable-tile {
+    cursor: pointer; 
+    box-shadow: 0 0 10px #f1c40f; 
+    border-radius: 4px;
+}
+.reachable-tile:hover {
+    transform: translateY(-10px);
+}
+.disabled-tile {
+    opacity: 0.4; 
+    cursor: not-allowed;
+}

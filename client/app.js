@@ -7,6 +7,7 @@ let currentRoomStatus = 'LOBBY';
 let lastGameState = null;
 let previousDiscardsCount = {};
 let lastDiscardOrigin = { x: 0, y: 0 };
+let currentWinningTiles = []; // ★追加: 待ち牌データ保持
 
 const tilesImage = new Image();
 tilesImage.src = 'tiles.png';
@@ -32,7 +33,63 @@ function handleServerMessage(data) {
         case 'CONNECTED': myPlayerId = data.payload.playerId; break;
         case 'ROOM_LIST': renderRoomList(data.payload); break;
         case 'ROOM_STATE': updateRoomState(data.payload); break;
+        // ★追加: サーバーからのリーチオプション、待ち牌情報を受信
+        case 'REACH_OPTIONS': showReachModal(data.payload.discards); break;
+        case 'TENPAI_INFO': 
+            currentWinningTiles = data.payload.winningTiles; 
+            updateWinningTilesDisplay();
+            break;
         case 'KICKED': alert('キックされました。'); showScreen('home-screen'); searchRooms(); break;
+    }
+}
+
+// ★追加: リーチ時のモーダル生成
+function showReachModal(discards) {
+    const modal = document.getElementById('reach-modal');
+    modal.style.display = 'flex';
+    const handDiv = document.getElementById('reach-hand');
+    handDiv.innerHTML = '';
+    
+    const myHand = lastGameState.hands[myPlayerId];
+    
+    myHand.forEach((tileCode, idx) => {
+        const tileDiv = createTileElement(tileCode);
+        const reachableInfo = discards.find(d => d.index === idx);
+        
+        if (reachableInfo) {
+            // テンパイになる牌はクリック可能に
+            tileDiv.classList.add('reachable-tile');
+            tileDiv.onclick = () => {
+                sendAction('DO_RIICHI', { tileIndex: idx });
+                modal.style.display = 'none';
+            };
+        } else {
+            // 無効な牌はグレーアウト
+            tileDiv.classList.add('disabled-tile');
+        }
+        handDiv.appendChild(tileDiv);
+    });
+}
+
+// ★追加: 待ち牌UIの更新
+function updateWinningTilesDisplay() {
+    const container = document.getElementById('winning-tiles-container');
+    const list = document.getElementById('winning-tiles-list');
+    list.innerHTML = '';
+    
+    if (currentWinningTiles && currentWinningTiles.length > 0) {
+        container.style.display = 'block';
+        const order = { 'm': 1, 'p': 2, 's': 3, 'z': 4 };
+        let sorted = [...currentWinningTiles].sort((a, b) => {
+            if (order[a[1]] !== order[b[1]]) return order[a[1]] - order[b[1]];
+            return parseInt(a[0]) - parseInt(b[0]);
+        });
+        
+        sorted.forEach(tileCode => {
+            list.appendChild(createTileElement(tileCode, true)); // smallサイズで表示
+        });
+    } else {
+        container.style.display = 'none';
     }
 }
 
@@ -53,6 +110,8 @@ function updateRoomState(state) {
         dealAnimationStep = -1;
         previousDiscardsCount = {};
         lastGameState = null;
+        currentWinningTiles = []; // ロビーに戻ったら待ち牌リセット
+        updateWinningTilesDisplay();
     } else {
         currentRoomStatus = state.status;
     }
@@ -206,7 +265,8 @@ function renderGame(game) {
             if (pid === myPlayerId && selectedTileIndex === item.originalIndex) {
                 tileDiv.classList.add('selected-tile');
             }
-            if (pid === myPlayerId && isMyTurnAndCanDiscard) {
+            // ★変更: リーチ中はクリック操作（手動での打牌）を無効化
+            if (pid === myPlayerId && isMyTurnAndCanDiscard && !isRiichi) {
                 tileDiv.onclick = (e) => {
                     e.stopPropagation();
                     if (selectedTileIndex === item.originalIndex) {
