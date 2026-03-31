@@ -54,6 +54,7 @@ class Room {
             else if (action.type === 'CHANGE_SETTINGS' && playerId === this.hostId) {
                 const newSettings = action.payload;
                 if (newSettings.mode < this.players.size) return;
+
                 this.settings = { ...this.settings, ...newSettings };
                 this.maxPlayers = this.settings.mode; 
                 this.broadcastState();

@@ -1,3 +1,235 @@
+// ==========================================
+// STEP 1〜9: 役判定エンジン (独立してテスト可能)
+// ==========================================
+class YakuEvaluator {
+    // 【STEP 1: 牌の表現統一・基礎関数】
+    static countTiles(tiles) {
+        const counts = {};
+        tiles.forEach(t => counts[t] = (counts[t] || 0) + 1);
+        return counts;
+    }
+
+    static sortHand(tiles) {
+        const order = { 'm': 1, 'p': 2, 's': 3, 'z': 4 };
+        return [...tiles].sort((a, b) => {
+            if (order[a[1]] !== order[b[1]]) return order[a[1]] - order[b[1]];
+            return parseInt(a[0]) - parseInt(b[0]);
+        });
+    }
+
+    // 【STEP 2: 和了形チェック (4面子1雀頭のパターン抽出)】
+    static getStandardPatterns(counts, currentMelds = []) {
+        let patterns = [];
+        const search = (curCounts, melds, pair) => {
+            let keys = Object.keys(curCounts).filter(k => curCounts[k] > 0).sort();
+            if (keys.length === 0) {
+                if (melds.length === 4 && pair) patterns.push({ melds: [...melds], pair });
+                return;
+            }
+            let first = keys[0];
+            
+            // 雀頭として抜く
+            if (!pair && curCounts[first] >= 2) {
+                curCounts[first] -= 2;
+                search(curCounts, melds, first);
+                curCounts[first] += 2;
+            }
+            // 刻子として抜く
+            if (curCounts[first] >= 3) {
+                curCounts[first] -= 3;
+                melds.push({ type: 'koutsu', tile: first });
+                search(curCounts, melds, pair);
+                melds.pop();
+                curCounts[first] += 3;
+            }
+            // 順子として抜く
+            let num = parseInt(first[0]); let suit = first[1];
+            if (suit !== 'z' && num <= 7) {
+                let t2 = (num + 1) + suit; let t3 = (num + 2) + suit;
+                if (curCounts[t2] > 0 && curCounts[t3] > 0) {
+                    curCounts[first]--; curCounts[t2]--; curCounts[t3]--;
+                    melds.push({ type: 'shuntsu', tiles: [first, t2, t3] });
+                    search(curCounts, melds, pair);
+                    melds.pop();
+                    curCounts[first]++; curCounts[t2]++; curCounts[t3]++;
+                }
+            }
+        };
+        search({...counts}, [...currentMelds], null);
+        return patterns;
+    }
+
+    // 【STEP 3: 七対子チェック】
+    static isChiitoitsu(counts) {
+        let pairs = Object.keys(counts).filter(k => counts[k] === 2).length;
+        return pairs === 7;
+    }
+
+    // 【STEP 4: 簡単な役】
+    static isTanyao(allTiles) {
+        return !allTiles.some(t => t.match(/[19z]/));
+    }
+    static countYakuhai(melds, bakaze, jikaze) {
+        let count = 0;
+        melds.filter(m => m.type === 'koutsu').forEach(m => {
+            if (['5z','6z','7z', bakaze, jikaze].includes(m.tile)) count++;
+        });
+        return count;
+    }
+
+    // 【STEP 5: 平和・一盃口】
+    static isPinfu(melds, pair, bakaze, jikaze, isMenzen, winTile) {
+        if (!isMenzen) return false;
+        let shuntsu = melds.filter(m => m.type === 'shuntsu');
+        if (shuntsu.length !== 4) return false;
+        if (['5z','6z','7z', bakaze, jikaze].includes(pair)) return false;
+        
+        return shuntsu.some(s => {
+            if (s.tiles.includes(winTile)) {
+                let wNum = parseInt(winTile[0]);
+                let sNums = s.tiles.map(t => parseInt(t[0]));
+                if ((wNum === sNums[0] && wNum !== 7) || (wNum === sNums[2] && wNum !== 3)) return true;
+            }
+            return false;
+        });
+    }
+    static isIipeikou(melds, isMenzen) {
+        if (!isMenzen) return 0;
+        let shuntsu = melds.filter(m => m.type === 'shuntsu').map(s => s.tiles.join('')).sort();
+        let count = 0;
+        for(let i=0; i<shuntsu.length-1; i++) {
+            if(shuntsu[i] === shuntsu[i+1]) { count++; i++; }
+        }
+        return count; // 1: 一盃口, 2: 二盃口
+    }
+
+    // 【STEP 6: 複合役】
+    static isSanshoku(melds) {
+        let shuntsu = melds.filter(m => m.type === 'shuntsu');
+        for (let i=1; i<=7; i++) {
+            if (shuntsu.some(s=>s.tiles[0]===`${i}m`) && shuntsu.some(s=>s.tiles[0]===`${i}p`) && shuntsu.some(s=>s.tiles[0]===`${i}s`)) return true;
+        }
+        return false;
+    }
+    static isIttsuu(melds) {
+        let shuntsu = melds.filter(m => m.type === 'shuntsu');
+        return ['m','p','s'].some(suit => 
+            shuntsu.some(s=>s.tiles[0]===`1${suit}`) && shuntsu.some(s=>s.tiles[0]===`4${suit}`) && shuntsu.some(s=>s.tiles[0]===`7${suit}`)
+        );
+    }
+    static isChanta(melds, pair) {
+        let isAllMeldChanta = melds.every(m => m.type === 'koutsu' ? m.tile.match(/[19z]/) : m.tiles.some(t => t.match(/[19]/)));
+        return isAllMeldChanta && pair.match(/[19z]/);
+    }
+
+    // 【STEP 7: 対々和・混一色・清一色】
+    static isToitoi(melds) {
+        return melds.filter(m => m.type === 'koutsu').length === 4;
+    }
+    static isHonitsu(allTiles) {
+        let hasZ = allTiles.some(t => t.match(/z/));
+        let suits = new Set(allTiles.filter(t => !t.match(/z/)).map(t => t[1]));
+        return hasZ && suits.size === 1;
+    }
+    static isChinitsu(allTiles) {
+        let hasZ = allTiles.some(t => t.match(/z/));
+        let suits = new Set(allTiles.map(t => t[1]));
+        return !hasZ && suits.size === 1;
+    }
+
+    // 【STEP 8: 役満 (簡略化)】
+    static isKokushi(counts) {
+        const yaochu = ['1m','9m','1p','9p','1s','9s','1z','2z','3z','4z','5z','6z','7z'];
+        return yaochu.every(y => counts[y] >= 1);
+    }
+    static isSuuankou(melds, declaredMelds, winTile, isTsumo) {
+        let koutsu = melds.filter(m => m.type === 'koutsu');
+        let closedKoutsuCount = koutsu.length - declaredMelds.length;
+        if (!isTsumo && koutsu.some(m => m.tile === winTile)) closedKoutsuCount--;
+        return closedKoutsuCount === 4;
+    }
+    static isDaisangen(melds) {
+        let koutsu = melds.filter(m => m.type === 'koutsu');
+        return koutsu.some(m=>m.tile==='5z') && koutsu.some(m=>m.tile==='6z') && koutsu.some(m=>m.tile==='7z');
+    }
+
+    // 【STEP 9: 統合関数】
+    static checkWin(hand, declaredMelds, state) {
+        let { winTile, isTsumo, isRiichi, bakaze, jikaze } = state;
+        let isMenzen = declaredMelds.length === 0;
+        
+        let allTiles = [...hand];
+        declaredMelds.forEach(m => { if (m.type === 'koutsu') allTiles.push(m.tile, m.tile, m.tile); });
+        
+        let counts = this.countTiles(hand);
+        let maxHan = 0;
+        let bestYaku = [];
+
+        // 役満チェック (国士無双)
+        if (isMenzen && hand.length === 14 && this.isKokushi(counts)) {
+            let yaku = ['国士無双'];
+            if (isTsumo) yaku.push('門前清自摸和');
+            return { han: 13, yaku };
+        }
+
+        // 七対子チェック
+        if (isMenzen && hand.length === 14 && this.isChiitoitsu(counts)) {
+            let han = 2; let yaku = ['七対子'];
+            if (this.isTanyao(allTiles)) { han++; yaku.push('タンヤオ'); }
+            if (isRiichi) { han++; yaku.push('立直'); }
+            if (isTsumo) { han++; yaku.push('門前清自摸和'); }
+            if (this.isHonitsu(allTiles)) { han+=3; yaku.push('混一色'); }
+            else if (this.isChinitsu(allTiles)) { han+=6; yaku.push('清一色'); }
+            return { han, yaku };
+        }
+
+        // 一般手チェック (全和了形パターンから最大翻数を探す)
+        let patterns = this.getStandardPatterns(counts, declaredMelds);
+        for (let pat of patterns) {
+            let han = 0; let yaku = [];
+            let { melds, pair } = pat;
+
+            // 役満
+            if (this.isSuuankou(melds, declaredMelds, winTile, isTsumo)) return { han: 13, yaku: ['四暗刻'] };
+            if (this.isDaisangen(melds)) return { han: 13, yaku: ['大三元'] };
+
+            // 1翻〜
+            if (isRiichi && isMenzen) { han++; yaku.push('立直'); }
+            if (isTsumo && isMenzen) { han++; yaku.push('門前清自摸和'); }
+            if (this.isTanyao(allTiles)) { han++; yaku.push('タンヤオ'); }
+            
+            let yakuhaiCount = this.countYakuhai(melds, bakaze, jikaze);
+            if (yakuhaiCount > 0) { han += yakuhaiCount; yaku.push('役牌'); }
+
+            if (this.isPinfu(melds, pair, bakaze, jikaze, isMenzen, winTile)) { han++; yaku.push('平和'); }
+            
+            let iipeikouCount = this.isIipeikou(melds, isMenzen);
+            if (iipeikouCount === 1) { han++; yaku.push('一盃口'); }
+            else if (iipeikouCount === 2) { han+=3; yaku.push('二盃口'); }
+
+            if (this.isToitoi(melds)) { han+=2; yaku.push('対々和'); }
+
+            let chanta = this.isChanta(melds, pair);
+            let hasZ = allTiles.some(t => t.match(/z/));
+            if (chanta && !hasZ) { han += (isMenzen?3:2); yaku.push('純全帯幺九'); }
+            else if (chanta && hasZ) { han += (isMenzen?2:1); yaku.push('混全帯幺九'); }
+
+            if (this.isSanshoku(melds)) { han += (isMenzen?2:1); yaku.push('三色同順'); }
+            if (this.isIttsuu(melds)) { han += (isMenzen?2:1); yaku.push('一気通貫'); }
+
+            if (this.isHonitsu(allTiles)) { han += (isMenzen?3:2); yaku.push('混一色'); }
+            else if (this.isChinitsu(allTiles)) { han += (isMenzen?6:5); yaku.push('清一色'); }
+
+            if (han > maxHan) { maxHan = han; bestYaku = yaku; }
+        }
+
+        return maxHan > 0 ? { han: maxHan, yaku: bestYaku } : null;
+    }
+}
+
+// ==========================================
+// ゲーム進行管理クラス
+// ==========================================
 class MahjongGame {
     constructor(playerIds, room) {
         this.room = room;
@@ -61,196 +293,40 @@ class MahjongGame {
         }
     }
 
-    // ① 役の完全実装
-    evaluateHand(tilesFree, playerMelds, isMenzen, winTile, isTsumo, isRiichi, bakaze, jikaze) {
-        let counts = {};
-        tilesFree.forEach(t => counts[t] = (counts[t] || 0) + 1);
-
-        let maxHan = 0;
-        let bestYaku = [];
-        let allTiles = [...tilesFree];
-        playerMelds.forEach(m => {
-            if (m.type === 'koutsu') {
-                allTiles.push(m.tile, m.tile, m.tile);
-            }
-        });
-        let allTilesStr = allTiles.join('');
-
-        // 国士無双
-        if (isMenzen && tilesFree.length === 14) {
-            const yaochu = ['1m','9m','1p','9p','1s','9s','1z','2z','3z','4z','5z','6z','7z'];
-            if (yaochu.every(y => counts[y] >= 1)) {
-                let yaku = ['国士無双'];
-                if (isTsumo) yaku.push('門前清自摸和');
-                return { han: 13, yaku };
-            }
-        }
-
-        // 七対子
-        if (isMenzen && tilesFree.length === 14) {
-            let pairs = Object.keys(counts).filter(k => counts[k] === 2).length;
-            if (pairs === 7) {
-                let han = 2; let yaku = ['七対子'];
-                if (!allTilesStr.match(/[19z]/)) { han += 1; yaku.push('タンヤオ'); }
-                if (isRiichi) { han += 1; yaku.push('立直'); }
-                if (isTsumo) { han += 1; yaku.push('門前清自摸和'); }
-                if (!allTilesStr.match(/[m]/) || !allTilesStr.match(/[p]/) || !allTilesStr.match(/[s]/)) {
-                    if (allTilesStr.match(/[z]/)) { han += 3; yaku.push('混一色'); }
-                    else { han += 6; yaku.push('清一色'); }
-                }
-                return { han, yaku };
-            }
-        }
-
-        // 一般形の探索
-        let patterns = [];
-        const searchStandard = (currentCounts, melds, pair) => {
-            let keys = Object.keys(currentCounts).filter(k => currentCounts[k] > 0).sort();
-            if (keys.length === 0) {
-                if (melds.length === 4 && pair) patterns.push({ melds: melds.slice(), pair });
-                return;
-            }
-            let first = keys[0];
-            
-            if (!pair && currentCounts[first] >= 2) {
-                currentCounts[first] -= 2;
-                searchStandard(currentCounts, melds, first);
-                currentCounts[first] += 2;
-            }
-            if (currentCounts[first] >= 3) {
-                currentCounts[first] -= 3;
-                melds.push({ type: 'koutsu', tile: first });
-                searchStandard(currentCounts, melds, pair);
-                melds.pop();
-                currentCounts[first] += 3;
-            }
-            let suit = first[1]; let num = parseInt(first[0]);
-            if (suit !== 'z' && num <= 7) {
-                let t2 = (num+1)+suit; let t3 = (num+2)+suit;
-                if (currentCounts[t2] > 0 && currentCounts[t3] > 0) {
-                    currentCounts[first]--; currentCounts[t2]--; currentCounts[t3]--;
-                    melds.push({ type: 'shuntsu', tiles: [first, t2, t3] });
-                    searchStandard(currentCounts, melds, pair);
-                    melds.pop();
-                    currentCounts[first]++; currentCounts[t2]++; currentCounts[t3]++;
-                }
-            }
-        };
-
-        searchStandard({...counts}, [...playerMelds], null);
-
-        // 役の判定
-        for (let pat of patterns) {
-            let han = 0; let yaku = [];
-            let { melds, pair } = pat;
-
-            if (isRiichi && isMenzen) { han += 1; yaku.push('立直'); }
-            if (isTsumo && isMenzen) { han += 1; yaku.push('門前清自摸和'); }
-            if (!allTilesStr.match(/[19z]/)) { han += 1; yaku.push('タンヤオ'); }
-
-            let shuntsu = melds.filter(m => m.type === 'shuntsu');
-            let koutsu = melds.filter(m => m.type === 'koutsu');
-
-            // 役牌
-            let yakuhaiCount = 0;
-            koutsu.forEach(m => {
-                if (m.tile === '5z') { yakuhaiCount++; yaku.push('白'); }
-                if (m.tile === '6z') { yakuhaiCount++; yaku.push('發'); }
-                if (m.tile === '7z') { yakuhaiCount++; yaku.push('中'); }
-                if (m.tile === bakaze) { yakuhaiCount++; yaku.push('場風'); }
-                if (m.tile === jikaze) { yakuhaiCount++; yaku.push('自風'); }
-            });
-            han += yakuhaiCount;
-
-            // 平和
-            if (shuntsu.length === 4 && !['5z','6z','7z',bakaze,jikaze].includes(pair) && isMenzen) {
-                let isRyanmen = shuntsu.some(s => {
-                    if (s.tiles.includes(winTile)) {
-                        let wNum = parseInt(winTile[0]);
-                        let sNums = s.tiles.map(t => parseInt(t[0]));
-                        if ((wNum === sNums[0] && wNum !== 7) || (wNum === sNums[2] && wNum !== 3)) return true;
-                    }
-                    return false;
-                });
-                if (isRyanmen) { han += 1; yaku.push('平和'); }
-            }
-
-            // 一盃口
-            if (isMenzen) {
-                let iipeiko = 0;
-                let sStr = shuntsu.map(s => s.tiles.join('')).sort();
-                for(let i=0; i<sStr.length-1; i++) {
-                    if(sStr[i] === sStr[i+1]) { iipeiko++; i++; }
-                }
-                if (iipeiko >= 1) { han += 1; yaku.push('一盃口'); }
-            }
-
-            // 対々和
-            if (koutsu.length === 4) { han += 2; yaku.push('対々和'); }
-
-            // チャンタ
-            let isChanta = melds.every(m => m.type === 'koutsu' ? m.tile.match(/[19z]/) : m.tiles.some(t => t.match(/[19]/))) && pair.match(/[19z]/);
-            let hasZ = allTilesStr.match(/[z]/);
-            if (isChanta && !hasZ) { han += (isMenzen?3:2); yaku.push('純全帯幺九'); }
-            else if (isChanta && hasZ) { han += (isMenzen?2:1); yaku.push('混全帯幺九'); }
-
-            // 三色同順・同刻、一気通貫
-            let isSanshoku = false;
-            let isSanshokuDoukoku = false;
-            for (let i=1; i<=7; i++) {
-                if (shuntsu.some(s=>s.tiles[0]===`${i}m`) && shuntsu.some(s=>s.tiles[0]===`${i}p`) && shuntsu.some(s=>s.tiles[0]===`${i}s`)) isSanshoku = true;
-            }
-            for (let i=1; i<=9; i++) {
-                if (koutsu.some(m=>m.tile===`${i}m`) && koutsu.some(m=>m.tile===`${i}p`) && koutsu.some(m=>m.tile===`${i}s`)) isSanshokuDoukoku = true;
-            }
-            let isIttsu = ['m','p','s'].some(suit => shuntsu.some(s=>s.tiles[0]===`1${suit}`) && shuntsu.some(s=>s.tiles[0]===`4${suit}`) && shuntsu.some(s=>s.tiles[0]===`7${suit}`));
-            
-            if (isSanshoku) { han += (isMenzen?2:1); yaku.push('三色同順'); }
-            if (isSanshokuDoukoku) { han += 2; yaku.push('三色同刻'); }
-            if (isIttsu) { han += (isMenzen?2:1); yaku.push('一気通貫'); }
-
-            // 染め手
-            if (!allTilesStr.match(/[m]/) || !allTilesStr.match(/[p]/) || !allTilesStr.match(/[s]/)) {
-                if (hasZ) { han += (isMenzen?3:2); yaku.push('混一色'); }
-                else { han += (isMenzen?6:5); yaku.push('清一色'); }
-            }
-
-            // 大三元・四暗刻
-            if (koutsu.some(m=>m.tile==='5z') && koutsu.some(m=>m.tile==='6z') && koutsu.some(m=>m.tile==='7z')) { han += 13; yaku = ['大三元']; }
-            let closedKoutsuCount = koutsu.length - playerMelds.length;
-            if (!isTsumo && koutsu.some(m => m.tile === winTile)) closedKoutsuCount--; 
-            if (closedKoutsuCount === 4) { han += 13; yaku = ['四暗刻']; }
-
-            if (han > maxHan) { maxHan = han; bestYaku = yaku; }
-        }
-        return { han: maxHan, yaku: bestYaku };
-    }
-
-    // ⑦ checkWin(hand) -> 役判定ラッパー
+    // ⑦ checkWin ラッパー関数
     checkWin(playerId, winTile, isTsumo) {
         let player = this.players[playerId];
         let tilesFree = [...player.hand];
         if (!isTsumo && winTile) tilesFree.push(winTile);
         
+        let actualWinTile = winTile || player.hand[player.hand.length - 1];
         let playerIndex = this.playerIds.indexOf(playerId);
         const winds = ['1z', '2z', '3z', '4z'];
-        let result = this.evaluateHand(tilesFree, player.melds, player.melds.length === 0, winTile, isTsumo, player.riichi, '1z', winds[playerIndex % 4]);
-        return result.han >= 1 ? result : null;
+        
+        let state = {
+            winTile: actualWinTile,
+            isTsumo: isTsumo,
+            isRiichi: player.riichi,
+            bakaze: '1z',
+            jikaze: winds[playerIndex % 4]
+        };
+        
+        return YakuEvaluator.checkWin(tilesFree, player.melds, state);
     }
 
-    // ⑦ canPon(player, tile)
+    // ⑦ canPon判定
     canPon(playerId, tile) {
         let player = this.players[playerId];
-        if (player.riichi) return false;
+        if (player.riichi) return false; // リーチ後はポン不可
         return player.hand.filter(t => t === tile).length >= 2;
     }
 
-    // ⑦ canRon(player, tile)
+    // ⑦ canRon判定
     canRon(playerId, tile) {
         return this.checkWin(playerId, tile, false) !== null;
     }
 
-    // ⑦ isTenpai(hand)
+    // ⑦ isTenpai判定 (リーチ可能か)
     isTenpai(playerId) {
         let player = this.players[playerId];
         if (player.riichi || player.melds.length > 0) return false; 
@@ -266,14 +342,16 @@ class MahjongGame {
             testHand.splice(testHand.indexOf(discardTile), 1); 
             for (let winTile of allTiles) {
                 if (testHand.filter(t => t === winTile).length === 4) continue;
-                let result = this.evaluateHand([...testHand, winTile], [], true, winTile, false, true, '1z', '1z');
-                if (result.han > 0) return true;
+                
+                let state = { winTile: winTile, isTsumo: false, isRiichi: true, bakaze: '1z', jikaze: '1z' };
+                let result = YakuEvaluator.checkWin([...testHand, winTile], [], state);
+                if (result) return true;
             }
         }
         return false;
     }
 
-    // ⑦ handleDiscard(player, tile)
+    // ⑦ handleDiscard処理
     handleDiscard(playerId, tileIndex) {
         let player = this.players[playerId];
         const tile = player.hand.splice(tileIndex, 1)[0];
@@ -296,7 +374,7 @@ class MahjongGame {
             }
         });
 
-        // ⑤ ACTION_WAIT の強化
+        // ⑤ ACTION_WAIT への遷移
         if (this.waitingFor.length > 0) {
             this.phase = 'ACTION_WAIT';
             this.room.broadcastState();
@@ -310,7 +388,7 @@ class MahjongGame {
         }
     }
 
-    // ⑦ resolveActions() -> 全員の応答を待つ仕組み
+    // ⑦ resolveActions (全員の応答を待って処理)
     resolveActions() {
         let allResponded = this.playerIds.every(id => 
             id === this.lastDiscardPlayer || this.actionResponses[id]
@@ -320,7 +398,7 @@ class MahjongGame {
         let ronPlayer = null;
         let ponPlayer = null;
 
-        // 頭ハネ（近い順）
+        // 頭ハネ処理（ツモ順に近い人を優先）
         let discardIdx = this.playerIds.indexOf(this.lastDiscardPlayer);
         for (let i = 1; i < this.playerIds.length; i++) {
             let idx = (discardIdx + i) % this.playerIds.length;
@@ -329,6 +407,7 @@ class MahjongGame {
             else if (this.actionResponses[id] === 'PON' && !ponPlayer) ponPlayer = id;
         }
 
+        // 優先順位: ロン > ポン > スキップ
         if (ronPlayer) {
             let yakuResult = this.checkWin(ronPlayer, this.lastDiscardTile, false);
             this.phase = 'FINISHED';
@@ -350,13 +429,15 @@ class MahjongGame {
             }
             player.melds.push({ type: 'koutsu', tile: t });
             
+            // ポンしたプレイヤーにターン移動
             this.currentTurn = this.playerIds.indexOf(ponPlayer);
             this.phase = 'DRAW';
             this.actionResponses = {};
             this.waitingFor = [];
             this.room.broadcastState();
-            this.triggerAILogic(ponPlayer); // ③ ターン移動後の処理
+            this.triggerAILogic(ponPlayer); 
         } else {
+            // 全員パスなら次へ
             this.phase = 'DRAW';
             this.currentTurn = (this.currentTurn + 1) % this.playerIds.length;
             this.drawTile(this.playerIds[this.currentTurn]);
@@ -382,9 +463,7 @@ class MahjongGame {
             if (action.type === 'DISCARD') {
                 this.handleDiscard(playerId, action.payload.tileIndex);
             } else if (action.type === 'TSUMO') {
-                let player = this.players[playerId];
-                let lastTile = player.hand[player.hand.length - 1];
-                let yakuResult = this.checkWin(playerId, lastTile, true);
+                let yakuResult = this.checkWin(playerId, null, true);
                 if (yakuResult) {
                     this.phase = 'FINISHED';
                     this.winner = playerId;
@@ -409,6 +488,7 @@ class MahjongGame {
         }
     }
 
+    // ⑥ ターン制御・AIロジック
     triggerAILogic(playerId) {
         let player = this.players[playerId];
         const playerInfo = this.room.players.get(playerId);
@@ -416,12 +496,11 @@ class MahjongGame {
         let isRiichi = player.riichi;
 
         if (this.phase === 'DRAW' && playerId === this.playerIds[this.currentTurn]) {
-            // ④ リーチ後は自動でツモ切り
+            // ④ リーチ後 または AIは自動でツモ切り
             if (isBot || isRiichi) {
                 setTimeout(() => {
                     if (this.phase !== 'DRAW') return;
-                    let lastTile = player.hand[player.hand.length - 1];
-                    let canWin = this.checkWin(playerId, lastTile, true);
+                    let canWin = this.checkWin(playerId, null, true);
                     
                     if (canWin) {
                         this.handlePlayerAction(playerId, { type: 'TSUMO' });
@@ -469,12 +548,10 @@ class MahjongGame {
         if (this.phase === 'DRAW' && targetPlayerId === this.playerIds[this.currentTurn]) {
             let p = this.players[targetPlayerId];
             if (p.hand.length % 3 === 2 && !p.riichi) {
-                let lastTile = p.hand[p.hand.length - 1];
-                if (this.checkWin(targetPlayerId, lastTile, true)) allowedActions.push('TSUMO');
+                if (this.checkWin(targetPlayerId, null, true)) allowedActions.push('TSUMO');
                 if (this.isTenpai(targetPlayerId)) allowedActions.push('RIICHI');
             } else if (p.hand.length % 3 === 2 && p.riichi) {
-                let lastTile = p.hand[p.hand.length - 1];
-                if (this.checkWin(targetPlayerId, lastTile, true)) allowedActions.push('TSUMO');
+                if (this.checkWin(targetPlayerId, null, true)) allowedActions.push('TSUMO');
             }
         } else if (this.phase === 'ACTION_WAIT' && this.waitingFor.includes(targetPlayerId)) {
             if (!this.actionResponses[targetPlayerId]) {
