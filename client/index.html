@@ -143,6 +143,7 @@
                 <div id="action-buttons" style="display:none;">
                     <button id="btn-tsumo" onclick="sendGameAction('TSUMO')" style="display:none;">ツモ</button>
                     <button id="btn-ron" onclick="sendGameAction('RON')" style="display:none;">ロン</button>
+                    <button id="btn-riichi" onclick="sendGameAction('RIICHI')" style="display:none; background: #e74c3c;">リーチ</button>
                     <button id="btn-pass" onclick="sendGameAction('PASS')" style="display:none;">パス</button>
                 </div>
 
@@ -159,6 +160,7 @@
                     <div id="hand-right" class="hand"></div>
                 </div>
                 <div id="area-bottom" class="player-area bottom">
+                    <div class="player-name" id="name-bottom" style="display: none; position:absolute; top:-30px;"></div>
                     <div id="hand-bottom" class="hand"></div>
                 </div>
 

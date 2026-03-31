@@ -134,6 +134,7 @@ function renderGame(game) {
     const actionArea = document.getElementById('action-buttons');
     const btnTsumo = document.getElementById('btn-tsumo');
     const btnRon = document.getElementById('btn-ron');
+    const btnRiichi = document.getElementById('btn-riichi'); // ★追加
     const btnPass = document.getElementById('btn-pass');
     const resultOverlay = document.getElementById('result-overlay');
 
@@ -141,13 +142,17 @@ function renderGame(game) {
         actionArea.style.display = 'none';
         resultOverlay.style.display = 'flex';
         const winText = game.winningType === 'TSUMO' ? 'ツモ！' : 'ロン！';
-        document.getElementById('result-text').innerText = `${game.winner}\n${winText}`;
+        
+        // ★追加: 役の表示ロジック
+        let yakuDisplay = game.winningYaku ? `<br><span style="font-size:2rem; color:#fff;">${game.winningYaku.han}翻: ${game.winningYaku.yaku.join(', ')}</span>` : '';
+        document.getElementById('result-text').innerHTML = `${game.winner}<br>${winText}${yakuDisplay}`;
     } else {
         resultOverlay.style.display = 'none';
         if (game.allowedActions && game.allowedActions.length > 0 && dealAnimationStep === -1) {
             actionArea.style.display = 'flex';
             btnTsumo.style.display = game.allowedActions.includes('TSUMO') ? 'block' : 'none';
             btnRon.style.display = game.allowedActions.includes('RON') ? 'block' : 'none';
+            btnRiichi.style.display = game.allowedActions.includes('RIICHI') ? 'block' : 'none'; // ★追加
             btnPass.style.display = game.allowedActions.includes('PASS') ? 'block' : 'none';
         } else {
             actionArea.style.display = 'none';
@@ -169,16 +174,20 @@ function renderGame(game) {
         document.getElementById(`area-${pos}`).style.display = 'flex';
         document.getElementById(`discard-${pos}`).style.display = 'flex';
         const isTurn = (game.turnPlayerId === pid && game.phase === 'DRAW');
+        const isRiichi = game.riichiPlayers && game.riichiPlayers[pid]; // ★追加: リーチ状態の確認
 
         const nameEl = document.getElementById(`name-${pos}`);
         if (nameEl) {
+            nameEl.style.display = 'block';
+            // ★追加: リーチ表記
+            let riichiLabel = isRiichi ? '<span style="color:#e74c3c; background:#fff; padding:0 4px; border-radius:3px;">立直</span> ' : '';
+            
             if (pid === myPlayerId) {
-                nameEl.style.display = 'none';
+                nameEl.innerHTML = `${riichiLabel}You ${isTurn ? '👈' : ''}`;
             } else {
-                nameEl.style.display = 'block';
-                nameEl.innerHTML = `${pid} ${isTurn ? '👈' : ''}`;
-                nameEl.style.color = isTurn ? '#f1c40f' : '#fff';
+                nameEl.innerHTML = `${riichiLabel}${pid} ${isTurn ? '👈' : ''}`;
             }
+            nameEl.style.color = isTurn ? '#f1c40f' : '#fff';
         }
 
         const handDiv = document.getElementById(`hand-${pos}`);
