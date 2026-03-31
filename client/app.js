@@ -72,24 +72,6 @@ function updateRoomState(state) {
         document.getElementById('host-only-buttons').style.display = isHost ? 'block' : 'none';
         document.getElementById('guest-badge').style.display = isHost ? 'none' : 'inline';
         
-        if (state.settings) {
-            const s = state.settings;
-            const setRadio = (name, value) => {
-                const hiddenInput = document.querySelector(`input[name="${name}"]`);
-                if (hiddenInput) hiddenInput.value = value;
-                document.querySelectorAll(`button[onclick^="changeSettingRadio('${name}'"]`).forEach(btn => {
-                    btn.classList.remove('selected'); btn.classList.add('unselected');
-                });
-                const targetBtn = document.querySelector(`button[onclick="changeSettingRadio('${name}', ${typeof value === 'string' ? `'${value}'` : value})"]`);
-                if (targetBtn) targetBtn.classList.add('selected');
-            };
-            setRadio('mode', s.mode); setRadio('length', s.length); setRadio('thinkTime', s.thinkTime); setRadio('advanced', s.advanced);
-            document.getElementById('startPoints').value = s.startPoints; document.getElementById('targetPoints').value = s.targetPoints;
-            setRadio('tobi', s.tobi); setRadio('localYaku', s.localYaku); setRadio('akaDora', s.akaDora);
-            setRadio('kuitan', s.kuitan); setRadio('cpuLevel', s.cpuLevel); setRadio('openHands', s.openHands);
-            document.getElementById('advanced-settings').style.display = s.advanced ? 'block' : 'none';
-        }
-
         document.getElementById('player-list').innerHTML = state.players.map(p => {
             const hostIcon = p.id === state.hostId ? '👑 ' : '';
             const readyText = p.isReady ? '<span style="color:#2ecc71;">(準備完了)</span>' : '(準備中)';
@@ -121,8 +103,6 @@ function createTileElement(tileCode, isSmall = false) {
 
 function renderGame(game) {
     lastGameState = game;
-    
-    // フェーズの表示（デバッグ・進行把握用）
     let phaseText = game.phase === 'DRAW' ? 'ツモ・打牌' : (game.phase === 'ACTION_WAIT' ? 'アクション待機中...' : '終局');
     document.getElementById('game-info').innerHTML = `<div style="color:#f1c40f;">残り山: ${game.wallCount} | ${phaseText}</div>`;
 
@@ -130,11 +110,11 @@ function renderGame(game) {
     const myIndex = currentPlayers.indexOf(myPlayerId);
     const posMap = numPlayers === 3 ? ['bottom', 'right', 'left'] : ['bottom', 'right', 'top', 'left'];
 
-    // ★ アクションボタンと勝敗表示の制御
     const actionArea = document.getElementById('action-buttons');
     const btnTsumo = document.getElementById('btn-tsumo');
     const btnRon = document.getElementById('btn-ron');
-    const btnRiichi = document.getElementById('btn-riichi'); // ★追加
+    const btnPon = document.getElementById('btn-pon');
+    const btnRiichi = document.getElementById('btn-riichi');
     const btnPass = document.getElementById('btn-pass');
     const resultOverlay = document.getElementById('result-overlay');
 
@@ -142,8 +122,6 @@ function renderGame(game) {
         actionArea.style.display = 'none';
         resultOverlay.style.display = 'flex';
         const winText = game.winningType === 'TSUMO' ? 'ツモ！' : 'ロン！';
-        
-        // ★追加: 役の表示ロジック
         let yakuDisplay = game.winningYaku ? `<br><span style="font-size:2rem; color:#fff;">${game.winningYaku.han}翻: ${game.winningYaku.yaku.join(', ')}</span>` : '';
         document.getElementById('result-text').innerHTML = `${game.winner}<br>${winText}${yakuDisplay}`;
     } else {
@@ -152,14 +130,14 @@ function renderGame(game) {
             actionArea.style.display = 'flex';
             btnTsumo.style.display = game.allowedActions.includes('TSUMO') ? 'block' : 'none';
             btnRon.style.display = game.allowedActions.includes('RON') ? 'block' : 'none';
-            btnRiichi.style.display = game.allowedActions.includes('RIICHI') ? 'block' : 'none'; // ★追加
+            btnPon.style.display = game.allowedActions.includes('PON') ? 'block' : 'none';
+            btnRiichi.style.display = game.allowedActions.includes('RIICHI') ? 'block' : 'none';
             btnPass.style.display = game.allowedActions.includes('PASS') ? 'block' : 'none';
         } else {
             actionArea.style.display = 'none';
         }
     }
 
-    // 自分の番かどうかの判定（打牌可能か）
     const isMyTurnAndCanDiscard = (game.phase === 'DRAW' && game.turnPlayerId === myPlayerId && dealAnimationStep === -1);
     if (!isMyTurnAndCanDiscard) selectedTileIndex = -1;
 
@@ -174,14 +152,12 @@ function renderGame(game) {
         document.getElementById(`area-${pos}`).style.display = 'flex';
         document.getElementById(`discard-${pos}`).style.display = 'flex';
         const isTurn = (game.turnPlayerId === pid && game.phase === 'DRAW');
-        const isRiichi = game.riichiPlayers && game.riichiPlayers[pid]; // ★追加: リーチ状態の確認
+        const isRiichi = game.riichiPlayers && game.riichiPlayers[pid]; 
 
         const nameEl = document.getElementById(`name-${pos}`);
         if (nameEl) {
             nameEl.style.display = 'block';
-            // ★追加: リーチ表記
             let riichiLabel = isRiichi ? '<span style="color:#e74c3c; background:#fff; padding:0 4px; border-radius:3px;">立直</span> ' : '';
-            
             if (pid === myPlayerId) {
                 nameEl.innerHTML = `${riichiLabel}You ${isTurn ? '👈' : ''}`;
             } else {
@@ -190,6 +166,7 @@ function renderGame(game) {
             nameEl.style.color = isTurn ? '#f1c40f' : '#fff';
         }
 
+        // 手牌の描画
         const handDiv = document.getElementById(`hand-${pos}`);
         handDiv.innerHTML = '';
         const rawHand = game.hands[pid] || [];
@@ -212,7 +189,6 @@ function renderGame(game) {
             if (pid === myPlayerId && selectedTileIndex === item.originalIndex) {
                 tileDiv.classList.add('selected-tile');
             }
-            // ★打牌可能な時だけクリックイベントを付与
             if (pid === myPlayerId && isMyTurnAndCanDiscard) {
                 tileDiv.onclick = (e) => {
                     e.stopPropagation();
@@ -230,6 +206,22 @@ function renderGame(game) {
             handDiv.appendChild(tileDiv);
         });
 
+        // ★追加: 鳴き牌(ポン)の描画
+        const meldDiv = document.getElementById(`meld-${pos}`);
+        meldDiv.innerHTML = '';
+        if (game.melds && game.melds[pid]) {
+            game.melds[pid].forEach(m => {
+                if (m.type === 'koutsu') {
+                    for(let i=0; i<3; i++) meldDiv.appendChild(createTileElement(m.tile, pos !== 'bottom'));
+                }
+                // 見た目を少し空ける
+                const space = document.createElement('div');
+                space.style.width = '5px';
+                meldDiv.appendChild(space);
+            });
+        }
+
+        // 捨て牌の描画
         const discardDiv = document.getElementById(`discard-${pos}`);
         discardDiv.innerHTML = '';
         const currentDiscards = game.discards[pid] || [];
@@ -296,35 +288,10 @@ function createRoom() { sendAction('CREATE_ROOM', { roomName: "テスト部屋",
 function searchRooms() { sendAction('SEARCH_ROOMS'); }
 function joinRoom(roomId) { sendAction('JOIN_ROOM', { roomId }); }
 function toggleReady() { sendAction('TOGGLE_READY'); }
-// ★ 打牌・アクション送信
 function discardTile(index) { sendAction('DISCARD', { tileIndex: index }); }
 function sendGameAction(actionType) { sendAction(actionType); }
-
 function kickPlayer(targetId) { if (confirm(`キックしますか？`)) sendAction('KICK_PLAYER', { targetId }); }
 function addBot() { sendAction('ADD_BOT'); }
-function changeSettingRadio(name, value) {
-    const el = document.querySelector(`input[name="${name}"]`);
-    if (el) { el.value = value; syncSettings(); }
-}
-function syncSettings() {
-    const isAdvanced = document.querySelector('input[name="advanced"]').value === 'true';
-    document.getElementById('advanced-settings').style.display = isAdvanced ? 'block' : 'none';
-    const newSettings = {
-        mode: parseInt(document.querySelector('input[name="mode"]').value),
-        length: document.querySelector('input[name="length"]').value,
-        thinkTime: document.querySelector('input[name="thinkTime"]').value,
-        advanced: isAdvanced,
-        startPoints: parseInt(document.getElementById('startPoints').value) || 25000,
-        targetPoints: parseInt(document.getElementById('targetPoints').value) || 30000,
-        tobi: document.querySelector('input[name="tobi"]').value === 'true',
-        localYaku: document.querySelector('input[name="localYaku"]').value === 'true',
-        akaDora: parseInt(document.querySelector('input[name="akaDora"]').value),
-        kuitan: document.querySelector('input[name="kuitan"]').value === 'true',
-        cpuLevel: document.querySelector('input[name="cpuLevel"]').value,
-        openHands: document.querySelector('input[name="openHands"]').value === 'true'
-    };
-    sendAction('CHANGE_SETTINGS', newSettings);
-}
 function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
     document.getElementById(screenId).style.display = 'block';
@@ -332,5 +299,4 @@ function showScreen(screenId) {
 function renderRoomList(rooms) {
     document.getElementById('room-list').innerHTML = rooms.map(r => `<li>${r.name} (${r.currentPlayers}/${r.maxPlayers}) <button onclick="joinRoom('${r.id}')">参加</button></li>`).join('');
 }
-
 connect();
