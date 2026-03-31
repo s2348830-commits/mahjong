@@ -13,9 +13,9 @@ class MahjongGame {
         this.actionResponses = {};
         this.winner = null;
         this.winningType = null; 
-        this.winningYaku = null; // 和了役の保存用
+        this.winningYaku = null; 
         
-        // ★追加: リーチ宣言者の追跡
+        // リーチ宣言者の追跡
         this.riichiPlayers = {};
 
         playerIds.forEach(id => {
@@ -57,7 +57,7 @@ class MahjongGame {
         }
     }
 
-    // ★追加: 14枚の手牌から「翻数」と「役のリスト」を算出する完全な判定エンジン
+    // 14枚の手牌から「翻数」と「役のリスト」を算出する判定エンジン
     evaluateHand(tiles14, winTile, isTsumo, isRiichi, bakaze, jikaze) {
         let counts = {};
         tiles14.forEach(t => counts[t] = (counts[t] || 0) + 1);
@@ -181,7 +181,7 @@ class MahjongGame {
             // 対々和・三暗刻
             if (koutsu.length === 4) { han += 2; yaku.push('対々和'); }
             let closedKoutsuCount = koutsu.length;
-            if (!isTsumo && koutsu.some(m => m.tile === winTile)) closedKoutsuCount--; // ロン上がりした刻子は明刻扱い
+            if (!isTsumo && koutsu.some(m => m.tile === winTile)) closedKoutsuCount--; 
             if (closedKoutsuCount === 3) { han += 2; yaku.push('三暗刻'); }
             if (closedKoutsuCount === 4) { han += 13; yaku = ['四暗刻']; }
 
@@ -218,12 +218,10 @@ class MahjongGame {
         return { han: maxHan, yaku: bestYaku };
     }
 
-    // ★追加: 役計算のラッパー関数
     checkYaku(playerId, winTile, isTsumo) {
         let tiles14 = [...this.hands[playerId]];
         if (!isTsumo) tiles14.push(winTile);
 
-        // 自風・場風の計算 (東風戦・起家=東想定)
         let playerIndex = this.playerIds.indexOf(playerId);
         const winds = ['1z', '2z', '3z', '4z'];
         let jikaze = winds[playerIndex % 4];
@@ -233,16 +231,67 @@ class MahjongGame {
         return result.han >= 1 ? result : null;
     }
 
+    // ★追加: テンパイ（リーチ可能か）を判定するアルゴリズム
+    canRiichi(playerId) {
+        if (this.riichiPlayers[playerId]) return false; // 既にリーチ済みなら不可
+        
+        let currentHand = this.hands[playerId];
+        if (currentHand.length !== 14) return false;
+
+        const allTiles = [
+            '1m','2m','3m','4m','5m','6m','7m','8m','9m',
+            '1p','2p','3p','4p','5p','6p','7p','8p','9p',
+            '1s','2s','3s','4s','5s','6s','7s','8s','9s',
+            '1z','2z','3z','4z','5z','6z','7z'
+        ];
+
+        let playerIndex = this.playerIds.indexOf(playerId);
+        const winds = ['1z', '2z', '3z', '4z'];
+        let jikaze = winds[playerIndex % 4];
+        let bakaze = '1z';
+
+        // 捨てる候補の牌（重複を除外して最適化）
+        let uniqueDiscards = [...new Set(currentHand)];
+
+        for (let i = 0; i < uniqueDiscards.length; i++) {
+            let discardTile = uniqueDiscards[i];
+            
+            // 1枚抜いた13枚の手牌を作成（捨てるシミュレーション）
+            let testHand = [...currentHand];
+            testHand.splice(testHand.indexOf(discardTile), 1); 
+            
+            // どの牌を引けば和了できるか（待ち牌があるか）確認
+            for (let j = 0; j < allTiles.length; j++) {
+                let winTile = allTiles[j];
+                
+                // 既に自分の手牌で4枚使っている牌は物理的に引けないのでスキップ
+                if (testHand.filter(t => t === winTile).length === 4) continue;
+
+                let test14 = [...testHand, winTile];
+                
+                // もしリーチしたと仮定して、役（最低でもリーチの1翻）が成立するか確認
+                let result = this.evaluateHand(test14, winTile, false, true, bakaze, jikaze);
+                
+                if (result.han > 0) {
+                    return true; // テンパイになる捨て牌が少なくとも1つ存在する
+                }
+            }
+        }
+        return false;
+    }
+
     handlePlayerAction(playerId, action) {
         if (this.phase === 'FINISHED') return;
 
         if (this.phase === 'DRAW') {
             if (playerId !== this.playerIds[this.turnIndex]) return;
 
-            // ★追加: リーチ宣言
             if (action.type === 'RIICHI') {
-                this.riichiPlayers[playerId] = true;
-                this.room.broadcastState();
+                // ★追加: 不正リクエスト防止のため、サーバー側でもテンパイ判定を行う
+                if (this.canRiichi(playerId)) {
+                    this.riichiPlayers[playerId] = true;
+                    this.room.broadcastState();
+                }
                 return;
             }
 
@@ -290,9 +339,9 @@ class MahjongGame {
                     this.phase = 'FINISHED';
                     this.winner = playerId;
                     this.winningType = 'TSUMO';
-                    this.winningYaku = yakuResult; // 役の情報を保存
+                    this.winningYaku = yakuResult; 
                     this.room.broadcastState();
-                    setTimeout(() => this.room.endGame(), 7000); // 結果表示を長めに
+                    setTimeout(() => this.room.endGame(), 7000); 
                 }
             }
         } 
@@ -340,6 +389,10 @@ class MahjongGame {
                 if (this.checkYaku(playerId, lastTile, true)) {
                     this.handlePlayerAction(playerId, { type: 'TSUMO' });
                 } else {
+                    // ★追加: AIもテンパイしていればリーチを宣言する
+                    if (this.canRiichi(playerId)) {
+                        this.handlePlayerAction(playerId, { type: 'RIICHI' });
+                    }
                     this.handlePlayerAction(playerId, { type: 'DISCARD', payload: { tileIndex: this.hands[playerId].length - 1 }});
                 }
             }, 1000);
@@ -366,14 +419,15 @@ class MahjongGame {
             }
         });
 
-        // アクションボタンと役の判定
         let allowedActions = [];
         if (this.phase === 'DRAW' && targetPlayerId === this.playerIds[this.turnIndex]) {
             let lastTile = this.hands[targetPlayerId][this.hands[targetPlayerId].length - 1];
             if (this.checkYaku(targetPlayerId, lastTile, true)) {
                 allowedActions.push('TSUMO');
             }
-            if (!this.riichiPlayers[targetPlayerId]) {
+            
+            // ★変更: テンパイしている場合のみリーチボタンを許可
+            if (this.canRiichi(targetPlayerId)) {
                 allowedActions.push('RIICHI');
             }
         } else if (this.phase === 'ACTION_WAIT' && targetPlayerId !== this.lastDiscard.playerId) {
@@ -396,7 +450,7 @@ class MahjongGame {
             winner: this.winner,
             winningType: this.winningType,
             winningYaku: this.winningYaku,
-            riichiPlayers: this.riichiPlayers // リーチ状態も共有
+            riichiPlayers: this.riichiPlayers
         };
     }
 }
