@@ -8,7 +8,6 @@ let lastGameState = null;
 let previousDiscardsCount = {};
 let lastDiscardOrigin = { x: 0, y: 0 };
 
-// ★追加: 画像のプリロード
 const tilesImage = new Image();
 tilesImage.src = 'tiles.png';
 
@@ -22,10 +21,8 @@ function sendAction(type, payload = {}) {
     if (ws && ws.readyState === WebSocket.OPEN) { ws.send(JSON.stringify({ type, payload })); }
 }
 
-// ★追加: 選択解除ロジック
 function deselectTile(event) {
-    // 牌そのものをクリックした時は何もしない
-    if (event.target.classList.contains('tile')) return;
+    if (event.target.classList.contains('tile') || event.target.closest('#action-buttons')) return;
     selectedTileIndex = -1;
     if (lastGameState) renderGame(lastGameState);
 }
@@ -42,17 +39,20 @@ function handleServerMessage(data) {
 function updateRoomState(state) {
     if (state.players) currentPlayers = state.players.map(p => p.id);
 
-    // ★PLAYING開始時にロード画面を出す
     if (currentRoomStatus === 'LOBBY' && state.status === 'PLAYING') {
         currentRoomStatus = 'PLAYING';
         document.getElementById('loading-screen').style.display = 'flex';
         
-        // 画像が読み込み済みか確認
         if (tilesImage.complete) {
             setTimeout(startDeal, 800);
         } else {
             tilesImage.onload = startDeal;
         }
+    } else if (state.status === 'LOBBY') {
+        currentRoomStatus = 'LOBBY';
+        dealAnimationStep = -1;
+        previousDiscardsCount = {};
+        lastGameState = null;
     } else {
         currentRoomStatus = state.status;
     }
@@ -121,13 +121,42 @@ function createTileElement(tileCode, isSmall = false) {
 
 function renderGame(game) {
     lastGameState = game;
-    document.getElementById('game-info').innerHTML = `<div style="color:#f1c40f;">残り山: ${game.wallCount}</div>`;
+    
+    // フェーズの表示（デバッグ・進行把握用）
+    let phaseText = game.phase === 'DRAW' ? 'ツモ・打牌' : (game.phase === 'ACTION_WAIT' ? 'アクション待機中...' : '終局');
+    document.getElementById('game-info').innerHTML = `<div style="color:#f1c40f;">残り山: ${game.wallCount} | ${phaseText}</div>`;
 
     const numPlayers = currentPlayers.length;
     const myIndex = currentPlayers.indexOf(myPlayerId);
     const posMap = numPlayers === 3 ? ['bottom', 'right', 'left'] : ['bottom', 'right', 'top', 'left'];
 
-    if (game.turnPlayerId !== myPlayerId) selectedTileIndex = -1;
+    // ★ アクションボタンと勝敗表示の制御
+    const actionArea = document.getElementById('action-buttons');
+    const btnTsumo = document.getElementById('btn-tsumo');
+    const btnRon = document.getElementById('btn-ron');
+    const btnPass = document.getElementById('btn-pass');
+    const resultOverlay = document.getElementById('result-overlay');
+
+    if (game.phase === 'FINISHED') {
+        actionArea.style.display = 'none';
+        resultOverlay.style.display = 'flex';
+        const winText = game.winningType === 'TSUMO' ? 'ツモ！' : 'ロン！';
+        document.getElementById('result-text').innerText = `${game.winner}\n${winText}`;
+    } else {
+        resultOverlay.style.display = 'none';
+        if (game.allowedActions && game.allowedActions.length > 0 && dealAnimationStep === -1) {
+            actionArea.style.display = 'flex';
+            btnTsumo.style.display = game.allowedActions.includes('TSUMO') ? 'block' : 'none';
+            btnRon.style.display = game.allowedActions.includes('RON') ? 'block' : 'none';
+            btnPass.style.display = game.allowedActions.includes('PASS') ? 'block' : 'none';
+        } else {
+            actionArea.style.display = 'none';
+        }
+    }
+
+    // 自分の番かどうかの判定（打牌可能か）
+    const isMyTurnAndCanDiscard = (game.phase === 'DRAW' && game.turnPlayerId === myPlayerId && dealAnimationStep === -1);
+    if (!isMyTurnAndCanDiscard) selectedTileIndex = -1;
 
     ['bottom', 'right', 'top', 'left'].forEach(pos => {
         document.getElementById(`area-${pos}`).style.display = 'none';
@@ -139,9 +168,8 @@ function renderGame(game) {
         let pos = posMap[relIdx];
         document.getElementById(`area-${pos}`).style.display = 'flex';
         document.getElementById(`discard-${pos}`).style.display = 'flex';
-        const isTurn = (game.turnPlayerId === pid);
+        const isTurn = (game.turnPlayerId === pid && game.phase === 'DRAW');
 
-        // ★自分の名前は非表示にする
         const nameEl = document.getElementById(`name-${pos}`);
         if (nameEl) {
             if (pid === myPlayerId) {
@@ -159,7 +187,7 @@ function renderGame(game) {
         let displayRawHand = (dealAnimationStep !== -1) ? rawHand.slice(0, dealAnimationStep) : rawHand;
         
         let displayHand = [];
-        if (pid === myPlayerId) {
+        if (pid === myPlayerId || game.phase === 'FINISHED') {
             displayHand = displayRawHand.map((t, i) => ({ tileCode: t, originalIndex: i })).sort((a, b) => {
                 if (a.tileCode === 'back' || b.tileCode === 'back') return 0;
                 const suits = { m: 0, p: 1, s: 2, z: 3 }; 
@@ -175,9 +203,10 @@ function renderGame(game) {
             if (pid === myPlayerId && selectedTileIndex === item.originalIndex) {
                 tileDiv.classList.add('selected-tile');
             }
-            if (pid === myPlayerId && isTurn && dealAnimationStep === -1) {
+            // ★打牌可能な時だけクリックイベントを付与
+            if (pid === myPlayerId && isMyTurnAndCanDiscard) {
                 tileDiv.onclick = (e) => {
-                    e.stopPropagation(); // 卓の選択解除を防ぐ
+                    e.stopPropagation();
                     if (selectedTileIndex === item.originalIndex) {
                         const rect = tileDiv.getBoundingClientRect();
                         lastDiscardOrigin = { x: rect.left, y: rect.top };
@@ -254,12 +283,14 @@ function animateDealing() {
     }, 400);
 }
 
-// 他の関数（createRoom, searchRooms, joinRoom, toggleReady, discardTile, kickPlayer, addBot, changeSettingRadio, syncSettings, showScreen, renderRoomList）は維持
 function createRoom() { sendAction('CREATE_ROOM', { roomName: "テスト部屋", maxPlayers: 4 }); }
 function searchRooms() { sendAction('SEARCH_ROOMS'); }
 function joinRoom(roomId) { sendAction('JOIN_ROOM', { roomId }); }
 function toggleReady() { sendAction('TOGGLE_READY'); }
+// ★ 打牌・アクション送信
 function discardTile(index) { sendAction('DISCARD', { tileIndex: index }); }
+function sendGameAction(actionType) { sendAction(actionType); }
+
 function kickPlayer(targetId) { if (confirm(`キックしますか？`)) sendAction('KICK_PLAYER', { targetId }); }
 function addBot() { sendAction('ADD_BOT'); }
 function changeSettingRadio(name, value) {

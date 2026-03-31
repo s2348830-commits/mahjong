@@ -9,22 +9,21 @@ class Room {
         this.status = 'LOBBY';
         this.game = null;
 
-        // ★追加: ルームの全設定を管理するオブジェクト
         this.settings = {
-            mode: 4,              // 4: 4人麻雀, 3: 3人麻雀
-            length: 'east',       // 'one':一局, 'east':東風, 'south':半荘, 'cpu':CPU
-            thinkTime: '5+10',    // '3+5', '5+10', '5+20', '60+0', '300+0'
-            advanced: false,      // 詳細設定の有効/無効
+            mode: 4,
+            length: 'east',
+            thinkTime: '5+10',
+            advanced: false,
             startPoints: 25000,
             targetPoints: 30000,
-            tobi: true,           // 飛び
-            localYaku: false,     // ローカル役
-            akaDora: 3,           // 0, 3, 4
-            kuitan: true,         // 食い断
-            cpuLevel: 'normal',   // 'easy', 'normal'
-            openHands: false      // 手牌表示
+            tobi: true,
+            localYaku: false,
+            akaDora: 3,
+            kuitan: true,
+            cpuLevel: 'normal',
+            openHands: false
         };
-        this.maxPlayers = this.settings.mode; // 互換性のため保持
+        this.maxPlayers = this.settings.mode;
     }
 
     join(playerId, ws) {
@@ -52,19 +51,12 @@ class Room {
                 this.checkStartGame();
                 this.broadcastState();
             }
-            // ★変更: 新しい設定変更処理
             else if (action.type === 'CHANGE_SETTINGS' && playerId === this.hostId) {
                 const newSettings = action.payload;
-                
-                // 4人いるのに3麻に変更しようとした場合はブロック
                 if (newSettings.mode < this.players.size) return;
 
-                // 設定を上書き
                 this.settings = { ...this.settings, ...newSettings };
-                this.maxPlayers = this.settings.mode; // 内部の最大人数も更新
-                
-                // 設定が変わったら全員の準備を解除
-                //this.players.forEach(p => p.isReady = false);
+                this.maxPlayers = this.settings.mode;
                 this.broadcastState();
             }
             else if (action.type === 'KICK_PLAYER' && playerId === this.hostId) {
@@ -102,11 +94,18 @@ class Room {
         }
     }
 
+    // ★ゲーム終了時にロビーに戻る処理
+    endGame() {
+        this.status = 'LOBBY';
+        this.game = null;
+        this.players.forEach(p => p.isReady = false); // 全員の準備をリセット
+        this.broadcastState();
+    }
+
     handleDisconnect(playerId) {
         const player = this.players.get(playerId);
         if (player) {
             if (this.status === 'PLAYING') {
-                // 対局中の切断：60秒後にAIへ交代
                 player.disconnectTimeout = setTimeout(() => {
                     player.isAI = true;
                     this.broadcastState();
@@ -115,10 +114,7 @@ class Room {
                     }
                 }, 60000);
             } else {
-                // ロビーでの切断：部屋から完全に削除
                 this.players.delete(playerId);
-                
-                // もし抜けたのがホストだった場合、残っている誰かにホスト権限を移譲する
                 if (playerId === this.hostId && this.players.size > 0) {
                     this.hostId = Array.from(this.players.keys())[0];
                 }
@@ -135,7 +131,7 @@ class Room {
                 roomId: this.id,
                 roomName: this.name,
                 hostId: this.hostId,
-                settings: this.settings, // ★全設定を送信
+                settings: this.settings,
                 status: this.status,
                 players: Array.from(this.players.entries()).map(([id, p]) => ({
                     id, isReady: p.isReady, isAI: p.isAI

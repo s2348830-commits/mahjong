@@ -133,7 +133,19 @@
 
         <div id="game-screen" class="screen" style="display:none; padding: 0;">
             <div id="game-info"></div>
+
+            <div id="result-overlay" style="display:none;">
+                <h2 id="result-text"></h2>
+            </div>
+
             <div id="mahjong-table" onclick="deselectTile(event)">
+                
+                <div id="action-buttons" style="display:none;">
+                    <button id="btn-tsumo" onclick="sendGameAction('TSUMO')" style="display:none;">ツモ</button>
+                    <button id="btn-ron" onclick="sendGameAction('RON')" style="display:none;">ロン</button>
+                    <button id="btn-pass" onclick="sendGameAction('PASS')" style="display:none;">パス</button>
+                </div>
+
                 <div id="area-top" class="player-area top" style="display:none;">
                     <div class="player-name" id="name-top"></div>
                     <div id="hand-top" class="hand"></div>

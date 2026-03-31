@@ -11,7 +11,6 @@ body { font-family: sans-serif; background-color: #111; color: white; margin: 0;
     -webkit-overflow-scrolling: touch;
 }
 
-/* ★ロード画面のスタイル */
 #loading-screen {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background: #1e4b30; z-index: 20000; display: flex; align-items: center; justify-content: center;
@@ -36,14 +35,12 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     #app { display: none !important; }
 }
 
-/* 設定パネル関連 */
 .settings-panel { background-color: rgba(0, 0, 0, 0.7); padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid rgba(255, 255, 255, 0.2); }
 .settings-panel h3 { margin-top: 0; margin-bottom: 15px; font-size: 1.2rem; border-bottom: 1px solid rgba(255, 255, 255, 0.3); padding-bottom: 5px; }
 .setting-label { display: inline-block; width: 100px; font-weight: bold; color: #bdc3c7; }
 .hex-button { font-size: 1.1rem; font-weight: bold; padding: 8px 16px; border: none; cursor: pointer; clip-path: polygon(10% 0%, 90% 0%, 100% 15%, 100% 85%, 90% 100%, 10% 100%, 0% 85%, 0% 15%); background-color: #2c3e50; color: #fff; transition: background-color 0.2s; }
 .hex-button.selected { background-color: #f39c12; color: #2c3e50; }
 
-/* ★PC・タブレット：卓のサイズを固定 */
 #mahjong-table {
     position: relative; 
     width: 800px; height: 800px; 
@@ -53,25 +50,47 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     overflow: hidden;
 }
 
-/* ★中央の河：綺麗な正方形エリア */
-#center-discards {
-    position: absolute; top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    width: 50%; height: 50%;
-    background-color: rgba(0, 0, 0, 0.15); border-radius: 10px;
+/* ★アクションボタンのスタイル */
+#action-buttons {
+    position: absolute; bottom: 25%; left: 50%;
+    transform: translateX(-50%); display: flex; gap: 15px; z-index: 100;
+}
+#action-buttons button {
+    font-size: 1.5rem; padding: 15px 30px; border-radius: 8px;
+    background: linear-gradient(135deg, #e67e22, #d35400); color: white;
+    border: 2px solid #f1c40f; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    font-weight: bold; cursor: pointer; transition: transform 0.1s;
+}
+#action-buttons button:active { transform: scale(0.95); }
+
+/* ★勝敗表示演出 */
+#result-overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.8); z-index: 200;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+}
+#result-text {
+    font-size: 4rem; color: #f1c40f; text-shadow: 0 0 20px #e67e22;
+    animation: pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+@keyframes pop {
+    0% { transform: scale(0.5); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
 }
 
+#center-discards {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 50%; height: 50%; background-color: rgba(0, 0, 0, 0.15); border-radius: 10px;
+}
 .discard-area {
     position: absolute; display: flex; flex-wrap: wrap; 
-    width: calc(23px * 6 + 10px); height: 98px;
-    align-content: flex-start; gap: 1px;
+    width: calc(23px * 6 + 10px); height: 98px; align-content: flex-start; gap: 1px;
 }
 .discard-area.bottom { bottom: 5px; left: 50%; transform: translateX(-50%); }
 .discard-area.top    { top: 5px; left: 50%; transform: translateX(-50%) rotate(180deg); }
 .discard-area.left   { left: 5px; top: 50%; transform: translateY(-50%) rotate(90deg); }
 .discard-area.right  { right: 5px; top: 50%; transform: translateY(-50%) rotate(-90deg); }
 
-/* プレイヤー配置 */
 .player-area { position: absolute; display: flex; align-items: center; z-index: 10; }
 .player-area.bottom { bottom: 2%; left: 50%; transform: translateX(-50%); }
 .player-area.top    { top: 2%; left: 50%; transform: translateX(-50%) rotate(180deg); flex-direction: column-reverse; }
@@ -81,7 +100,6 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 .player-name { background: rgba(0,0,0,0.8); padding: 4px 12px; border-radius: 6px; font-weight: bold; color: #fff; font-size: 0.85rem; }
 .player-area.left .player-name, .player-area.right .player-name { writing-mode: vertical-rl; text-orientation: upright; transform: rotate(-90deg); margin-top: 6px; }
 
-/* 牌 */
 .hand { display: flex; gap: 1px; justify-content: center; }
 .tile {
     width: 44px; height: 60px; border-radius: 4px; cursor: pointer; transition: transform 0.1s;
@@ -91,12 +109,8 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 .tile.small { width: 23px; height: 32px; border-radius: 2px; }
 .tile.selected-tile { transform: translateY(-15px) !important; box-shadow: 0 0 0 3px #f1c40f !important; }
 
-/* スマホ横画面フルスクリーン時の最適化 */
 @media (max-height: 500px), screen and (orientation: landscape) and (max-width: 900px) {
-    #mahjong-table {
-        width: 100vw; height: 100dvh; max-width: none; max-height: none;
-        margin: 0; border: none; border-radius: 0;
-    }
+    #mahjong-table { width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; border: none; border-radius: 0; }
     #center-discards { width: 60vh; height: 60vh; }
     .tile { width: 9vh; height: 12.3vh; }
     .tile.small { width: 4.8vh; height: 6.6vh; }
