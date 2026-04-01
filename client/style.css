@@ -75,15 +75,14 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     transform-origin: center;
 }
 
-/* ★修正: 完全に1列5個で改行させる厳格なGrid設定 */
 .discard-area {
     position: absolute; 
     display: grid; 
-    grid-template-columns: repeat(5, 23px); /* 5枚固定 */
+    grid-template-columns: repeat(5, 23px);
     grid-auto-rows: 32px;
     gap: 2px;
     justify-content: center;
-    width: calc(23px * 5 + 2px * 4); /* 横幅を強制固定して下の段に落とす */
+    width: calc(23px * 5 + 2px * 4);
 }
 .discard-area.bottom { bottom: 5px; left: 50%; transform: translateX(-50%); }
 .discard-area.top    { top: 5px; left: 50%; transform: translateX(-50%) rotate(180deg); }
@@ -134,10 +133,9 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     cursor: not-allowed !important;
 }
 
-/* ★修正: 右下（手牌の上）のUIエリア全体の設定 */
 #action-ui-area {
     position: absolute; 
-    bottom: 110px; /* 手牌のすぐ上 */
+    bottom: 110px; 
     right: 30px; 
     display: flex; 
     align-items: center; 
@@ -145,11 +143,10 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     z-index: 200;
 }
 
-/* ★修正: タイマーをオレンジ色の光る数字に */
 #action-timer-display {
     font-size: 5rem;
     font-weight: bold;
-    color: #ff9800; /* オレンジ色 */
+    color: #ff9800;
     text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 0 15px rgba(255,152,0,0.8);
     font-family: monospace;
     display: none;
@@ -160,12 +157,12 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     gap: 10px;
 }
 
-/* ★修正: アクションボタンを画像として表示 (もしjpgなら拡張子を書き換えてください) */
+/* ★修正: game_buttonUI.jpgの7分割に合わせた設定 */
 .action-btn {
     width: 70px; 
     height: 70px;
-    background-image: url('game_buttonUI.png'); 
-    background-size: 700% 100%; /* 横に7枚のボタンが並んでいると仮定 */
+    background-image: url('game_buttonUI.jpg'); /* jpgに変更 */
+    background-size: 700% 100%; /* 横に7枚均等 */
     background-color: transparent;
     border: none;
     box-shadow: none;
@@ -177,7 +174,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 .action-btn:hover { transform: translateY(-8px); filter: brightness(1.2); }
 .action-btn:active { transform: scale(0.9); }
 
-/* 画像にない特殊ボタン（リーチ等）用のフォールバックテキストボタン */
+/* 画像にない特殊ボタン（リーチ等）用のフォールバック */
 .action-btn.text-btn {
     background-image: none;
     background-color: #e74c3c;
@@ -187,17 +184,14 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     border: 2px solid #fff;
 }
 
-/* * ★画像の切り取り位置（ご提示の並び順で均等に切り取り）
- * もし画像の並びが異なる場合、またはズレる場合は 16.66% の数値を変更して調整してください。
- */
-.btn-ron   { background-position: 0% 0%; }       /* 1番目 */
-.btn-tsumo { background-position: 16.66% 0%; }   /* 2番目 */
-.btn-kan   { background-position: 33.33% 0%; }   /* 3番目 */
-.btn-pon   { background-position: 50% 0%; }      /* 4番目 */
-.btn-chi   { background-position: 66.66% 0%; }   /* 5番目 */
-.btn-kita  { background-position: 83.33% 0%; }   /* 6番目 */
-.btn-pass  { background-position: 100% 0%; }     /* 7番目 */
-
+/* ★修正: 7等分（16.666%間隔）での正確な切り取り位置 */
+.btn-ron   { background-position: 0% 0%; }
+.btn-tsumo { background-position: 16.666% 0%; }
+.btn-kita  { background-position: 33.333% 0%; }
+.btn-kan   { background-position: 50% 0%; }
+.btn-pon   { background-position: 66.666% 0%; }
+.btn-chi   { background-position: 83.333% 0%; }
+.btn-pass  { background-position: 100% 0%; }
 
 #result-overlay {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -213,7 +207,6 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     100% { transform: scale(1); opacity: 1; }
 }
 
-/* レスポンシブ対応 (スマホ横画面・PC縮小時) */
 @media (max-height: 500px), screen and (orientation: landscape) and (max-width: 900px) {
     #mahjong-table {
         width: 100vw; height: 100dvh; max-width: none; max-height: none;
@@ -223,7 +216,6 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     .tile { width: 9vh; height: 12.3vh; }
     .tile.small { width: 4.8vh; height: 6.6vh; }
     
-    /* 5枚切り対応 (スマホ) */
     .discard-area { 
         grid-template-columns: repeat(5, 4.8vh);
         grid-auto-rows: 6.6vh;
@@ -241,7 +233,6 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
         transform: scale(0.7);
     }
 
-    /* アクションUIをスマホサイズに縮小 */
     #action-ui-area {
         bottom: 15vh;
         right: 2vw;

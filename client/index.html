@@ -134,6 +134,10 @@
 
         <div id="game-screen" class="screen" style="display:none; padding: 0;">
             
+            <div id="timer-bar-container" style="display:none; width:100%; height:6px; background:rgba(0,0,0,0.5); position:absolute; top:0; left:0; z-index:500;">
+                <div id="timer-bar" style="height:100%; width:100%; background:#2ecc71; transition: width 0.1s linear, background-color 0.3s;"></div>
+            </div>
+
             <div id="winning-tiles-container" style="display:none; position:absolute; top:20px; left:20px; background:rgba(0,0,0,0.7); padding:10px 15px; border-radius:8px; border:1px solid #f1c40f; z-index:150;">
                 <div style="font-size:0.9rem; font-weight:bold; margin-bottom:8px; color:#f1c40f; text-align:center;">待ち牌</div>
                 <div id="winning-tiles-list" class="hand" style="gap:2px;"></div>
@@ -175,17 +179,17 @@
                 <p style="color:#bdc3c7; margin-top:30px; font-size:1.2rem;">まもなくロビーに戻ります...</p>
             </div>
 
-            <div id="mahjong-table" onclick="deselectTile(event)">
+            <div id="mahjong-table">
                 
                 <div id="action-ui-area">
                     <div id="action-timer-display" style="display:none;">15</div>
                     <div id="action-buttons" style="display:none;">
                         <button id="btn-ron" class="action-btn btn-ron" onclick="sendGameAction('RON')" style="display:none;"></button>
                         <button id="btn-tsumo" class="action-btn btn-tsumo" onclick="sendGameAction('TSUMO')" style="display:none;"></button>
+                        <button id="btn-kita" class="action-btn btn-kita" onclick="sendGameAction('KITA')" style="display:none;"></button>
                         <button id="btn-kan" class="action-btn btn-kan" onclick="sendGameAction('KAN')" style="display:none;"></button>
                         <button id="btn-pon" class="action-btn btn-pon" onclick="sendGameAction('PON')" style="display:none;"></button>
                         <button id="btn-chi" class="action-btn btn-chi" onclick="sendGameAction('CHI')" style="display:none;"></button>
-                        <button id="btn-kita" class="action-btn btn-kita" onclick="sendGameAction('KITA')" style="display:none;"></button>
                         <button id="btn-pass" class="action-btn btn-pass" onclick="sendGameAction('PASS')" style="display:none;"></button>
                         <button id="btn-riichi" class="action-btn text-btn btn-riichi" onclick="sendGameAction('RIICHI')" style="display:none;">リーチ</button>
                         <button id="btn-kyuushu" class="action-btn text-btn btn-kyuushu" onclick="sendGameAction('KYUUSHU')" style="display:none;">九種</button>

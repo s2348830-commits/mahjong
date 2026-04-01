@@ -172,7 +172,9 @@ function render() {
             Renderer.updateLocalSelection();
             
             UI.renderReachModal(state.reachOptions);
-            UI.renderWinningTilesDisplay(state.currentWinningTiles);
+            
+            // 【修正】エラーの原因だった関数名のタイポを修正
+            UI.updateWinningTilesDisplay(state.currentWinningTiles);
 
             const prevGame = prevState ? prevState.game : null;
             if (!prevGame || prevGame.turnPlayerId !== state.game.turnPlayerId || prevGame.phase !== state.game.phase || prevGame.lastDiscard?.tile !== state.game.lastDiscard?.tile) {
@@ -336,7 +338,6 @@ const Network = {
 };
 
 const Renderer = {
-    // 【修正】タイマーをオレンジ色のカウントダウン数字に変更
     startTimer(timeStr) {
         this.stopTimer();
         const display = document.getElementById('action-timer-display');
@@ -398,7 +399,6 @@ const Renderer = {
         }
     },
 
-    // 【修正】アクションボタンが action-buttons 内で切り替わってもタイマーが消えないように調整
     renderActionButtons(game) {
         const actionArea = document.getElementById('action-buttons');
         if (state.phase !== PHASE.RESULT && state.phase !== PHASE.FINAL_RESULT && game.allowedActions?.length > 0 && state.dealAnimationStep === -1) {
@@ -672,6 +672,7 @@ const Renderer = {
 
 const UI = {
     initEvents() {
+        // エラーの原因だった HTML 側の onclick="deselectTile(event)" を削除したので、ここで一元管理します
         document.getElementById('mahjong-table').addEventListener('click', (e) => {
             const tileEl = e.target.closest('.tile');
             if (tileEl) {
@@ -693,7 +694,7 @@ const UI = {
                         dispatch({ type: 'SET_SELECTED_TILE', payload: index });
                     }
                 }
-            } else if (!e.target.closest('#action-buttons')) {
+            } else if (!e.target.closest('#action-ui-area')) { // アクションUIエリア以外をクリックで選択解除
                 if (state.selectedTileIndex !== -1) {
                     dispatch({ type: 'SET_SELECTED_TILE', payload: -1 });
                 }
@@ -787,6 +788,7 @@ const UI = {
         if(options.kakan) options.kakan.forEach(t => container.appendChild(createOpt(t, 'KAKAN')));
     },
 
+    // 【修正】関数名のタイポを直し、待ち牌を表示できるようにしました
     updateWinningTilesDisplay(winningTiles) {
         const container = document.getElementById('winning-tiles-container');
         const list = document.getElementById('winning-tiles-list');
