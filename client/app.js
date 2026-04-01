@@ -7,7 +7,7 @@ let currentRoomStatus = 'LOBBY';
 let lastGameState = null;
 let previousDiscardsCount = {};
 let lastDiscardOrigin = { x: 0, y: 0 };
-let currentWinningTiles = []; // ★追加: 待ち牌データ保持
+let currentWinningTiles = []; 
 
 const tilesImage = new Image();
 tilesImage.src = 'tiles.png';
@@ -33,7 +33,6 @@ function handleServerMessage(data) {
         case 'CONNECTED': myPlayerId = data.payload.playerId; break;
         case 'ROOM_LIST': renderRoomList(data.payload); break;
         case 'ROOM_STATE': updateRoomState(data.payload); break;
-        // ★追加: サーバーからのリーチオプション、待ち牌情報を受信
         case 'REACH_OPTIONS': showReachModal(data.payload.discards); break;
         case 'TENPAI_INFO': 
             currentWinningTiles = data.payload.winningTiles; 
@@ -43,7 +42,6 @@ function handleServerMessage(data) {
     }
 }
 
-// ★追加: リーチ時のモーダル生成
 function showReachModal(discards) {
     const modal = document.getElementById('reach-modal');
     modal.style.display = 'flex';
@@ -57,21 +55,18 @@ function showReachModal(discards) {
         const reachableInfo = discards.find(d => d.index === idx);
         
         if (reachableInfo) {
-            // テンパイになる牌はクリック可能に
             tileDiv.classList.add('reachable-tile');
             tileDiv.onclick = () => {
                 sendAction('DO_RIICHI', { tileIndex: idx });
                 modal.style.display = 'none';
             };
         } else {
-            // 無効な牌はグレーアウト
             tileDiv.classList.add('disabled-tile');
         }
         handDiv.appendChild(tileDiv);
     });
 }
 
-// ★追加: 待ち牌UIの更新
 function updateWinningTilesDisplay() {
     const container = document.getElementById('winning-tiles-container');
     const list = document.getElementById('winning-tiles-list');
@@ -86,7 +81,7 @@ function updateWinningTilesDisplay() {
         });
         
         sorted.forEach(tileCode => {
-            list.appendChild(createTileElement(tileCode, true)); // smallサイズで表示
+            list.appendChild(createTileElement(tileCode, true)); 
         });
     } else {
         container.style.display = 'none';
@@ -110,7 +105,7 @@ function updateRoomState(state) {
         dealAnimationStep = -1;
         previousDiscardsCount = {};
         lastGameState = null;
-        currentWinningTiles = []; // ロビーに戻ったら待ち牌リセット
+        currentWinningTiles = []; 
         updateWinningTilesDisplay();
     } else {
         currentRoomStatus = state.status;
@@ -191,6 +186,7 @@ function renderGame(game) {
     const btnTsumo = document.getElementById('btn-tsumo');
     const btnRon = document.getElementById('btn-ron');
     const btnPon = document.getElementById('btn-pon'); 
+    const btnKan = document.getElementById('btn-kan'); // ★追加
     const btnRiichi = document.getElementById('btn-riichi');
     const btnPass = document.getElementById('btn-pass');
     const resultOverlay = document.getElementById('result-overlay');
@@ -208,6 +204,7 @@ function renderGame(game) {
             btnTsumo.style.display = game.allowedActions.includes('TSUMO') ? 'block' : 'none';
             btnRon.style.display = game.allowedActions.includes('RON') ? 'block' : 'none';
             btnPon.style.display = game.allowedActions.includes('PON') ? 'block' : 'none'; 
+            btnKan.style.display = game.allowedActions.includes('KAN') ? 'block' : 'none'; // ★追加
             btnRiichi.style.display = game.allowedActions.includes('RIICHI') ? 'block' : 'none';
             btnPass.style.display = game.allowedActions.includes('PASS') ? 'block' : 'none';
         } else {
@@ -265,7 +262,6 @@ function renderGame(game) {
             if (pid === myPlayerId && selectedTileIndex === item.originalIndex) {
                 tileDiv.classList.add('selected-tile');
             }
-            // ★変更: リーチ中はクリック操作（手動での打牌）を無効化
             if (pid === myPlayerId && isMyTurnAndCanDiscard && !isRiichi) {
                 tileDiv.onclick = (e) => {
                     e.stopPropagation();
@@ -287,8 +283,15 @@ function renderGame(game) {
         meldDiv.innerHTML = '';
         if (game.melds && game.melds[pid]) {
             game.melds[pid].forEach(m => {
+                // ★変更: カンの描画処理 (4枚)
                 if (m.type === 'koutsu') {
                     for(let i=0; i<3; i++) meldDiv.appendChild(createTileElement(m.tile, pos !== 'bottom'));
+                } else if (m.type === 'kantsu') {
+                    for(let i=0; i<4; i++) {
+                        let t = m.tile;
+                        if (!m.isOpen && (i === 0 || i === 3)) t = 'back'; // 暗槓は両端を裏にする
+                        meldDiv.appendChild(createTileElement(t, pos !== 'bottom'));
+                    }
                 }
                 const space = document.createElement('div');
                 space.style.width = '5px';

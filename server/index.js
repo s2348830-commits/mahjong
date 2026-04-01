@@ -3,6 +3,7 @@ const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
 const RoomManager = require('./RoomManager');
+const MahjongGame = require('./MahjongGame'); // ★追加
 
 const app = express();
 const server = http.createServer(app);
@@ -11,6 +12,9 @@ const wss = new WebSocket.Server({ server });
 app.use(express.static(path.join(__dirname, '../client')));
 
 const roomManager = new RoomManager();
+
+// ★追加: サーバー起動時に役の整合性テストを実行
+MahjongGame.testYaku(); 
 
 wss.on('connection', (ws) => {
     let playerId = Math.random().toString(36).substr(2, 9);
