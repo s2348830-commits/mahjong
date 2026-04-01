@@ -307,7 +307,7 @@ class MahjongGame {
                         if (isTsumo && isRinshan) { han++; yaku.push('嶺上開花'); }
                         if (!isTsumo && isChankan) { han++; yaku.push('槍槓'); }
                         if (isHaitei) { han++; yaku.push('海底摸月'); }
-                        if (isHoutei) { han++; yaku.push('河底捞魚'); }
+                        if (isHoutei) { han++; yaku.push('河底撈魚'); }
                         
                         if (!handNorm.some(t => t.match(/[19z]/))) { han++; yaku.push('タンヤオ'); }
                         
@@ -459,7 +459,6 @@ class MahjongGame {
                 if (!tile || typeof tile !== 'string') throw new Error('Invalid tile');
                 
                 self.players[playerId].discards.push(tile);
-                // 【修正】鳴かれても消えないフリテン専用の履歴に追加
                 self.players[playerId].furitenDiscards.push(tile); 
                 self.players[playerId].firstTurn = false;
                 return tile;
@@ -572,7 +571,6 @@ class MahjongGame {
         this.players = {};
         this.playerIds.forEach(id => {
             this.players[id] = { 
-                // 【追加】furitenDiscards: 鳴かれても消えないフリテン履歴, pao: 責任払い対象者
                 hand: [], discards: [], furitenDiscards: [], melds: [], 
                 riichi: false, doubleRiichi: false, openHand: false,
                 tempFuriten: false, riichiFuriten: false, firstTurn: true,
@@ -671,20 +669,18 @@ class MahjongGame {
     handleRyuukyoku(reason = '荒牌平局') {
         log(`Ryuukyoku: ${reason}`);
         
-        // 【追加】流し満貫の判定
         if (reason === '荒牌平局') {
             let nagashiWinners = [];
             let nagashiYakuList = [];
             
             this.playerIds.forEach(id => {
                 let p = this.players[id];
-                // 一度も鳴かれておらず、全てヤオチュー牌であること
                 if (p.discards.length > 0 && p.discards.length === p.furitenDiscards.length) {
                     let isAllYaochu = p.discards.every(d => CONSTANTS.YAOCHU.includes(this.yakuEvaluator.helper.safeNormalize(d)));
                     if (isAllYaochu) {
                         nagashiWinners.push(id);
                         let isDealer = (this.playerIds.indexOf(id) === this.dealerIndex);
-                        let point = this.scoreCalculator.calculate(5, 20, isDealer, true); // 満貫ツモ扱い
+                        let point = this.scoreCalculator.calculate(5, 20, isDealer, true); 
                         nagashiYakuList.push({ han: 5, fu: 20, yaku: ['流し満貫'], point: point });
                     }
                 }
@@ -769,7 +765,6 @@ class MahjongGame {
         setTimeout(() => this.nextRound(false, isDealerTenpai), 7000);
     }
 
-    // 【追加】責任払い（パオ）の確定チェック
     checkPao(playerId, tileNorm, discarderId) {
         let p = this.players[playerId];
         let sangenCount = p.melds.filter(m => m.isOpen && CONSTANTS.SANGEN.includes(this.yakuEvaluator.helper.safeNormalize(m.tile))).length;
@@ -821,7 +816,20 @@ class MahjongGame {
         return winning;
     }
 
-    // 【修正】フリテンチェックに furitenDiscards を使用
+    // 【復元】誤って削除されてしまったテンパイ判定関数
+    isTenpai(playerId) {
+        let p = this.players[playerId];
+        let hLen = p.hand.length;
+        if (hLen % 3 === 1) return this.getWinningTiles(playerId, p.hand).length > 0;
+        if (hLen % 3 === 2) {
+            for (let i = 0; i < p.hand.length; i++) {
+                let testHand = [...p.hand]; testHand.splice(i, 1);
+                if (this.getWinningTiles(playerId, testHand).length > 0) return true;
+            }
+        }
+        return false;
+    }
+
     isFuriten(playerId) {
         let p = this.players[playerId];
         if (p.tempFuriten || p.riichiFuriten) return true;
@@ -1009,7 +1017,6 @@ class MahjongGame {
                 let yakuData = this.winningYaku[idx];
                 let pt = yakuData.point.total + (this.honba * CONSTANTS.COST.HONBA);
                 
-                // 【追加】パオ（責任払い）の適用
                 let paoPlayer = null;
                 if (this.players[pId].pao && (yakuData.yaku.includes('大三元') || yakuData.yaku.includes('大四喜'))) {
                     paoPlayer = this.players[pId].pao;
@@ -1059,7 +1066,6 @@ class MahjongGame {
             let normT = this.yakuEvaluator.helper.safeNormalize(t);
             
             player.firstTurn = false;
-            // 鳴かれた牌は「河（表示上）」からは消すが「フリテン履歴」には残るため pop のみ
             this.players[this.lastDiscardPlayer].discards.pop(); 
             
             let c = 0;
@@ -1073,7 +1079,7 @@ class MahjongGame {
             if (ponPlayer) {
                 player.forbiddenDiscards = [normT];
                 player.melds.push({ type: 'koutsu', tile: t, isOpen: true });
-                this.checkPao(activeId, normT, this.lastDiscardPlayer); // パオのチェック
+                this.checkPao(activeId, normT, this.lastDiscardPlayer); 
                 
                 this.currentTurn = this.playerIds.indexOf(activeId);
                 this.actionResponses = {}; this.waitingFor = [];
@@ -1082,7 +1088,7 @@ class MahjongGame {
                 this.triggerAILogic(activeId); 
             } else if (minkanPlayer) {
                 player.melds.push({ type: 'kantsu', tile: t, isOpen: true });
-                this.checkPao(activeId, normT, this.lastDiscardPlayer); // パオのチェック
+                this.checkPao(activeId, normT, this.lastDiscardPlayer); 
                 
                 this.currentTurn = this.playerIds.indexOf(activeId);
                 this.actionResponses = {}; this.waitingFor = [];
@@ -1271,7 +1277,6 @@ class MahjongGame {
                     let pInfo = yakuResult.point;
                     let isDealerWin = (playerId === this.playerIds[this.dealerIndex]);
                     
-                    // 【追加】パオ（責任払い）の適用
                     let paoPlayer = null;
                     if (this.players[playerId].pao && (yakuResult.yaku.includes('大三元') || yakuResult.yaku.includes('大四喜'))) {
                         paoPlayer = this.players[playerId].pao;
