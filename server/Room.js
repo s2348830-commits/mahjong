@@ -1,7 +1,8 @@
 const MahjongGame = require('./MahjongGame');
 
 class Room {
-    constructor(id, name) {
+    // 【修正】引数に maxPlayers を追加して初期設定を反映する
+    constructor(id, name, maxPlayers = 4) {
         this.id = id;
         this.name = name;
         this.hostId = null;
@@ -10,7 +11,7 @@ class Room {
         this.game = null;
 
         this.settings = {
-            mode: 4,              
+            mode: maxPlayers,              
             length: 'east',       
             thinkTime: '5+10',    
             advanced: false,      
@@ -93,7 +94,6 @@ class Room {
         }
     }
 
-    // 【追加】ゲーム完全決着時のリザルト処理
     handleGameEnd(results, reason) {
         this.status = 'FINISHED_GAME';
         if (this.game) {
@@ -102,7 +102,6 @@ class Room {
         }
         this.broadcastState();
         
-        // 15秒間リザルトを表示した後、ロビーに戻す
         setTimeout(() => {
             this.endGame();
         }, 15000);

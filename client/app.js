@@ -72,10 +72,12 @@ function dispatch(action) {
                     state.hasDrawnThisTurn = true;
                     state.resetCache();
                     document.getElementById('final-result-overlay').style.display = 'none';
+                    Renderer.stopTimer();
                 } 
                 else if (serverState.status === 'FINISHED_GAME') {
                     state.phase = PHASE.FINAL_RESULT;
                     state.game = serverState.game;
+                    Renderer.stopTimer();
                 }
                 else if (serverState.status === 'PLAYING') {
                     if (state.phase === PHASE.LOBBY) {
@@ -157,6 +159,7 @@ function render() {
         if (phaseChanged) UI.showScreen('game-screen');
         if (state.game) {
             Renderer.renderFinalResult(state.game);
+            Renderer.stopTimer();
         }
     }
     else { 
@@ -170,6 +173,16 @@ function render() {
             
             UI.renderReachModal(state.reachOptions);
             UI.renderWinningTilesDisplay(state.currentWinningTiles);
+
+            // 【追加】放置対策タイマーの制御
+            const prevGame = prevState ? prevState.game : null;
+            if (!prevGame || prevGame.turnPlayerId !== state.game.turnPlayerId || prevGame.phase !== state.game.phase || prevGame.lastDiscard?.tile !== state.game.lastDiscard?.tile) {
+                if (state.game.phase === 'DRAW' || state.game.phase === 'ACTION_WAIT') {
+                    Renderer.startTimer(state.room.settings.thinkTime);
+                } else {
+                    Renderer.stopTimer();
+                }
+            }
         }
     }
 
@@ -233,7 +246,6 @@ const Utils = {
         return arr.join(',');
     },
 
-    // 【追加】ドラ牌の計算用ユーティリティ
     getDoraTiles(indicators) {
         if (!indicators) return [];
         return indicators.map(ind => {
@@ -250,12 +262,11 @@ const Utils = {
 
     isDora(tileCode, doraTiles) {
         if (!tileCode || tileCode === 'back') return false;
-        if (tileCode[0] === '0') return true; // 赤ドラ
+        if (tileCode[0] === '0') return true; 
         const norm = tileCode.replace('0', '5');
         return doraTiles.includes(norm);
     },
 
-    // 【修正】引数に isDora と isForbidden を追加し、クラスを付与できるように変更
     createTileElement(tileCode, isSmall = false, isDora = false, isForbidden = false) {
         const tileDiv = document.createElement('div');
         tileDiv.className = `tile ${isSmall ? 'small' : ''}`;
@@ -326,6 +337,38 @@ const Network = {
 };
 
 const Renderer = {
+    // 【追加】タイマーUIの開始アニメーション
+    startTimer(timeStr) {
+        const bar = document.getElementById('timer-bar');
+        const container = document.getElementById('timer-bar-container');
+        if (!bar || !container) return;
+
+        let totalSeconds = 15;
+        if (timeStr) {
+            let parts = timeStr.split('+');
+            if (parts.length === 2) totalSeconds = parseInt(parts[0]) + parseInt(parts[1]);
+            else totalSeconds = parseInt(timeStr) || 15;
+        }
+        totalSeconds += 2; // サーバー側の猶予時間と合わせる
+
+        container.style.display = 'block';
+        bar.style.transition = 'none';
+        bar.style.width = '100%';
+        bar.style.backgroundColor = '#2ecc71';
+
+        // 強制リフローによるリセット適用
+        void bar.offsetWidth;
+
+        bar.style.transition = `width ${totalSeconds}s linear, background-color ${totalSeconds}s linear`;
+        bar.style.width = '0%';
+        bar.style.backgroundColor = '#e74c3c';
+    },
+
+    stopTimer() {
+        const container = document.getElementById('timer-bar-container');
+        if (container) container.style.display = 'none';
+    },
+
     renderGameInfo(game) {
         const phaseText = game.phase === 'DRAW' ? 'ツモ・打牌' : (game.phase === 'ACTION_WAIT' ? 'アクション待機中...' : '終局');
         const gameInfoEl = document.getElementById('game-info');
@@ -352,7 +395,6 @@ const Renderer = {
         if (state.phase !== PHASE.RESULT && state.phase !== PHASE.FINAL_RESULT && game.allowedActions?.length > 0 && state.dealAnimationStep === -1) {
             actionArea.style.display = 'flex';
             
-            // 【修正】KITA（北抜き）を追加
             ['TSUMO', 'RON', 'PON', 'CHI', 'RIICHI', 'PASS', 'KYUUSHU', 'KITA'].forEach(action => {
                 const btn = document.getElementById(`btn-${action.toLowerCase()}`);
                 if (btn) btn.style.display = game.allowedActions.includes(action) ? 'block' : 'none';
@@ -440,7 +482,6 @@ const Renderer = {
         const isTurn = (game.turnPlayerId === pid && game.phase === 'DRAW');
         const isRiichi = game.riichiPlayers?.[pid];
         
-        // 【追加】北抜き（ペー抜き）回数の表示
         const kitaCount = game.kitaPlayers?.[pid] || 0;
         const kitaHtml = kitaCount > 0 ? `<span style="color:#34db42; margin-left:5px;">(抜北:${kitaCount})</span>` : '';
 
@@ -487,7 +528,6 @@ const Renderer = {
         const forbidden = game.forbiddenDiscards || [];
 
         displayHand.forEach((item) => {
-            // 【追加】ドラ発光と喰い替え禁止のクラス付与
             const isDora = Utils.isDora(item.tileCode, doraTiles);
             const normCode = item.tileCode !== 'back' ? item.tileCode.replace('0', '5') : '';
             const isForbidden = isMyTurn && forbidden.includes(normCode);
@@ -615,7 +655,6 @@ const UI = {
         document.getElementById('mahjong-table').addEventListener('click', (e) => {
             const tileEl = e.target.closest('.tile');
             if (tileEl) {
-                // 【追加】喰い替え禁止の牌をクリックした場合は無視する
                 if (tileEl.classList.contains('forbidden-tile')) return;
 
                 const pid = tileEl.dataset.pid;
@@ -806,7 +845,8 @@ const UI = {
         });
     },
 
-    createRoom() { Network.sendAction('CREATE_ROOM', { roomName: "テスト部屋", maxPlayers: 4 }); },
+    // 【修正】引数 maxPlayers を受け取って部屋を作成
+    createRoom(maxPlayers = 4) { Network.sendAction('CREATE_ROOM', { roomName: "テスト部屋", maxPlayers: maxPlayers }); },
     searchRooms() { Network.sendAction('SEARCH_ROOMS'); },
     joinRoom(roomId) { Network.sendAction('JOIN_ROOM', { roomId }); },
     toggleReady() { Network.sendAction('TOGGLE_READY'); },
@@ -870,7 +910,7 @@ const UI = {
     }
 };
 
-window.createRoom = () => UI.createRoom();
+window.createRoom = (max) => UI.createRoom(max);
 window.searchRooms = () => UI.searchRooms();
 window.joinRoom = (id) => UI.joinRoom(id);
 window.toggleReady = () => UI.toggleReady();

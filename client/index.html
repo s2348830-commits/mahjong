@@ -21,7 +21,8 @@
     <div id="app">
         <div id="home-screen" class="screen">
             <h1>オンライン麻雀ロビー</h1>
-            <button onclick="createRoom()">部屋を作成 (4人)</button>
+            <button onclick="createRoom(4)">部屋を作成 (4人)</button>
+            <button onclick="createRoom(3)" style="background: #e67e22;">部屋を作成 (3人)</button>
             <button onclick="searchRooms()">部屋を検索</button>
             <ul id="room-list"></ul>
         </div>
@@ -109,6 +110,7 @@
                                 <div class="setting-button-group">
                                     <button type="button" class="hex-button" onclick="changeSettingRadio('cpuLevel', 'easy')">簡単</button>
                                     <button type="button" class="hex-button" onclick="changeSettingRadio('cpuLevel', 'normal')">普通</button>
+                                    <button type="button" class="hex-button" onclick="changeSettingRadio('cpuLevel', 'hard')">強い</button>
                                     <input type="hidden" name="cpuLevel" value="normal">
                                 </div>
                             </div>
@@ -133,6 +135,10 @@
 
         <div id="game-screen" class="screen" style="display:none; padding: 0;">
             
+            <div id="timer-bar-container" style="display:none; width:100%; height:6px; background:rgba(0,0,0,0.5); position:absolute; top:0; left:0; z-index:500;">
+                <div id="timer-bar" style="height:100%; width:100%; background:#2ecc71; transition: width 0.1s linear, background-color 0.3s;"></div>
+            </div>
+
             <div id="winning-tiles-container" style="display:none; position:absolute; top:20px; left:20px; background:rgba(0,0,0,0.7); padding:10px 15px; border-radius:8px; border:1px solid #f1c40f; z-index:150;">
                 <div style="font-size:0.9rem; font-weight:bold; margin-bottom:8px; color:#f1c40f; text-align:center;">待ち牌</div>
                 <div id="winning-tiles-list" class="hand" style="gap:2px;"></div>
@@ -183,7 +189,8 @@
                     <button id="btn-kan" onclick="sendGameAction('KAN')" style="display:none; background: #8e44ad;">カン</button>
                     <button id="btn-chi"  onclick="sendGameAction('CHI')" style="display:none; background: #27ae60;">チー</button>
                     <button id="btn-riichi" onclick="sendGameAction('RIICHI')" style="display:none; background: #e74c3c;">リーチ</button>
-                    <button id="btn-kita" onclick="sendGameAction('KITA')" style="display:none; background: #34495e;">北抜</button> <button id="btn-pass" onclick="sendGameAction('PASS')" style="display:none;">パス</button>
+                    <button id="btn-kita" onclick="sendGameAction('KITA')" style="display:none; background: #34495e;">北抜</button>
+                    <button id="btn-pass" onclick="sendGameAction('PASS')" style="display:none;">パス</button>
                     <button id="btn-kyuushu" onclick="sendGameAction('KYUUSHU')" style="display:none; background: #95a5a6;">九種</button>
                 </div>
 

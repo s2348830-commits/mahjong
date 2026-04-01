@@ -64,9 +64,53 @@ class MahjongGame {
 
         this.finalResults = null;
         this.endReason = null;
+        
+        // 【追加】放置対策用のタイマー
+        this.turnTimer = null;
 
         this._setupManagers();
         this.startRound();
+    }
+
+    // 【追加】思考時間の文字列（例: '5+10'）を秒数にパースする
+    parseThinkTime(str) {
+        if (!str) return 15;
+        let parts = str.split('+');
+        if (parts.length === 2) return parseInt(parts[0]) + parseInt(parts[1]);
+        return parseInt(str) || 15;
+    }
+
+    // 【追加】放置対策（AFK）タイマーの起動
+    resetTimer() {
+        clearTimeout(this.turnTimer);
+        if (this.phase === 'FINISHED' || this.phase === 'FINISHED_GAME') return;
+        
+        // 通信遅延やアニメーションを考慮して +2秒 の猶予を持たせる
+        let timeMs = this.parseThinkTime(this.settings.thinkTime) * 1000 + 2000;
+        
+        this.turnTimer = setTimeout(() => {
+            this.handleTimeout();
+        }, timeMs);
+    }
+
+    // 【追加】時間切れ時の自動処理
+    handleTimeout() {
+        if (this.phase === 'DRAW') {
+            let current = this.turnManager.getCurrent();
+            let p = this.players[current];
+            if (p) {
+                // 自動ツモ切り
+                let tileIndex = p.hand.length - 1;
+                this.handlePlayerAction(current, { type: 'DISCARD', payload: { tileIndex } });
+            }
+        } else if (this.phase === 'ACTION_WAIT') {
+            // 未応答のプレイヤー全員を自動で「パス」にする
+            this.waitingFor.forEach(id => {
+                if (!this.actionResponses[id]) {
+                    this.handlePlayerAction(id, { type: 'PASS' });
+                }
+            });
+        }
     }
 
     _setupManagers() {
@@ -245,6 +289,26 @@ class MahjongGame {
                         if (counts[y] >= 2) hasPair = true;
                     }
                     return hasPair;
+                },
+                // 【追加】ローカル役：十三不塔（シーサンプーター）の判定
+                isShiisanpuutaa: (handNorm) => {
+                    let counts = {};
+                    handNorm.forEach(t => counts[t] = (counts[t] || 0) + 1);
+                    let pairs = 0;
+                    for (let k in counts) {
+                        if (counts[k] > 2) return false;
+                        if (counts[k] === 2) pairs++;
+                    }
+                    if (pairs !== 1) return false;
+                    let suits = { m: [], p: [], s: [] };
+                    handNorm.forEach(t => { if (t[1] !== 'z') suits[t[1]].push(parseInt(t[0])); });
+                    for (let suit in suits) {
+                        let arr = suits[suit].sort((a,b) => a-b);
+                        for (let i = 0; i < arr.length - 1; i++) {
+                            if (arr[i+1] - arr[i] < 3) return false; 
+                        }
+                    }
+                    return true;
                 }
             },
             standard: {
@@ -390,6 +454,14 @@ class MahjongGame {
                 let result = null;
 
                 if (isMenzen && handNorm.length === 14) {
+                    // 【追加】ローカル役：十三不塔
+                    if (stateObj.settings.localYaku && stateObj.isFirstTurn && stateObj.kanCount === 0) {
+                        if (self.yakuEvaluator.special.isShiisanpuutaa(handNorm)) {
+                            let point = self.scoreCalculator.calculate(13, 20, stateObj.isDealer, stateObj.isTsumo);
+                            return { han: 13, yaku: ['十三不塔'], fu: 20, point: point };
+                        }
+                    }
+
                     if (self.yakuEvaluator.special.isKokushi(counts)) {
                         let han = 13 + (startYakuman.length * 13); 
                         let yaku = counts[winTile] === 2 ? ['国士無双十三面待ち'] : ['国士無双'];
@@ -418,7 +490,15 @@ class MahjongGame {
                     result = standardResult;
                 }
 
+                // 【追加】ローカル役：人和（レンホウ）
                 if (result && result.han > 0) {
+                    if (stateObj.settings.localYaku && !isTsumo && stateObj.isFirstTurn && stateObj.kanCount === 0 && !stateObj.isDealer) {
+                        result.han = 13;
+                        result.yaku = ['人和'];
+                        result.point = self.scoreCalculator.calculate(13, 20, false, false);
+                        return result;
+                    }
+
                     let doraHan = self.yakuEvaluator.helper.countDora(allTilesRaw, doraIndicators, uraDoraIndicators, isRiichi || isDoubleRiichi) + (stateObj.kitaCount || 0);
                     if (doraHan > 0 && result.han < 13) {
                         result.han += doraHan;
@@ -503,6 +583,17 @@ class MahjongGame {
                     }
                 });
 
+                // 【追加】AIの高度な手作り（Honitsu判定用）
+                let suitCounts = { m: 0, p: 0, s: 0, z: 0 };
+                if (level === 'hard') {
+                    hand.forEach(t => { suitCounts[t[1]]++; });
+                }
+                let targetSuit = null;
+                if (level === 'hard') {
+                    let maxSuit = ['m','p','s'].reduce((a, b) => suitCounts[a] > suitCounts[b] ? a : b);
+                    if (suitCounts[maxSuit] >= 6) targetSuit = maxSuit;
+                }
+
                 for (let i = 0; i < hand.length; i++) {
                     let tile = hand[i];
                     let norm = self.yakuEvaluator.helper.safeNormalize(tile);
@@ -520,7 +611,22 @@ class MahjongGame {
                             if (tileCounts[tPrev] || tileCounts[tNext]) score -= 10; 
                             if (tileCounts[tPrev2] || tileCounts[tNext2]) score -= 5; 
                             if (num === 1 || num === 9) score += 5; 
-                        } else score += 15; 
+                            
+                            // 【追加】中張牌（3〜7）を大切にする（AI強化）
+                            if (level === 'hard' && num >= 3 && num <= 7) score -= 8;
+                        } else {
+                            score += 15; 
+                            // 【追加】役牌の対子・暗刻は大切にする
+                            if (level === 'hard' && (CONSTANTS.SANGEN.includes(norm) || norm === self.roundWind || norm === CONSTANTS.WINDS[(self.playerIds.indexOf(playerId) - self.dealerIndex + self.playerIds.length) % self.playerIds.length])) {
+                                if (tileCounts[norm] >= 2) score -= 30;
+                            }
+                        }
+                    }
+
+                    // 【追加】ホンイツ狙いの場合の重み付け
+                    if (level === 'hard' && targetSuit) {
+                        if (suit !== targetSuit && suit !== 'z') score += 40; // 違う色は真っ先に捨てる
+                        if (suit === targetSuit) score -= 20; // ターゲット色は残す
                     }
 
                     let isDora = self.doraIndicators.map(ind => self.yakuEvaluator.helper.getDoraTile(ind)).includes(norm);
@@ -605,6 +711,8 @@ class MahjongGame {
         this.handManager.draw(this.turnManager.getCurrent());
         this.room.broadcastState();
         this.triggerAILogic(this.turnManager.getCurrent());
+        
+        this.resetTimer(); // タイマー開始
     }
 
     checkGameEnd() {
@@ -634,6 +742,7 @@ class MahjongGame {
         }
 
         if (isEnd) {
+            clearTimeout(this.turnTimer);
             const sortedPlayers = [...this.playerIds].sort((a, b) => this.points[b] - this.points[a]);
             const finalResults = sortedPlayers.map((id, index) => ({
                 id, rank: index + 1, points: this.points[id]
@@ -667,6 +776,7 @@ class MahjongGame {
     }
 
     handleRyuukyoku(reason = '荒牌平局') {
+        clearTimeout(this.turnTimer);
         log(`Ryuukyoku: ${reason}`);
         
         if (reason === '荒牌平局') {
@@ -788,6 +898,7 @@ class MahjongGame {
             winTileRaw: actualWinTile, isTsumo: isTsumo, isRiichi: player.riichi, isDoubleRiichi: player.doubleRiichi,
             isIppatsu: player.riichi && this.isIppatsuValid, isRinshan: this.rinshan, isChankan: isChankan,
             isHoutei: (!isTsumo && this.wall.length === 0), isHaitei: (isTsumo && this.wall.length === 0),
+            isFirstTurn: player.firstTurn, kanCount: this.kanCount, isDealer: playerIndex === this.dealerIndex,
             isTenhou: (isTsumo && player.firstTurn && playerIndex === this.dealerIndex),
             isChiihou: (isTsumo && player.firstTurn && playerIndex !== this.dealerIndex && this.kanCount === 0),
             bakaze: this.roundWind, jikaze: CONSTANTS.WINDS[jikazeIdx], 
@@ -808,7 +919,11 @@ class MahjongGame {
             let totalCount = hand.filter(t => t === winTile).length;
             p.melds.forEach(m => { if (m.tile === winTile) totalCount += (m.type === 'kantsu' ? 4 : 3); });
             if (totalCount >= 4) continue;
-            let state = { winTileRaw: winTile, isTsumo: false, isRiichi: p.riichi, bakaze: this.roundWind, jikaze: CONSTANTS.WINDS[jikazeIdx], doraIndicators: [], uraDoraIndicators: [], kitaCount: p.kita };
+            let state = { 
+                winTileRaw: winTile, isTsumo: false, isRiichi: p.riichi, bakaze: this.roundWind, jikaze: CONSTANTS.WINDS[jikazeIdx], 
+                doraIndicators: [], uraDoraIndicators: [], kitaCount: p.kita, settings: this.settings, isFirstTurn: p.firstTurn, 
+                kanCount: this.kanCount, isDealer: playerIndex === this.dealerIndex 
+            };
             if (this.yakuEvaluator.evaluate([...hand, winTile], p.melds, state)) {
                 winning.push(winTile);
             }
@@ -816,7 +931,6 @@ class MahjongGame {
         return winning;
     }
 
-    // 【復元】誤って削除されてしまったテンパイ判定関数
     isTenpai(playerId) {
         let p = this.players[playerId];
         let hLen = p.hand.length;
@@ -925,7 +1039,8 @@ class MahjongGame {
         if (this.waitingFor.length > 0) {
             this.phase = 'ACTION_WAIT';
             this.room.broadcastState();
-            this.waitingFor.forEach(id => this.triggerAILogic(id));
+            this.triggerAILogic(null); // AIおよびタイマー発動用
+            this.resetTimer();
         } else {
             if (this.suukansanraPending) {
                 this.handleRyuukyoku('四槓散了');
@@ -966,6 +1081,7 @@ class MahjongGame {
         this.isIppatsuValid = false; 
         this.room.broadcastState();
         this.triggerAILogic(nextId);
+        this.resetTimer();
     }
 
     resolveActions() {
@@ -1005,6 +1121,7 @@ class MahjongGame {
         }
 
         if (ronPlayers.length > 0) {
+            clearTimeout(this.turnTimer);
             this.phase = 'FINISHED';
             this.winner = ronPlayers;
             this.winningType = ronPlayers.length === 1 ? 'RON' : 'RON_MULTI';
@@ -1052,6 +1169,7 @@ class MahjongGame {
                 this.rinshan = true;
                 this.room.broadcastState();
                 this.triggerAILogic(kakanPlayer);
+                this.resetTimer();
             } else {
                 this.handleRyuukyoku('四槓散了');
             }
@@ -1086,6 +1204,7 @@ class MahjongGame {
                 this.phase = 'DRAW'; 
                 this.room.broadcastState();
                 this.triggerAILogic(activeId); 
+                this.resetTimer();
             } else if (minkanPlayer) {
                 player.melds.push({ type: 'kantsu', tile: t, isOpen: true });
                 this.checkPao(activeId, normT, this.lastDiscardPlayer); 
@@ -1097,6 +1216,7 @@ class MahjongGame {
                     this.rinshan = true;
                     this.room.broadcastState();
                     this.triggerAILogic(activeId);
+                    this.resetTimer();
                 } else {
                     this.handleRyuukyoku('四槓散了');
                 }
@@ -1138,6 +1258,7 @@ class MahjongGame {
             this.phase = 'DRAW'; 
             this.room.broadcastState();
             this.triggerAILogic(activeId); 
+            this.resetTimer();
 
         } else {
             if (this.suukansanraPending) {
@@ -1164,6 +1285,7 @@ class MahjongGame {
                         this.rinshan = true;
                         this.room.broadcastState();
                         this.triggerAILogic(playerId);
+                        this.resetTimer();
                     } else {
                         this.handleRyuukyoku('荒牌平局');
                     }
@@ -1224,6 +1346,7 @@ class MahjongGame {
                         this.rinshan = true;
                         this.room.broadcastState();
                         this.triggerAILogic(playerId);
+                        this.resetTimer();
                     } else {
                         this.handleRyuukyoku('四槓散了');
                     }
@@ -1249,13 +1372,15 @@ class MahjongGame {
                         if (this.waitingFor.length > 0) {
                             this.phase = 'ACTION_WAIT';
                             this.room.broadcastState();
-                            this.waitingFor.forEach(id => this.triggerAILogic(id));
+                            this.triggerAILogic(null);
+                            this.resetTimer();
                         } else {
                             this.chankanTile = null;
                             if (this.handManager.drawRinshan(playerId)) {
                                 this.rinshan = true;
                                 this.room.broadcastState();
                                 this.triggerAILogic(playerId);
+                                this.resetTimer();
                             } else {
                                 this.handleRyuukyoku('四槓散了');
                             }
@@ -1271,6 +1396,7 @@ class MahjongGame {
             } else if (action.type === 'TSUMO') {
                 let yakuResult = this.checkWin(playerId, null, true);
                 if (yakuResult) {
+                    clearTimeout(this.turnTimer);
                     this.rinshan = false; 
                     this.phase = 'FINISHED'; this.winner = [playerId]; this.winningType = 'TSUMO'; this.winningYaku = [yakuResult]; 
                     
@@ -1342,58 +1468,83 @@ class MahjongGame {
     }
 
     triggerAILogic(playerId) {
-        let player = this.players[playerId];
-        const playerInfo = this.room.players.get(playerId);
-        let isBot = playerInfo && playerInfo.isAI;
+        // playerIdがnullの場合は全員の待機チェックのみ
+        if (playerId) {
+            let player = this.players[playerId];
+            const playerInfo = this.room.players.get(playerId);
+            let isBot = playerInfo && playerInfo.isAI;
 
-        if (this.phase === 'DRAW' && this.turnManager.isCurrentPlayer(playerId)) {
-            setTimeout(() => {
-                if (this.phase !== 'DRAW') return;
-                
-                if (isBot && this.settings.mode === 3 && player.hand.some(t => t.endsWith('4z'))) {
-                    this.handlePlayerAction(playerId, { type: 'KITA' });
-                    return;
-                }
-
-                let canWin = this.checkWin(playerId, null, true);
-                if (canWin) {
-                    this.handlePlayerAction(playerId, { type: 'TSUMO' });
-                } else {
-                    if (player.riichi) {
-                        this.handlePlayerAction(playerId, { type: 'DISCARD', payload: { tileIndex: player.hand.length - 1 }});
+            if (this.phase === 'DRAW' && this.turnManager.isCurrentPlayer(playerId)) {
+                setTimeout(() => {
+                    if (this.phase !== 'DRAW') return;
+                    
+                    if (isBot && this.settings.mode === 3 && player.hand.some(t => t.endsWith('4z'))) {
+                        this.handlePlayerAction(playerId, { type: 'KITA' });
                         return;
                     }
-                    if (isBot) {
-                        let level = this.settings.cpuLevel || 'normal';
-                        let bestAction = this.ai.chooseDiscard(playerId, level);
-                        this.handlePlayerAction(playerId, bestAction);
-                    }
-                }
-            }, 1000);
-        } else if (this.phase === 'ACTION_WAIT' && this.waitingFor.includes(playerId)) {
-            if (isBot) {
-                setTimeout(() => {
-                    if (this.phase !== 'ACTION_WAIT') return;
-                    let actualTargetTile = this.chankanTile !== null ? this.chankanTile : this.lastDiscardTile;
-                    if (!this.isFuriten(playerId) && this.checkWin(playerId, actualTargetTile, false, this.chankanTile !== null)) {
-                        this.handlePlayerAction(playerId, { type: 'RON' });
-                    } 
-                    else if (this.chankanTile === null && !player.riichi) {
-                        let discNorm = this.yakuEvaluator.helper.safeNormalize(this.lastDiscardTile);
-                        let counts = this.yakuEvaluator.helper.countTiles(player.hand);
-                        let jikazeIdx = (this.playerIds.indexOf(playerId) - this.dealerIndex + this.playerIds.length) % this.playerIds.length;
-                        let isYakuhai = CONSTANTS.SANGEN.includes(discNorm) || discNorm === this.roundWind || discNorm === CONSTANTS.WINDS[jikazeIdx];
-                        
-                        if (isYakuhai && counts[discNorm] >= 2) {
-                            this.handlePlayerAction(playerId, { type: 'PON' });
-                        } else {
-                            this.handlePlayerAction(playerId, { type: 'PASS' });
-                        }
+
+                    let canWin = this.checkWin(playerId, null, true);
+                    if (canWin) {
+                        this.handlePlayerAction(playerId, { type: 'TSUMO' });
                     } else {
-                        this.handlePlayerAction(playerId, { type: 'PASS' });
+                        if (player.riichi) {
+                            this.handlePlayerAction(playerId, { type: 'DISCARD', payload: { tileIndex: player.hand.length - 1 }});
+                            return;
+                        }
+                        if (isBot) {
+                            let level = this.settings.cpuLevel || 'normal';
+                            let bestAction = this.ai.chooseDiscard(playerId, level);
+                            this.handlePlayerAction(playerId, bestAction);
+                        }
                     }
-                }, 800);
+                }, 1000);
             }
+        }
+        
+        if (this.phase === 'ACTION_WAIT') {
+            this.waitingFor.forEach(id => {
+                const playerInfo = this.room.players.get(id);
+                if (playerInfo && playerInfo.isAI) {
+                    setTimeout(() => {
+                        if (this.phase !== 'ACTION_WAIT') return;
+                        let p = this.players[id];
+                        let level = this.settings.cpuLevel || 'normal';
+                        let actualTargetTile = this.chankanTile !== null ? this.chankanTile : this.lastDiscardTile;
+                        
+                        if (!this.isFuriten(id) && this.checkWin(id, actualTargetTile, false, this.chankanTile !== null)) {
+                            this.handlePlayerAction(id, { type: 'RON' });
+                        } 
+                        else if (this.chankanTile === null && !p.riichi) {
+                            let discNorm = this.yakuEvaluator.helper.safeNormalize(this.lastDiscardTile);
+                            let counts = this.yakuEvaluator.helper.countTiles(p.hand);
+                            let jikazeIdx = (this.playerIds.indexOf(id) - this.dealerIndex + this.playerIds.length) % this.playerIds.length;
+                            let isYakuhai = CONSTANTS.SANGEN.includes(discNorm) || discNorm === this.roundWind || discNorm === CONSTANTS.WINDS[jikazeIdx];
+                            
+                            // 【AI強化】役牌やタンヤオを鳴くロジック
+                            if (isYakuhai && counts[discNorm] >= 2) {
+                                this.handlePlayerAction(id, { type: 'PON' });
+                            } else if (level === 'hard') {
+                                let isTanyaoTile = !!discNorm.match(/^[2-8][mps]$/);
+                                if (isTanyaoTile && counts[discNorm] >= 2) {
+                                    this.handlePlayerAction(id, { type: 'PON' });
+                                } else {
+                                    let chiOpts = this.getChiOptions(id, this.lastDiscardTile);
+                                    let tanyaoChi = chiOpts.find(opt => opt.every(t => !!this.yakuEvaluator.helper.safeNormalize(t).match(/^[2-8][mps]$/)));
+                                    if (isTanyaoTile && tanyaoChi && this.actionResponses[id] === undefined) {
+                                        this.handlePlayerAction(id, { type: 'CHI', payload: { tiles: tanyaoChi }});
+                                    } else {
+                                        this.handlePlayerAction(id, { type: 'PASS' });
+                                    }
+                                }
+                            } else {
+                                this.handlePlayerAction(id, { type: 'PASS' });
+                            }
+                        } else {
+                            this.handlePlayerAction(id, { type: 'PASS' });
+                        }
+                    }, 800);
+                }
+            });
         }
     }
 
