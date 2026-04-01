@@ -161,7 +161,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 .action-btn {
     width: 70px; 
     height: 70px;
-    background-image: url('game_buttonUI.jpg'); /* jpgに変更 */
+    background-image: url('game_buttonUI.png'); /* jpgに変更 */
     background-size: 700% 100%; /* 横に7枚均等 */
     background-color: transparent;
     border: none;
