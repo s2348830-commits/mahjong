@@ -75,11 +75,11 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     transform-origin: center;
 }
 
-/* ★修正: flexからgridに変更し、6枚ごとに綺麗に折り返すように調整 */
+/* ★修正: 5枚切りに変更 */
 .discard-area {
     position: absolute; 
     display: grid; 
-    grid-template-columns: repeat(6, 23px);
+    grid-template-columns: repeat(5, 23px); /* 6から5に変更 */
     grid-auto-rows: 32px;
     gap: 2px;
     justify-content: center;
@@ -89,18 +89,18 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 .discard-area.left   { left: 5px; top: 50%; transform: translateY(-50%) rotate(90deg); }
 .discard-area.right  { right: 5px; top: 50%; transform: translateY(-50%) rotate(-90deg); }
 
-.player-area { position: absolute; display: flex; align-items: center; z-index: 10; }
+/* プレイヤーエリアのフレックスボックスは標準で横並び */
+.player-area { position: absolute; display: flex; align-items: flex-end; z-index: 10; }
 .player-area.bottom { bottom: 2%; left: 50%; transform: translateX(-50%); }
-.player-area.top    { top: 2%; left: 50%; transform: translateX(-50%) rotate(180deg); flex-direction: column-reverse; }
-.player-area.left   { left: 2%; top: 50%; transform: translateY(-50%) rotate(90deg); flex-direction: column-reverse; }
-.player-area.right  { right: 2%; top: 50%; transform: translateY(-50%) rotate(-90deg); flex-direction: column-reverse; }
+.player-area.top    { top: 2%; left: 50%; transform: translateX(-50%) rotate(180deg); }
+.player-area.left   { left: 2%; top: 50%; transform: translateY(-50%) rotate(90deg); }
+.player-area.right  { right: 2%; top: 50%; transform: translateY(-50%) rotate(-90deg); }
 
-.player-name { background: rgba(0,0,0,0.8); padding: 4px 12px; border-radius: 6px; font-weight: bold; color: #fff; font-size: 0.85rem; }
+.player-name { background: rgba(0,0,0,0.8); padding: 4px 12px; border-radius: 6px; font-weight: bold; color: #fff; font-size: 0.85rem; margin-right: 10px; margin-bottom: 20px;}
 .player-area.left .player-name, .player-area.right .player-name { writing-mode: vertical-rl; text-orientation: upright; transform: rotate(-90deg); margin-top: 6px; }
 
 .hand { display: flex; gap: 1px; justify-content: center; }
 
-/* ★修正: tileにposition:relativeを追加（光るエフェクト用） */
 .tile {
     position: relative;
     width: 44px; height: 60px; border-radius: 4px; cursor: pointer; transition: transform 0.1s;
@@ -110,7 +110,6 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 .tile.small { width: 23px; height: 32px; border-radius: 2px; }
 .tile.selected-tile { transform: translateY(-15px) !important; box-shadow: 0 0 0 3px #f1c40f !important; }
 
-/* ★追加: ドラ牌が光るアニメーションクラス */
 .dora-glow {
     box-shadow: 0 0 10px #f1c40f, inset 0 0 5px rgba(241, 196, 15, 0.5) !important;
     border: 1px solid #f39c12;
@@ -129,24 +128,65 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     100% { opacity: 1; }
 }
 
-/* ★追加: 喰い替え禁止牌（暗くして押せなくする） */
 .forbidden-tile {
     filter: brightness(0.4) grayscale(0.8) !important;
     pointer-events: none !important;
     cursor: not-allowed !important;
 }
 
+/* ★修正: アクションボタンとタイマーを右下に配置 */
 #action-buttons {
-    position: absolute; bottom: 25%; left: 50%;
-    transform: translateX(-50%); display: flex; gap: 15px; z-index: 100;
+    position: absolute; 
+    bottom: 85px; /* 手牌のすぐ上 */
+    right: 30px;  /* 右端 */
+    display: flex; 
+    align-items: center; /* タイマーと高さを合わせる */
+    gap: 10px; 
+    z-index: 200;
 }
-#action-buttons button {
-    font-size: 1.5rem; padding: 15px 30px; border-radius: 8px;
-    background: linear-gradient(135deg, #e67e22, #d35400); color: white;
-    border: 2px solid #f1c40f; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-    font-weight: bold; cursor: pointer; transition: transform 0.1s;
+
+/* ★追加: オレンジ色のタイマー数字 */
+#action-timer-display {
+    font-size: 4rem;
+    font-weight: bold;
+    color: #ff9800; /* オレンジ色 */
+    text-shadow: 0 0 10px #000, 3px 3px 5px rgba(0,0,0,0.8);
+    margin-right: 15px;
+    font-family: monospace;
 }
-#action-buttons button:active { transform: scale(0.95); }
+
+/* ★追加: アクションボタンの画像化設定 */
+.action-btn {
+    width: 65px; 
+    height: 65px;
+    background-image: url('game_buttonUI.png'); /* 画像ファイル */
+    background-repeat: no-repeat;
+    background-size: 900% 100%; /* 横に9個並んでいると仮定 (調整可能) */
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
+    cursor: pointer;
+    transition: transform 0.1s, filter 0.1s;
+    border-radius: 50%; /* ボタンが丸い場合 */
+    padding: 0;
+}
+.action-btn:hover { transform: translateY(-8px); filter: brightness(1.2); }
+.action-btn:active { transform: scale(0.9); }
+
+/* * 各ボタンの画像の切り取り位置 (background-position) 
+ * ※添付画像の並び順に合わせてパーセンテージ(%)を変更してください。
+ * 例: 横に等間隔で9個並んでいる場合は 0%, 12.5%, 25% ... となります。
+ */
+.btn-tsumo   { background-position: 0% 0%; }
+.btn-ron     { background-position: 12.5% 0%; }
+.btn-pon     { background-position: 25% 0%; }
+.btn-kan     { background-position: 37.5% 0%; }
+.btn-chi     { background-position: 50% 0%; }
+.btn-riichi  { background-position: 62.5% 0%; }
+.btn-kita    { background-position: 75% 0%; }
+.btn-pass    { background-position: 87.5% 0%; }
+.btn-kyuushu { background-position: 100% 0%; }
+
 
 #result-overlay {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -162,6 +202,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     100% { transform: scale(1); opacity: 1; }
 }
 
+/* レスポンシブ対応 (スマホ横画面・PC縮小時) */
 @media (max-height: 500px), screen and (orientation: landscape) and (max-width: 900px) {
     #mahjong-table {
         width: 100vw; height: 100dvh; max-width: none; max-height: none;
@@ -171,9 +212,9 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     .tile { width: 9vh; height: 12.3vh; }
     .tile.small { width: 4.8vh; height: 6.6vh; }
     
-    /* ★修正: スマホ横画面時のグリッドサイズ対応 */
+    /* 5枚切り対応 (スマホ) */
     .discard-area { 
-        grid-template-columns: repeat(6, 4.8vh);
+        grid-template-columns: repeat(5, 4.8vh);
         grid-auto-rows: 6.6vh;
         gap: 1px;
     }
@@ -186,6 +227,21 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     }
     #dora-indicators .tile {
         transform: scale(0.7);
+    }
+
+    /* アクションボタンとタイマーをスマホサイズに縮小 */
+    #action-buttons {
+        bottom: 14vh;
+        right: 3vw;
+        gap: 5px;
+    }
+    #action-timer-display {
+        font-size: 8vh;
+        margin-right: 2vw;
+    }
+    .action-btn {
+        width: 12vh;
+        height: 12vh;
     }
 }
 

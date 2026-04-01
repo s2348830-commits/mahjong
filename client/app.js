@@ -336,10 +336,11 @@ const Network = {
 };
 
 const Renderer = {
+    // 【修正】タイマーをオレンジ色のカウントダウンテキストに変更
     startTimer(timeStr) {
-        const bar = document.getElementById('timer-bar');
-        const container = document.getElementById('timer-bar-container');
-        if (!bar || !container) return;
+        this.stopTimer();
+        const display = document.getElementById('action-timer-display');
+        if (!display) return;
 
         let totalSeconds = 15;
         if (timeStr) {
@@ -347,23 +348,33 @@ const Renderer = {
             if (parts.length === 2) totalSeconds = parseInt(parts[0]) + parseInt(parts[1]);
             else totalSeconds = parseInt(timeStr) || 15;
         }
-        totalSeconds += 2; 
+        totalSeconds += 2; // サーバー猶予
 
-        container.style.display = 'block';
-        bar.style.transition = 'none';
-        bar.style.width = '100%';
-        bar.style.backgroundColor = '#2ecc71';
+        display.style.display = 'block';
+        display.innerText = totalSeconds;
+        display.style.color = '#ff9800'; // オレンジ色
 
-        void bar.offsetWidth;
-
-        bar.style.transition = `width ${totalSeconds}s linear, background-color ${totalSeconds}s linear`;
-        bar.style.width = '0%';
-        bar.style.backgroundColor = '#e74c3c';
+        this.timerInterval = setInterval(() => {
+            totalSeconds--;
+            if (totalSeconds < 0) totalSeconds = 0;
+            display.innerText = totalSeconds;
+            
+            if (totalSeconds <= 5) {
+                display.style.color = '#e74c3c'; // 残りわずかで赤色に
+            }
+            if (totalSeconds <= 0) {
+                this.stopTimer();
+            }
+        }, 1000);
     },
 
     stopTimer() {
-        const container = document.getElementById('timer-bar-container');
-        if (container) container.style.display = 'none';
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+        }
+        const display = document.getElementById('action-timer-display');
+        if (display) display.style.display = 'none';
     },
 
     renderGameInfo(game) {
@@ -479,14 +490,11 @@ const Renderer = {
         const isTurn = (game.turnPlayerId === pid && game.phase === 'DRAW');
         const isRiichi = game.riichiPlayers?.[pid];
         
-        const kitaCount = game.kitaPlayers?.[pid] || 0;
-        const kitaHtml = kitaCount > 0 ? `<span style="color:#34db42; margin-left:5px;">(抜北:${kitaCount})</span>` : '';
-
         const pts = game.players?.find(p => p.id === pid)?.points || 0;
         const dispName = pid === state.playerId ? 'You' : pid;
         
         nameEl.style.display = 'block';
-        nameEl.innerHTML = `${isRiichi ? '<span style="color:#e74c3c; background:#fff; padding:0 4px; border-radius:3px;">立直</span> ' : ''}${dispName} ${isTurn ? '👈' : ''}${kitaHtml}<br><span style="font-size:0.8rem; color:#bdc3c7;">${pts}点</span>`;
+        nameEl.innerHTML = `${isRiichi ? '<span style="color:#e74c3c; background:#fff; padding:0 4px; border-radius:3px;">立直</span> ' : ''}${dispName} ${isTurn ? '👈' : ''}<br><span style="font-size:0.8rem; color:#bdc3c7;">${pts}点</span>`;
         nameEl.style.color = isTurn ? '#f1c40f' : '#fff';
         nameEl.style.boxShadow = isTurn ? '0 0 10px rgba(241,196,15,0.5)' : 'none';
     },
@@ -536,15 +544,28 @@ const Renderer = {
         });
     },
 
+    // 【修正】鳴きエリア(meld)に「北抜き」の牌（4z）を配置するよう追加
     renderMelds(pid, pos, game) {
         const melds = game.melds?.[pid] || [];
-        const meldsCacheKey = Utils.generateCacheKey(melds);
+        const kitaCount = game.kitaPlayers?.[pid] || 0;
+        
+        const meldsCacheKey = Utils.generateCacheKey(melds) + '-kita-' + kitaCount;
         if (state.cache.melds[pid] === meldsCacheKey) return;
         state.cache.melds[pid] = meldsCacheKey;
 
         const meldDiv = document.getElementById(`meld-${pos}`);
         meldDiv.innerHTML = '';
         const doraTiles = Utils.getDoraTiles(game.doraIndicators);
+
+        // 北抜きの表示（左下配置に対応）
+        if (kitaCount > 0) {
+            for(let i = 0; i < kitaCount; i++) {
+                const isDora = Utils.isDora('4z', doraTiles);
+                meldDiv.appendChild(Utils.createTileElement('4z', pos !== 'bottom', isDora));
+            }
+            const space = document.createElement('div'); space.style.width = '5px';
+            meldDiv.appendChild(space);
+        }
 
         melds.forEach(m => {
             const count = m.type === 'kantsu' ? 4 : 3;
@@ -781,7 +802,6 @@ const UI = {
         } else container.style.display = 'none';
     },
 
-    // 【修正】サーバーから受信した設定をもとに、UIのボタン選択状態を完全に同期する
     renderLobby(room) {
         document.getElementById('room-name-display').innerText = room.roomName;
         const isHost = room.hostId === state.playerId;
@@ -888,7 +908,6 @@ const UI = {
         });
     },
 
-    // 【修正】部屋作成はデフォルト（人数指定なし）に戻す
     createRoom() { Network.sendAction('CREATE_ROOM', { roomName: "テスト部屋", maxPlayers: 4 }); },
     searchRooms() { Network.sendAction('SEARCH_ROOMS'); },
     joinRoom(roomId) { Network.sendAction('JOIN_ROOM', { roomId }); },
@@ -929,7 +948,6 @@ const UI = {
     kickPlayer(targetId) { if (confirm(`キックしますか？`)) Network.sendAction('KICK_PLAYER', { targetId }); },
     addBot() { Network.sendAction('ADD_BOT'); },
     
-    // 【修正】設定ボタンを押した際にUIを更新して送信
     changeSettingRadio(name, value) {
         const el = document.querySelector(`input[name="${name}"]`);
         if (el) { 
