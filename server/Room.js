@@ -1,7 +1,6 @@
 const MahjongGame = require('./MahjongGame');
 
 class Room {
-    // 【修正】引数に maxPlayers を追加して初期設定を反映する
     constructor(id, name, maxPlayers = 4) {
         this.id = id;
         this.name = name;
@@ -54,10 +53,15 @@ class Room {
             }
             else if (action.type === 'CHANGE_SETTINGS' && playerId === this.hostId) {
                 const newSettings = action.payload;
+                
+                // 【修正】現在部屋にいる人数よりも少ないモード（4人いるのに3人麻雀など）への変更はブロックする
                 if (newSettings.mode < this.players.size) return;
 
                 this.settings = { ...this.settings, ...newSettings };
                 this.maxPlayers = this.settings.mode; 
+                
+                // 人数が減った場合、すでに全員の準備が完了していればゲームを開始する
+                this.checkStartGame();
                 this.broadcastState();
             }
             else if (action.type === 'KICK_PLAYER' && playerId === this.hostId) {

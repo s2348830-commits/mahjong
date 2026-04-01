@@ -174,7 +174,6 @@ function render() {
             UI.renderReachModal(state.reachOptions);
             UI.renderWinningTilesDisplay(state.currentWinningTiles);
 
-            // 【追加】放置対策タイマーの制御
             const prevGame = prevState ? prevState.game : null;
             if (!prevGame || prevGame.turnPlayerId !== state.game.turnPlayerId || prevGame.phase !== state.game.phase || prevGame.lastDiscard?.tile !== state.game.lastDiscard?.tile) {
                 if (state.game.phase === 'DRAW' || state.game.phase === 'ACTION_WAIT') {
@@ -337,7 +336,6 @@ const Network = {
 };
 
 const Renderer = {
-    // 【追加】タイマーUIの開始アニメーション
     startTimer(timeStr) {
         const bar = document.getElementById('timer-bar');
         const container = document.getElementById('timer-bar-container');
@@ -349,14 +347,13 @@ const Renderer = {
             if (parts.length === 2) totalSeconds = parseInt(parts[0]) + parseInt(parts[1]);
             else totalSeconds = parseInt(timeStr) || 15;
         }
-        totalSeconds += 2; // サーバー側の猶予時間と合わせる
+        totalSeconds += 2; 
 
         container.style.display = 'block';
         bar.style.transition = 'none';
         bar.style.width = '100%';
         bar.style.backgroundColor = '#2ecc71';
 
-        // 強制リフローによるリセット適用
         void bar.offsetWidth;
 
         bar.style.transition = `width ${totalSeconds}s linear, background-color ${totalSeconds}s linear`;
@@ -784,6 +781,7 @@ const UI = {
         } else container.style.display = 'none';
     },
 
+    // 【修正】サーバーから受信した設定をもとに、UIのボタン選択状態を完全に同期する
     renderLobby(room) {
         document.getElementById('room-name-display').innerText = room.roomName;
         const isHost = room.hostId === state.playerId;
@@ -791,6 +789,51 @@ const UI = {
         document.getElementById('host-only-buttons').style.display = isHost ? 'block' : 'none';
         document.getElementById('guest-badge').style.display = isHost ? 'none' : 'inline';
         
+        const settings = room.settings;
+        if (settings) {
+            const updateRadioUI = (name, value) => {
+                const hiddenInput = document.querySelector(`input[name="${name}"]`);
+                if (hiddenInput) hiddenInput.value = value;
+                
+                const group = hiddenInput ? hiddenInput.closest('.setting-button-group') : null;
+                if (group) {
+                    group.querySelectorAll('.hex-button').forEach(btn => {
+                        const onclickStr = btn.getAttribute('onclick') || '';
+                        let isMatch = false;
+                        if (typeof value === 'string') {
+                            isMatch = onclickStr.includes(`'${value}'`) || onclickStr.includes(`"${value}"`);
+                        } else {
+                            isMatch = onclickStr.includes(`, ${value})`) || onclickStr.includes(`,${value})`);
+                        }
+                        
+                        if (isMatch) {
+                            btn.classList.add('selected');
+                        } else {
+                            btn.classList.remove('selected');
+                        }
+                    });
+                }
+            };
+
+            updateRadioUI('mode', settings.mode);
+            updateRadioUI('length', settings.length);
+            updateRadioUI('thinkTime', settings.thinkTime);
+            updateRadioUI('advanced', settings.advanced);
+            updateRadioUI('tobi', settings.tobi);
+            updateRadioUI('localYaku', settings.localYaku);
+            updateRadioUI('akaDora', settings.akaDora);
+            updateRadioUI('kuitan', settings.kuitan);
+            updateRadioUI('cpuLevel', settings.cpuLevel);
+            updateRadioUI('openHands', settings.openHands);
+
+            const startPointsInput = document.getElementById('startPoints');
+            if (startPointsInput) startPointsInput.value = settings.startPoints;
+            const targetPointsInput = document.getElementById('targetPoints');
+            if (targetPointsInput) targetPointsInput.value = settings.targetPoints;
+
+            document.getElementById('advanced-settings').style.display = settings.advanced ? 'block' : 'none';
+        }
+
         document.getElementById('player-list').innerHTML = room.players.map(p => {
             const hostIcon = p.id === room.hostId ? '👑 ' : '';
             const readyText = p.isReady ? '<span style="color:#2ecc71;">(準備完了)</span>' : '(準備中)';
@@ -845,8 +888,8 @@ const UI = {
         });
     },
 
-    // 【修正】引数 maxPlayers を受け取って部屋を作成
-    createRoom(maxPlayers = 4) { Network.sendAction('CREATE_ROOM', { roomName: "テスト部屋", maxPlayers: maxPlayers }); },
+    // 【修正】部屋作成はデフォルト（人数指定なし）に戻す
+    createRoom() { Network.sendAction('CREATE_ROOM', { roomName: "テスト部屋", maxPlayers: 4 }); },
     searchRooms() { Network.sendAction('SEARCH_ROOMS'); },
     joinRoom(roomId) { Network.sendAction('JOIN_ROOM', { roomId }); },
     toggleReady() { Network.sendAction('TOGGLE_READY'); },
@@ -885,10 +928,16 @@ const UI = {
 
     kickPlayer(targetId) { if (confirm(`キックしますか？`)) Network.sendAction('KICK_PLAYER', { targetId }); },
     addBot() { Network.sendAction('ADD_BOT'); },
+    
+    // 【修正】設定ボタンを押した際にUIを更新して送信
     changeSettingRadio(name, value) {
         const el = document.querySelector(`input[name="${name}"]`);
-        if (el) { el.value = value; this.syncSettings(); }
+        if (el) { 
+            el.value = value; 
+            this.syncSettings(); 
+        }
     },
+    
     syncSettings() {
         const isAdvanced = document.querySelector('input[name="advanced"]').value === 'true';
         document.getElementById('advanced-settings').style.display = isAdvanced ? 'block' : 'none';
@@ -910,7 +959,7 @@ const UI = {
     }
 };
 
-window.createRoom = (max) => UI.createRoom(max);
+window.createRoom = () => UI.createRoom();
 window.searchRooms = () => UI.searchRooms();
 window.joinRoom = (id) => UI.joinRoom(id);
 window.toggleReady = () => UI.toggleReady();
