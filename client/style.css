@@ -75,21 +75,21 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     transform-origin: center;
 }
 
-/* ★修正: 5枚切りに変更 */
+/* ★修正: 完全に1列5個で改行させる厳格なGrid設定 */
 .discard-area {
     position: absolute; 
     display: grid; 
-    grid-template-columns: repeat(5, 23px); /* 6から5に変更 */
+    grid-template-columns: repeat(5, 23px); /* 5枚固定 */
     grid-auto-rows: 32px;
     gap: 2px;
     justify-content: center;
+    width: calc(23px * 5 + 2px * 4); /* 横幅を強制固定して下の段に落とす */
 }
 .discard-area.bottom { bottom: 5px; left: 50%; transform: translateX(-50%); }
 .discard-area.top    { top: 5px; left: 50%; transform: translateX(-50%) rotate(180deg); }
 .discard-area.left   { left: 5px; top: 50%; transform: translateY(-50%) rotate(90deg); }
 .discard-area.right  { right: 5px; top: 50%; transform: translateY(-50%) rotate(-90deg); }
 
-/* プレイヤーエリアのフレックスボックスは標準で横並び */
 .player-area { position: absolute; display: flex; align-items: flex-end; z-index: 10; }
 .player-area.bottom { bottom: 2%; left: 50%; transform: translateX(-50%); }
 .player-area.top    { top: 2%; left: 50%; transform: translateX(-50%) rotate(180deg); }
@@ -134,58 +134,69 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     cursor: not-allowed !important;
 }
 
-/* ★修正: アクションボタンとタイマーを右下に配置 */
-#action-buttons {
+/* ★修正: 右下（手牌の上）のUIエリア全体の設定 */
+#action-ui-area {
     position: absolute; 
-    bottom: 85px; /* 手牌のすぐ上 */
-    right: 30px;  /* 右端 */
+    bottom: 110px; /* 手牌のすぐ上 */
+    right: 30px; 
     display: flex; 
-    align-items: center; /* タイマーと高さを合わせる */
-    gap: 10px; 
+    align-items: center; 
+    gap: 15px; 
     z-index: 200;
 }
 
-/* ★追加: オレンジ色のタイマー数字 */
+/* ★修正: タイマーをオレンジ色の光る数字に */
 #action-timer-display {
-    font-size: 4rem;
+    font-size: 5rem;
     font-weight: bold;
     color: #ff9800; /* オレンジ色 */
-    text-shadow: 0 0 10px #000, 3px 3px 5px rgba(0,0,0,0.8);
-    margin-right: 15px;
+    text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 0 15px rgba(255,152,0,0.8);
     font-family: monospace;
+    display: none;
 }
 
-/* ★追加: アクションボタンの画像化設定 */
+#action-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+/* ★修正: アクションボタンを画像として表示 (もしjpgなら拡張子を書き換えてください) */
 .action-btn {
-    width: 65px; 
-    height: 65px;
-    background-image: url('game_buttonUI.png'); /* 画像ファイル */
-    background-repeat: no-repeat;
-    background-size: 900% 100%; /* 横に9個並んでいると仮定 (調整可能) */
+    width: 70px; 
+    height: 70px;
+    background-image: url('game_buttonUI.png'); 
+    background-size: 700% 100%; /* 横に7枚のボタンが並んでいると仮定 */
     background-color: transparent;
     border: none;
     box-shadow: none;
     cursor: pointer;
     transition: transform 0.1s, filter 0.1s;
-    border-radius: 50%; /* ボタンが丸い場合 */
+    border-radius: 50%; 
     padding: 0;
 }
 .action-btn:hover { transform: translateY(-8px); filter: brightness(1.2); }
 .action-btn:active { transform: scale(0.9); }
 
-/* * 各ボタンの画像の切り取り位置 (background-position) 
- * ※添付画像の並び順に合わせてパーセンテージ(%)を変更してください。
- * 例: 横に等間隔で9個並んでいる場合は 0%, 12.5%, 25% ... となります。
+/* 画像にない特殊ボタン（リーチ等）用のフォールバックテキストボタン */
+.action-btn.text-btn {
+    background-image: none;
+    background-color: #e74c3c;
+    color: white;
+    font-size: 1.2rem;
+    font-weight: bold;
+    border: 2px solid #fff;
+}
+
+/* * ★画像の切り取り位置（ご提示の並び順で均等に切り取り）
+ * もし画像の並びが異なる場合、またはズレる場合は 16.66% の数値を変更して調整してください。
  */
-.btn-tsumo   { background-position: 0% 0%; }
-.btn-ron     { background-position: 12.5% 0%; }
-.btn-pon     { background-position: 25% 0%; }
-.btn-kan     { background-position: 37.5% 0%; }
-.btn-chi     { background-position: 50% 0%; }
-.btn-riichi  { background-position: 62.5% 0%; }
-.btn-kita    { background-position: 75% 0%; }
-.btn-pass    { background-position: 87.5% 0%; }
-.btn-kyuushu { background-position: 100% 0%; }
+.btn-ron   { background-position: 0% 0%; }       /* 1番目 */
+.btn-tsumo { background-position: 16.66% 0%; }   /* 2番目 */
+.btn-kan   { background-position: 33.33% 0%; }   /* 3番目 */
+.btn-pon   { background-position: 50% 0%; }      /* 4番目 */
+.btn-chi   { background-position: 66.66% 0%; }   /* 5番目 */
+.btn-kita  { background-position: 83.33% 0%; }   /* 6番目 */
+.btn-pass  { background-position: 100% 0%; }     /* 7番目 */
 
 
 #result-overlay {
@@ -217,6 +228,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
         grid-template-columns: repeat(5, 4.8vh);
         grid-auto-rows: 6.6vh;
         gap: 1px;
+        width: auto;
     }
     .player-area.left { left: 3%; }
     .player-area.right { right: 3%; }
@@ -229,15 +241,14 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
         transform: scale(0.7);
     }
 
-    /* アクションボタンとタイマーをスマホサイズに縮小 */
-    #action-buttons {
-        bottom: 14vh;
-        right: 3vw;
-        gap: 5px;
+    /* アクションUIをスマホサイズに縮小 */
+    #action-ui-area {
+        bottom: 15vh;
+        right: 2vw;
+        gap: 10px;
     }
     #action-timer-display {
-        font-size: 8vh;
-        margin-right: 2vw;
+        font-size: 10vh;
     }
     .action-btn {
         width: 12vh;

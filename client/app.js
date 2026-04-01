@@ -336,7 +336,7 @@ const Network = {
 };
 
 const Renderer = {
-    // 【修正】タイマーをオレンジ色のカウントダウンテキストに変更
+    // 【修正】タイマーをオレンジ色のカウントダウン数字に変更
     startTimer(timeStr) {
         this.stopTimer();
         const display = document.getElementById('action-timer-display');
@@ -360,7 +360,7 @@ const Renderer = {
             display.innerText = totalSeconds;
             
             if (totalSeconds <= 5) {
-                display.style.color = '#e74c3c'; // 残りわずかで赤色に
+                display.style.color = '#e74c3c'; // 残りわずかで赤色
             }
             if (totalSeconds <= 0) {
                 this.stopTimer();
@@ -398,6 +398,7 @@ const Renderer = {
         }
     },
 
+    // 【修正】アクションボタンが action-buttons 内で切り替わってもタイマーが消えないように調整
     renderActionButtons(game) {
         const actionArea = document.getElementById('action-buttons');
         if (state.phase !== PHASE.RESULT && state.phase !== PHASE.FINAL_RESULT && game.allowedActions?.length > 0 && state.dealAnimationStep === -1) {
@@ -490,11 +491,14 @@ const Renderer = {
         const isTurn = (game.turnPlayerId === pid && game.phase === 'DRAW');
         const isRiichi = game.riichiPlayers?.[pid];
         
+        const kitaCount = game.kitaPlayers?.[pid] || 0;
+        const kitaHtml = kitaCount > 0 ? `<span style="color:#34db42; margin-left:5px;">(抜北:${kitaCount})</span>` : '';
+
         const pts = game.players?.find(p => p.id === pid)?.points || 0;
         const dispName = pid === state.playerId ? 'You' : pid;
         
         nameEl.style.display = 'block';
-        nameEl.innerHTML = `${isRiichi ? '<span style="color:#e74c3c; background:#fff; padding:0 4px; border-radius:3px;">立直</span> ' : ''}${dispName} ${isTurn ? '👈' : ''}<br><span style="font-size:0.8rem; color:#bdc3c7;">${pts}点</span>`;
+        nameEl.innerHTML = `${isRiichi ? '<span style="color:#e74c3c; background:#fff; padding:0 4px; border-radius:3px;">立直</span> ' : ''}${dispName} ${isTurn ? '👈' : ''}${kitaHtml}<br><span style="font-size:0.8rem; color:#bdc3c7;">${pts}点</span>`;
         nameEl.style.color = isTurn ? '#f1c40f' : '#fff';
         nameEl.style.boxShadow = isTurn ? '0 0 10px rgba(241,196,15,0.5)' : 'none';
     },
@@ -544,7 +548,6 @@ const Renderer = {
         });
     },
 
-    // 【修正】鳴きエリア(meld)に「北抜き」の牌（4z）を配置するよう追加
     renderMelds(pid, pos, game) {
         const melds = game.melds?.[pid] || [];
         const kitaCount = game.kitaPlayers?.[pid] || 0;
@@ -557,7 +560,6 @@ const Renderer = {
         meldDiv.innerHTML = '';
         const doraTiles = Utils.getDoraTiles(game.doraIndicators);
 
-        // 北抜きの表示（左下配置に対応）
         if (kitaCount > 0) {
             for(let i = 0; i < kitaCount; i++) {
                 const isDora = Utils.isDora('4z', doraTiles);
