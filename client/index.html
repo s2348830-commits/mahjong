@@ -159,8 +159,10 @@
                     <button id="btn-ron" onclick="sendGameAction('RON')" style="display:none;">ロン</button>
                     <button id="btn-pon" onclick="sendGameAction('PON')" style="display:none; background: #3498db;">ポン</button>
                     <button id="btn-kan" onclick="sendGameAction('KAN')" style="display:none; background: #8e44ad;">カン</button>
+                    <button id="btn-chi"  onclick="sendGameAction('CHI')" style="display:none; background: #27ae60;">チー</button>
                     <button id="btn-riichi" onclick="sendGameAction('RIICHI')" style="display:none; background: #e74c3c;">リーチ</button>
                     <button id="btn-pass" onclick="sendGameAction('PASS')" style="display:none;">パス</button>
+                    <button id="btn-kyuushu" onclick="sendGameAction('KYUUSHU')" style="display:none; background: #95a5a6;">九種</button>
                 </div>
 
                 <div id="area-top" class="player-area top" style="display:none;">
@@ -190,6 +192,12 @@
                     <div id="discard-right" class="discard-area right" style="display:none;"></div>
                     <div id="discard-bottom" class="discard-area bottom"></div>
                 </div>
+
+                <div id="dora-area" style="display:none;">
+                    <div style="color:#f1c40f; font-size:0.8rem; font-weight:bold; margin-right:5px; display:flex; align-items:center; white-space:nowrap;">ドラ表示牌:</div>
+                    <div id="dora-indicators" class="hand"></div>
+                </div>
+
             </div>
         </div>
     </div>

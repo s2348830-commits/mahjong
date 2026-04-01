@@ -53,6 +53,29 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     background-color: rgba(0, 0, 0, 0.15); border-radius: 10px;
 }
 
+/* ★追加: ドラ表示エリアのスタイル */
+#dora-area {
+    position: absolute;
+    top: 42%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    z-index: 20;
+    padding: 6px 10px;
+    background: rgba(0,0,0,0.35);
+    border-radius: 6px;
+}
+#dora-indicators {
+    display: flex;
+    gap: 2px;
+}
+#dora-indicators .tile {
+    transform: scale(0.8);
+    transform-origin: center;
+}
+
 .discard-area {
     position: absolute; display: flex; flex-wrap: wrap; 
     width: calc(23px * 6 + 10px); height: 98px;
@@ -118,6 +141,15 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     .discard-area { width: calc(4.8vh * 6 + 6px); height: calc(6.6vh * 3 + 2px); }
     .player-area.left { left: 3%; }
     .player-area.right { right: 3%; }
+
+    /* ★追加: ドラエリアのスマホ横画面調整 */
+    #dora-area {
+        top: 36%;
+        padding: 4px 8px;
+    }
+    #dora-indicators .tile {
+        transform: scale(0.7);
+    }
 }
 
 .reachable-tile {

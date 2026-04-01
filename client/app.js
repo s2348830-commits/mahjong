@@ -88,10 +88,8 @@ function dispatch(action) {
                         state.effects.push({ type: 'START_DEAL_ANIMATION' });
                     }
                     if (serverState.game) {
-                        // 状態の完全凍結（ミューテーション防止）
                         const newGame = Utils.deepFreeze(structuredClone(serverState.game));
                         
-                        // 演出エフェクトの判定
                         if (state.game) {
                             if (newGame.phase === 'DRAW' || newGame.phase === 'ACTION_WAIT') {
                                 newGame.players.forEach(p => {
@@ -136,7 +134,7 @@ function dispatch(action) {
                 state.effects.push({ type: 'SEARCH_ROOMS' });
                 break;
         }
-        render(); // 状態更新後に必ず描画
+        render(); 
     } catch (e) {
         log('Error in dispatch:', e);
     }
@@ -309,12 +307,23 @@ const Renderer = {
         const phaseText = game.phase === 'DRAW' ? 'ツモ・打牌' : (game.phase === 'ACTION_WAIT' ? 'アクション待機中...' : '終局');
         const gameInfoEl = document.getElementById('game-info');
         let html = `<div style="color:#f1c40f;">${game.roundInfo} | 残り山: ${game.wallCount} | 供託: ${game.kyoutaku * 1000} | ${phaseText}</div>`;
-        if (game.doraIndicators?.length > 0) {
-            html += `<div style="display:flex; align-items:center; gap:5px; margin-top:5px;"><span style="color:#f1c40f; font-size:0.8rem; margin-right:5px;">ドラ表示牌:</span>`;
-            game.doraIndicators.forEach(tile => { html += Utils.createTileElement(tile, true).outerHTML; });
-            html += `</div>`;
-        }
         gameInfoEl.innerHTML = html;
+
+        // ★ドラ表示エリアの更新
+        const doraArea = document.getElementById('dora-area');
+        const doraIndicatorsEl = document.getElementById('dora-indicators');
+        if (doraArea && doraIndicatorsEl) {
+            if (game.doraIndicators?.length > 0) {
+                doraArea.style.display = 'flex';
+                doraIndicatorsEl.innerHTML = '';
+                game.doraIndicators.forEach(tile => { 
+                    // true を渡して small サイズにする
+                    doraIndicatorsEl.appendChild(Utils.createTileElement(tile, true)); 
+                });
+            } else {
+                doraArea.style.display = 'none';
+            }
+        }
     },
 
     renderActionButtons(game) {
@@ -665,6 +674,13 @@ const UI = {
     toggleReady() { Network.sendAction('TOGGLE_READY'); },
     sendGameAction(type) { 
         if (type === 'CANCEL_REACH') { dispatch({ type: 'CLEAR_REACH_OPTIONS' }); return; }
+        
+        if (type === 'CHI') {
+            if (state.game && state.game.chiOptions && state.game.chiOptions.length > 0) {
+                Network.sendAction('CHI', { tiles: state.game.chiOptions[0] });
+                return;
+            }
+        }
         Network.sendAction(type); 
     },
     kickPlayer(targetId) { if (confirm(`キックしますか？`)) Network.sendAction('KICK_PLAYER', { targetId }); },
