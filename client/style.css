@@ -75,14 +75,15 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     transform-origin: center;
 }
 
+/* ★修正: 完全な5枚切り対応 */
 .discard-area {
     position: absolute; 
     display: grid; 
-    grid-template-columns: repeat(5, 23px);
+    grid-template-columns: repeat(5, 23px); /* 横に5マス固定 */
     grid-auto-rows: 32px;
     gap: 2px;
     justify-content: center;
-    width: calc(23px * 5 + 2px * 4);
+    width: calc(23px * 5 + 2px * 4); /* 横幅を制限して強制的に折り返す */
 }
 .discard-area.bottom { bottom: 5px; left: 50%; transform: translateX(-50%); }
 .discard-area.top    { top: 5px; left: 50%; transform: translateX(-50%) rotate(180deg); }
@@ -133,23 +134,30 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     cursor: not-allowed !important;
 }
 
+/* ★追加: アクションUIとタイマーのレイアウト */
 #action-ui-area {
     position: absolute; 
     bottom: 110px; 
     right: 30px; 
     display: flex; 
+    flex-direction: row;
     align-items: center; 
-    gap: 15px; 
+    gap: 20px; 
     z-index: 200;
 }
 
+/* ★追加: オレンジ色のタイマー */
 #action-timer-display {
-    font-size: 5rem;
-    font-weight: bold;
-    color: #ff9800;
-    text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 0 15px rgba(255,152,0,0.8);
-    font-family: monospace;
-    display: none;
+    font-size: 4.5rem;
+    font-weight: 900;
+    color: #ff9800; /* オレンジ色 */
+    text-shadow: 
+        -2px -2px 0 #fff,  
+         2px -2px 0 #fff,
+        -2px  2px 0 #fff,
+         2px  2px 0 #fff,
+         0px  0px 15px rgba(0,0,0,0.9);
+    font-family: 'Courier New', Courier, monospace;
 }
 
 #action-buttons {
@@ -157,13 +165,14 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     gap: 10px;
 }
 
-/* ★修正: game_buttonUI.jpgの7分割に合わせた設定 */
+/* ★追加: ボタンの画像切り取り（計算誤差を防ぐ強力な設定） */
 .action-btn {
     width: 70px; 
     height: 70px;
-    background-image: url('game_buttonUI.png'); /* jpgに変更 */
-    background-size: 700% 100%; /* 横に7枚均等 */
+    background-image: url('game_buttonUI.png'); 
+    background-size: calc(100% * 7) 100%; /* 横に7枚均等 */
     background-color: transparent;
+    background-repeat: no-repeat;
     border: none;
     box-shadow: none;
     cursor: pointer;
@@ -182,16 +191,17 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     font-size: 1.2rem;
     font-weight: bold;
     border: 2px solid #fff;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
 }
 
-/* ★修正: 7等分（16.666%間隔）での正確な切り取り位置 */
-.btn-ron   { background-position: 0% 0%; }
-.btn-tsumo { background-position: 16.666% 0%; }
-.btn-kita  { background-position: 33.333% 0%; }
-.btn-kan   { background-position: 50% 0%; }
-.btn-pon   { background-position: 66.666% 0%; }
-.btn-chi   { background-position: 83.333% 0%; }
-.btn-pass  { background-position: 100% 0%; }
+/* 画像の切り取り位置（ロン、ツモ、北抜き、カン、ポン、チー、スキップ） */
+.btn-ron   { background-position: calc(100% / 6 * 0) 0; }
+.btn-tsumo { background-position: calc(100% / 6 * 1) 0; }
+.btn-kita  { background-position: calc(100% / 6 * 2) 0; }
+.btn-kan   { background-position: calc(100% / 6 * 3) 0; }
+.btn-pon   { background-position: calc(100% / 6 * 4) 0; }
+.btn-chi   { background-position: calc(100% / 6 * 5) 0; }
+.btn-pass  { background-position: calc(100% / 6 * 6) 0; }
 
 #result-overlay {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -220,7 +230,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
         grid-template-columns: repeat(5, 4.8vh);
         grid-auto-rows: 6.6vh;
         gap: 1px;
-        width: auto;
+        width: calc(4.8vh * 5 + 1px * 4);
     }
     .player-area.left { left: 3%; }
     .player-area.right { right: 3%; }
@@ -236,7 +246,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     #action-ui-area {
         bottom: 15vh;
         right: 2vw;
-        gap: 10px;
+        gap: 15px;
     }
     #action-timer-display {
         font-size: 10vh;
