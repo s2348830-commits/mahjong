@@ -53,7 +53,6 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     background-color: rgba(0, 0, 0, 0.15); border-radius: 10px;
 }
 
-/* ★追加: ドラ表示エリアのスタイル */
 #dora-area {
     position: absolute;
     top: 42%;
@@ -76,10 +75,14 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     transform-origin: center;
 }
 
+/* ★修正: flexからgridに変更し、6枚ごとに綺麗に折り返すように調整 */
 .discard-area {
-    position: absolute; display: flex; flex-wrap: wrap; 
-    width: calc(23px * 6 + 10px); height: 98px;
-    align-content: flex-start; gap: 1px;
+    position: absolute; 
+    display: grid; 
+    grid-template-columns: repeat(6, 23px);
+    grid-auto-rows: 32px;
+    gap: 2px;
+    justify-content: center;
 }
 .discard-area.bottom { bottom: 5px; left: 50%; transform: translateX(-50%); }
 .discard-area.top    { top: 5px; left: 50%; transform: translateX(-50%) rotate(180deg); }
@@ -96,13 +99,42 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 .player-area.left .player-name, .player-area.right .player-name { writing-mode: vertical-rl; text-orientation: upright; transform: rotate(-90deg); margin-top: 6px; }
 
 .hand { display: flex; gap: 1px; justify-content: center; }
+
+/* ★修正: tileにposition:relativeを追加（光るエフェクト用） */
 .tile {
+    position: relative;
     width: 44px; height: 60px; border-radius: 4px; cursor: pointer; transition: transform 0.1s;
     background-image: url('tiles.png'); background-repeat: no-repeat;
     background-size: 1330% auto; box-shadow: 0 2px 5px rgba(0,0,0,0.5);
 }
 .tile.small { width: 23px; height: 32px; border-radius: 2px; }
 .tile.selected-tile { transform: translateY(-15px) !important; box-shadow: 0 0 0 3px #f1c40f !important; }
+
+/* ★追加: ドラ牌が光るアニメーションクラス */
+.dora-glow {
+    box-shadow: 0 0 10px #f1c40f, inset 0 0 5px rgba(241, 196, 15, 0.5) !important;
+    border: 1px solid #f39c12;
+}
+.dora-glow::after {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(241, 196, 15, 0.2);
+    pointer-events: none;
+    animation: pulse-glow 1.5s infinite alternate;
+    border-radius: inherit;
+}
+@keyframes pulse-glow {
+    0% { opacity: 0.2; }
+    100% { opacity: 1; }
+}
+
+/* ★追加: 喰い替え禁止牌（暗くして押せなくする） */
+.forbidden-tile {
+    filter: brightness(0.4) grayscale(0.8) !important;
+    pointer-events: none !important;
+    cursor: not-allowed !important;
+}
 
 #action-buttons {
     position: absolute; bottom: 25%; left: 50%;
@@ -138,11 +170,16 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     #center-discards { width: 60vh; height: 60vh; }
     .tile { width: 9vh; height: 12.3vh; }
     .tile.small { width: 4.8vh; height: 6.6vh; }
-    .discard-area { width: calc(4.8vh * 6 + 6px); height: calc(6.6vh * 3 + 2px); }
+    
+    /* ★修正: スマホ横画面時のグリッドサイズ対応 */
+    .discard-area { 
+        grid-template-columns: repeat(6, 4.8vh);
+        grid-auto-rows: 6.6vh;
+        gap: 1px;
+    }
     .player-area.left { left: 3%; }
     .player-area.right { right: 3%; }
 
-    /* ★追加: ドラエリアのスマホ横画面調整 */
     #dora-area {
         top: 36%;
         padding: 4px 8px;

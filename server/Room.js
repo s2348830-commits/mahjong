@@ -89,9 +89,23 @@ class Room {
             if (allReady) {
                 this.status = 'PLAYING';
                 this.game = new MahjongGame(Array.from(this.players.keys()), this);
-                this.game.start();
             }
         }
+    }
+
+    // 【追加】ゲーム完全決着時のリザルト処理
+    handleGameEnd(results, reason) {
+        this.status = 'FINISHED_GAME';
+        if (this.game) {
+            this.game.finalResults = results;
+            this.game.endReason = reason;
+        }
+        this.broadcastState();
+        
+        // 15秒間リザルトを表示した後、ロビーに戻す
+        setTimeout(() => {
+            this.endGame();
+        }, 15000);
     }
 
     endGame() {
@@ -104,7 +118,7 @@ class Room {
     handleDisconnect(playerId) {
         const player = this.players.get(playerId);
         if (player) {
-            if (this.status === 'PLAYING') {
+            if (this.status === 'PLAYING' || this.status === 'FINISHED_GAME') {
                 player.disconnectTimeout = setTimeout(() => {
                     player.isAI = true;
                     this.broadcastState();
@@ -137,7 +151,7 @@ class Room {
                 }))
             };
 
-            if (this.status === 'PLAYING' && this.game) {
+            if ((this.status === 'PLAYING' || this.status === 'FINISHED_GAME') && this.game) {
                 state.game = this.game.getClientState(pId);
             }
             playerInfo.ws.send(JSON.stringify({ type: 'ROOM_STATE', payload: state }));

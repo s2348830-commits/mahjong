@@ -1,9 +1,5 @@
 /**
  * 麻雀クライアントロジック (Enterprise Edition)
- * - Stateの一元管理 (Single Source of Truth)
- * - Deep Freezeによる状態の不変性担保
- * - DispatchアーキテクチャとEffectキューによる副作用の分離
- * - VirtualDOMライクな差分描画最適化
  */
 
 const PHASE = {
@@ -11,12 +7,10 @@ const PHASE = {
     LOBBY: 'lobby',
     DRAW: 'draw',
     ACTION_WAIT: 'action_wait',
-    RESULT: 'result'
+    RESULT: 'result',
+    FINAL_RESULT: 'final_result'
 };
 
-// ========================================================
-// 1. State (唯一のデータ源)
-// ========================================================
 const state = {
     playerId: null,
     roomList: [],
@@ -24,18 +18,15 @@ const state = {
     game: null,
     phase: PHASE.WAITING,
     
-    // UI制御用状態
     selectedTileIndex: -1,
     dealAnimationStep: -1,
     currentWinningTiles: [],
     reachOptions: [],
     lastDiscardOrigin: { x: 0, y: 0 },
+    hasDrawnThisTurn: true,
     
-    // 最適化キャッシュ
     cache: { hands: {}, discards: {}, melds: {} },
     resetCache: function() { this.cache = { hands: {}, discards: {}, melds: {} }; },
-    
-    // 副作用キュー (アニメーションやアラートなど)
     effects: []
 };
 
@@ -54,9 +45,6 @@ function mapPhase(serverPhase) {
     }
 }
 
-// ========================================================
-// 2. Dispatch (状態更新の唯一の入口)
-// ========================================================
 function dispatch(action) {
     try {
         switch (action.type) {
@@ -81,8 +69,15 @@ function dispatch(action) {
                     state.dealAnimationStep = -1;
                     state.reachOptions = [];
                     state.currentWinningTiles = [];
+                    state.hasDrawnThisTurn = true;
                     state.resetCache();
-                } else if (serverState.status === 'PLAYING') {
+                    document.getElementById('final-result-overlay').style.display = 'none';
+                } 
+                else if (serverState.status === 'FINISHED_GAME') {
+                    state.phase = PHASE.FINAL_RESULT;
+                    state.game = serverState.game;
+                }
+                else if (serverState.status === 'PLAYING') {
                     if (state.phase === PHASE.LOBBY) {
                         state.dealAnimationStep = 4;
                         state.effects.push({ type: 'START_DEAL_ANIMATION' });
@@ -91,6 +86,13 @@ function dispatch(action) {
                         const newGame = Utils.deepFreeze(structuredClone(serverState.game));
                         
                         if (state.game) {
+                            if (newGame.turnPlayerId !== state.game.turnPlayerId) {
+                                state.hasDrawnThisTurn = false;
+                            }
+                            if (newGame.wallCount < state.game.wallCount) {
+                                state.hasDrawnThisTurn = true;
+                            }
+
                             if (newGame.phase === 'DRAW' || newGame.phase === 'ACTION_WAIT') {
                                 newGame.players.forEach(p => {
                                     if (!state.game.riichiPlayers[p.id] && newGame.riichiPlayers[p.id]) {
@@ -140,9 +142,6 @@ function dispatch(action) {
     }
 }
 
-// ========================================================
-// 3. Render (描画の唯一の入口) & Effect Processor
-// ========================================================
 function render() {
     const phaseChanged = !prevState || prevState.phase !== state.phase;
 
@@ -154,6 +153,12 @@ function render() {
         if (phaseChanged) UI.showScreen('room-screen');
         UI.renderLobby(state.room);
     } 
+    else if (state.phase === PHASE.FINAL_RESULT) {
+        if (phaseChanged) UI.showScreen('game-screen');
+        if (state.game) {
+            Renderer.renderFinalResult(state.game);
+        }
+    }
     else { 
         if (phaseChanged) UI.showScreen('game-screen');
         if (state.game) {
@@ -195,9 +200,6 @@ function processEffects() {
     }
 }
 
-// ========================================================
-// 4. Utilities
-// ========================================================
 const Utils = {
     tilesImage: new Image(),
     TILE_SPRITE_MAP: {
@@ -231,9 +233,36 @@ const Utils = {
         return arr.join(',');
     },
 
-    createTileElement(tileCode, isSmall = false) {
+    // 【追加】ドラ牌の計算用ユーティリティ
+    getDoraTiles(indicators) {
+        if (!indicators) return [];
+        return indicators.map(ind => {
+            const norm = ind.replace('0', '5');
+            const suit = norm[1];
+            const num = parseInt(norm[0]);
+            if (suit === 'z') {
+                if (num <= 4) return (num % 4 + 1) + 'z';
+                return ((num - 5 + 1) % 3 + 5) + 'z';
+            }
+            return (num % 9 + 1) + suit;
+        });
+    },
+
+    isDora(tileCode, doraTiles) {
+        if (!tileCode || tileCode === 'back') return false;
+        if (tileCode[0] === '0') return true; // 赤ドラ
+        const norm = tileCode.replace('0', '5');
+        return doraTiles.includes(norm);
+    },
+
+    // 【修正】引数に isDora と isForbidden を追加し、クラスを付与できるように変更
+    createTileElement(tileCode, isSmall = false, isDora = false, isForbidden = false) {
         const tileDiv = document.createElement('div');
         tileDiv.className = `tile ${isSmall ? 'small' : ''}`;
+        
+        if (isDora) tileDiv.classList.add('dora-glow');
+        if (isForbidden) tileDiv.classList.add('forbidden-tile');
+
         if (tileCode) {
             tileDiv.dataset.normCode = tileCode.replace('0', '5');
             const spriteInfo = this.TILE_SPRITE_MAP[tileCode];
@@ -253,9 +282,6 @@ const Utils = {
     }
 };
 
-// ========================================================
-// 5. Network (通信層: dispatchのみを呼ぶ)
-// ========================================================
 const Network = {
     ws: null,
     connect() {
@@ -299,9 +325,6 @@ const Network = {
     }
 };
 
-// ========================================================
-// 6. Renderer (純粋描画関数群)
-// ========================================================
 const Renderer = {
     renderGameInfo(game) {
         const phaseText = game.phase === 'DRAW' ? 'ツモ・打牌' : (game.phase === 'ACTION_WAIT' ? 'アクション待機中...' : '終局');
@@ -309,7 +332,6 @@ const Renderer = {
         let html = `<div style="color:#f1c40f;">${game.roundInfo} | 残り山: ${game.wallCount} | 供託: ${game.kyoutaku * 1000} | ${phaseText}</div>`;
         gameInfoEl.innerHTML = html;
 
-        // ★ドラ表示エリアの更新
         const doraArea = document.getElementById('dora-area');
         const doraIndicatorsEl = document.getElementById('dora-indicators');
         if (doraArea && doraIndicatorsEl) {
@@ -317,7 +339,6 @@ const Renderer = {
                 doraArea.style.display = 'flex';
                 doraIndicatorsEl.innerHTML = '';
                 game.doraIndicators.forEach(tile => { 
-                    // true を渡して small サイズにする
                     doraIndicatorsEl.appendChild(Utils.createTileElement(tile, true)); 
                 });
             } else {
@@ -328,12 +349,20 @@ const Renderer = {
 
     renderActionButtons(game) {
         const actionArea = document.getElementById('action-buttons');
-        if (state.phase !== PHASE.RESULT && game.allowedActions?.length > 0 && state.dealAnimationStep === -1) {
+        if (state.phase !== PHASE.RESULT && state.phase !== PHASE.FINAL_RESULT && game.allowedActions?.length > 0 && state.dealAnimationStep === -1) {
             actionArea.style.display = 'flex';
-            ['TSUMO', 'RON', 'PON', 'KAN', 'CHI', 'RIICHI', 'PASS', 'KYUUSHU'].forEach(action => {
+            
+            // 【修正】KITA（北抜き）を追加
+            ['TSUMO', 'RON', 'PON', 'CHI', 'RIICHI', 'PASS', 'KYUUSHU', 'KITA'].forEach(action => {
                 const btn = document.getElementById(`btn-${action.toLowerCase()}`);
                 if (btn) btn.style.display = game.allowedActions.includes(action) ? 'block' : 'none';
             });
+            
+            const kanBtn = document.getElementById('btn-kan');
+            if (kanBtn) {
+                const canKan = game.allowedActions.includes('ANKAN') || game.allowedActions.includes('KAKAN') || game.allowedActions.includes('MINKAN');
+                kanBtn.style.display = canKan ? 'block' : 'none';
+            }
         } else {
             actionArea.style.display = 'none';
         }
@@ -355,6 +384,29 @@ const Renderer = {
             document.getElementById('result-text').innerHTML = resultHtml;
         } else {
             resultOverlay.style.display = 'none';
+        }
+    },
+
+    renderFinalResult(game) {
+        const overlay = document.getElementById('final-result-overlay');
+        if (state.phase === PHASE.FINAL_RESULT) {
+            overlay.style.display = 'flex';
+            document.getElementById('result-overlay').style.display = 'none'; 
+            
+            document.getElementById('final-result-reason').innerText = game.endReason || 'ゲーム終了';
+            
+            if (game.finalResults) {
+                const rankHtml = game.finalResults.map(r => `
+                    <div style="font-size: 1.5rem; margin: 15px 0; color: #fff; display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 5px;">
+                        <span style="color:#f1c40f; font-weight:bold;">${r.rank}位</span>
+                        <span style="flex-grow: 1; text-align: left; margin-left: 20px;">${r.id === state.playerId ? '🏆 You' : r.id}</span>
+                        <span style="text-align: right;">${r.points} 点</span>
+                    </div>
+                `).join('');
+                document.getElementById('final-result-ranking').innerHTML = rankHtml;
+            }
+        } else {
+            overlay.style.display = 'none';
         }
     },
 
@@ -387,11 +439,16 @@ const Renderer = {
         if (!nameEl) return;
         const isTurn = (game.turnPlayerId === pid && game.phase === 'DRAW');
         const isRiichi = game.riichiPlayers?.[pid];
+        
+        // 【追加】北抜き（ペー抜き）回数の表示
+        const kitaCount = game.kitaPlayers?.[pid] || 0;
+        const kitaHtml = kitaCount > 0 ? `<span style="color:#34db42; margin-left:5px;">(抜北:${kitaCount})</span>` : '';
+
         const pts = game.players?.find(p => p.id === pid)?.points || 0;
         const dispName = pid === state.playerId ? 'You' : pid;
         
         nameEl.style.display = 'block';
-        nameEl.innerHTML = `${isRiichi ? '<span style="color:#e74c3c; background:#fff; padding:0 4px; border-radius:3px;">立直</span> ' : ''}${dispName} ${isTurn ? '👈' : ''}<br><span style="font-size:0.8rem; color:#bdc3c7;">${pts}点</span>`;
+        nameEl.innerHTML = `${isRiichi ? '<span style="color:#e74c3c; background:#fff; padding:0 4px; border-radius:3px;">立直</span> ' : ''}${dispName} ${isTurn ? '👈' : ''}${kitaHtml}<br><span style="font-size:0.8rem; color:#bdc3c7;">${pts}点</span>`;
         nameEl.style.color = isTurn ? '#f1c40f' : '#fff';
         nameEl.style.boxShadow = isTurn ? '0 0 10px rgba(241,196,15,0.5)' : 'none';
     },
@@ -408,9 +465,9 @@ const Renderer = {
         handDiv.innerHTML = '';
         let displayHand = rawHand.map((t, i) => ({ tileCode: t, originalIndex: i, isTsumo: false }));
 
-        if (pid === state.playerId || game.phase === 'FINISHED') {
+        if (pid === state.playerId || game.phase === 'FINISHED' || game.phase === 'FINAL_RESULT' || (state.room && state.room.settings && state.room.settings.openHands)) {
             let tsumoTile = null;
-            if (isMyTurn && displayHand.length % 3 === 2 && state.dealAnimationStep === -1) {
+            if (isMyTurn && displayHand.length % 3 === 2 && state.dealAnimationStep === -1 && state.hasDrawnThisTurn) {
                 tsumoTile = displayHand.pop();
                 tsumoTile.isTsumo = true;
             }
@@ -426,8 +483,16 @@ const Renderer = {
 
         if (state.dealAnimationStep !== -1) displayHand = displayHand.slice(0, state.dealAnimationStep);
 
+        const doraTiles = Utils.getDoraTiles(game.doraIndicators);
+        const forbidden = game.forbiddenDiscards || [];
+
         displayHand.forEach((item) => {
-            const tileDiv = Utils.createTileElement(item.tileCode, pos !== 'bottom');
+            // 【追加】ドラ発光と喰い替え禁止のクラス付与
+            const isDora = Utils.isDora(item.tileCode, doraTiles);
+            const normCode = item.tileCode !== 'back' ? item.tileCode.replace('0', '5') : '';
+            const isForbidden = isMyTurn && forbidden.includes(normCode);
+
+            const tileDiv = Utils.createTileElement(item.tileCode, pos !== 'bottom', isDora, isForbidden);
             tileDiv.dataset.pid = pid; tileDiv.dataset.index = item.originalIndex;
             if (item.isTsumo) { tileDiv.style.marginLeft = '10px'; tileDiv.style.transform = 'translateY(-8px)'; }
             handDiv.appendChild(tileDiv);
@@ -442,13 +507,17 @@ const Renderer = {
 
         const meldDiv = document.getElementById(`meld-${pos}`);
         meldDiv.innerHTML = '';
+        const doraTiles = Utils.getDoraTiles(game.doraIndicators);
+
         melds.forEach(m => {
             const count = m.type === 'kantsu' ? 4 : 3;
             for(let i=0; i<count; i++) {
                 let t = m.tile;
                 if (!m.isOpen && (i === 0 || i === count - 1)) t = 'back';
                 if (m.type === 'shuntsu' && m.tiles) t = m.tiles[i];
-                meldDiv.appendChild(Utils.createTileElement(t, pos !== 'bottom'));
+                
+                const isDora = Utils.isDora(t, doraTiles);
+                meldDiv.appendChild(Utils.createTileElement(t, pos !== 'bottom', isDora));
             }
             const space = document.createElement('div'); space.style.width = '5px';
             meldDiv.appendChild(space);
@@ -465,8 +534,12 @@ const Renderer = {
 
         const discardDiv = document.getElementById(`discard-${pos}`);
         discardDiv.innerHTML = '';
+        const doraTiles = Utils.getDoraTiles(game.doraIndicators);
+
         discards.forEach((tileCode, dIdx) => {
-            const dTile = Utils.createTileElement(tileCode, true);
+            const isDora = Utils.isDora(tileCode, doraTiles);
+            const dTile = Utils.createTileElement(tileCode, true, isDora);
+            
             if (dIdx === discards.length - 1 && discards.length > prevCount) {
                 dTile.classList.add('new-discard'); dTile.dataset.pid = pid;
             }
@@ -498,48 +571,53 @@ const Renderer = {
     },
 
     triggerDiscardAnimation(game) {
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                document.querySelectorAll('.new-discard').forEach(el => {
-                    el.classList.remove('new-discard');
-                    const targetRect = el.getBoundingClientRect();
-                    const pid = el.dataset.pid;
-                    let startX = targetRect.left, startY = targetRect.top;
+        const newDiscards = Array.from(document.querySelectorAll('.new-discard'));
+        newDiscards.forEach(el => {
+            el.classList.remove('new-discard');
+            
+            const targetRect = el.getBoundingClientRect();
+            const pid = el.dataset.pid;
+            let startX = targetRect.left, startY = targetRect.top;
 
-                    if (pid === state.playerId && state.lastDiscardOrigin.x !== 0) {
-                        startX = state.lastDiscardOrigin.x; startY = state.lastDiscardOrigin.y;
-                        dispatch({ type: 'SET_DISCARD_ORIGIN', payload: { x: 0, y: 0 } });
-                    } else {
-                        const pIds = game.players.map(p => p.id);
-                        const relIdx = (pIds.indexOf(pid) - pIds.indexOf(state.playerId) + pIds.length) % pIds.length;
-                        const pos = (pIds.length === 3 ? ['bottom', 'right', 'left'] : ['bottom', 'right', 'top', 'left'])[relIdx];
-                        const areaEl = document.getElementById(`area-${pos}`);
-                        if (areaEl) {
-                            const areaRect = areaEl.getBoundingClientRect();
-                            startX = areaRect.left + areaRect.width / 2; startY = areaRect.top + areaRect.height / 2;
-                        }
-                    }
-                    const deltaX = startX - targetRect.left, deltaY = startY - targetRect.top;
-                    el.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(1.5)`;
-                    el.style.transition = 'none';
-                    requestAnimationFrame(() => {
-                        el.style.transform = 'translate(0, 0) scale(1)';
-                        el.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)';
-                    });
-                });
+            if (pid === state.playerId && state.lastDiscardOrigin.x !== 0) {
+                startX = state.lastDiscardOrigin.x; 
+                startY = state.lastDiscardOrigin.y;
+                state.lastDiscardOrigin = { x: 0, y: 0 }; 
+            } else {
+                const pIds = game.players.map(p => p.id);
+                const relIdx = (pIds.indexOf(pid) - pIds.indexOf(state.playerId) + pIds.length) % pIds.length;
+                const pos = (pIds.length === 3 ? ['bottom', 'right', 'left'] : ['bottom', 'right', 'top', 'left'])[relIdx];
+                const areaEl = document.getElementById(`area-${pos}`);
+                if (areaEl) {
+                    const areaRect = areaEl.getBoundingClientRect();
+                    startX = areaRect.left + areaRect.width / 2; 
+                    startY = areaRect.top + areaRect.height / 2;
+                }
+            }
+            
+            const deltaX = startX - targetRect.left;
+            const deltaY = startY - targetRect.top;
+            
+            el.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(1.5)`;
+            el.style.transition = 'none';
+            void el.offsetWidth; 
+
+            requestAnimationFrame(() => {
+                el.style.transform = 'translate(0, 0) scale(1)';
+                el.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)';
             });
         });
     }
 };
 
-// ========================================================
-// 7. UI & Event Handling (操作・イベント制御)
-// ========================================================
 const UI = {
     initEvents() {
         document.getElementById('mahjong-table').addEventListener('click', (e) => {
             const tileEl = e.target.closest('.tile');
             if (tileEl) {
+                // 【追加】喰い替え禁止の牌をクリックした場合は無視する
+                if (tileEl.classList.contains('forbidden-tile')) return;
+
                 const pid = tileEl.dataset.pid;
                 const index = parseInt(tileEl.dataset.index);
                 const game = state.game;
@@ -549,7 +627,7 @@ const UI = {
                 if (pid === state.playerId && isMyTurnAndCanDiscard && !isRiichi) {
                     if (state.selectedTileIndex === index) {
                         const rect = tileEl.getBoundingClientRect();
-                        dispatch({ type: 'SET_DISCARD_ORIGIN', payload: { x: rect.left, y: rect.top } });
+                        state.lastDiscardOrigin = { x: rect.left, y: rect.top };
                         Network.sendAction('DISCARD', { tileIndex: index });
                         dispatch({ type: 'SET_SELECTED_TILE', payload: -1 });
                     } else {
@@ -587,6 +665,67 @@ const UI = {
             } else tileDiv.classList.add('disabled-tile');
             handDiv.appendChild(tileDiv);
         });
+    },
+
+    showChiModal(options) {
+        const modal = document.getElementById('chi-modal');
+        modal.style.display = 'flex';
+        const container = document.getElementById('chi-options');
+        container.innerHTML = '';
+        
+        const doraTiles = Utils.getDoraTiles(state.game.doraIndicators);
+
+        options.forEach((opt, idx) => {
+            const optDiv = document.createElement('div');
+            optDiv.className = 'hand reachable-tile';
+            optDiv.style.padding = '10px';
+            optDiv.style.background = 'rgba(0,0,0,0.4)';
+            optDiv.onclick = () => {
+                Network.sendAction('CHI', { tiles: opt });
+                modal.style.display = 'none';
+            };
+            opt.forEach(tile => optDiv.appendChild(Utils.createTileElement(tile, false, Utils.isDora(tile, doraTiles))));
+            container.appendChild(optDiv);
+        });
+    },
+
+    showKanModal(options) {
+        const modal = document.getElementById('kan-modal');
+        modal.style.display = 'flex';
+        const container = document.getElementById('kan-options');
+        container.innerHTML = '';
+        
+        const doraTiles = Utils.getDoraTiles(state.game.doraIndicators);
+
+        const createOpt = (tile, typeName) => {
+            const optDiv = document.createElement('div');
+            optDiv.className = 'hand reachable-tile';
+            optDiv.style.padding = '10px';
+            optDiv.style.background = 'rgba(0,0,0,0.4)';
+            optDiv.style.display = 'flex';
+            optDiv.style.flexDirection = 'column';
+            optDiv.style.alignItems = 'center';
+            optDiv.onclick = () => {
+                Network.sendAction(typeName, { tile: tile });
+                modal.style.display = 'none';
+            };
+            
+            const text = document.createElement('span');
+            text.innerText = typeName === 'ANKAN' ? '暗槓' : '加槓';
+            text.style.color = '#fff';
+            text.style.marginBottom = '5px';
+            optDiv.appendChild(text);
+
+            const tilesDiv = document.createElement('div');
+            tilesDiv.className = 'hand';
+            for(let i=0; i<4; i++) tilesDiv.appendChild(Utils.createTileElement(tile, false, Utils.isDora(tile, doraTiles)));
+            optDiv.appendChild(tilesDiv);
+            
+            return optDiv;
+        };
+
+        if(options.ankan) options.ankan.forEach(t => container.appendChild(createOpt(t, 'ANKAN')));
+        if(options.kakan) options.kakan.forEach(t => container.appendChild(createOpt(t, 'KAKAN')));
     },
 
     updateWinningTilesDisplay(winningTiles) {
@@ -667,22 +806,43 @@ const UI = {
         });
     },
 
-    // HTML Callback wrappers
     createRoom() { Network.sendAction('CREATE_ROOM', { roomName: "テスト部屋", maxPlayers: 4 }); },
     searchRooms() { Network.sendAction('SEARCH_ROOMS'); },
     joinRoom(roomId) { Network.sendAction('JOIN_ROOM', { roomId }); },
     toggleReady() { Network.sendAction('TOGGLE_READY'); },
+    
     sendGameAction(type) { 
         if (type === 'CANCEL_REACH') { dispatch({ type: 'CLEAR_REACH_OPTIONS' }); return; }
         
         if (type === 'CHI') {
-            if (state.game && state.game.chiOptions && state.game.chiOptions.length > 0) {
-                Network.sendAction('CHI', { tiles: state.game.chiOptions[0] });
-                return;
+            const opts = state.game.chiOptions;
+            if (opts && opts.length === 1) {
+                Network.sendAction('CHI', { tiles: opts[0] });
+            } else if (opts && opts.length > 1) {
+                this.showChiModal(opts);
             }
+            return;
         }
+
+        if (type === 'KAN') {
+            const opts = state.game.kanOptions;
+            if (state.game.phase === 'DRAW') {
+                const totalOpts = (opts.ankan ? opts.ankan.length : 0) + (opts.kakan ? opts.kakan.length : 0);
+                if (totalOpts === 1) {
+                    if (opts.ankan && opts.ankan.length === 1) Network.sendAction('ANKAN', { tile: opts.ankan[0] });
+                    else if (opts.kakan && opts.kakan.length === 1) Network.sendAction('KAKAN', { tile: opts.kakan[0] });
+                } else if (totalOpts > 1) {
+                    this.showKanModal(opts);
+                }
+            } else if (state.game.phase === 'ACTION_WAIT') {
+                Network.sendAction('MINKAN');
+            }
+            return;
+        }
+
         Network.sendAction(type); 
     },
+
     kickPlayer(targetId) { if (confirm(`キックしますか？`)) Network.sendAction('KICK_PLAYER', { targetId }); },
     addBot() { Network.sendAction('ADD_BOT'); },
     changeSettingRadio(name, value) {
@@ -710,7 +870,6 @@ const UI = {
     }
 };
 
-// Global Exports
 window.createRoom = () => UI.createRoom();
 window.searchRooms = () => UI.searchRooms();
 window.joinRoom = (id) => UI.joinRoom(id);
@@ -721,9 +880,6 @@ window.addBot = () => UI.addBot();
 window.changeSettingRadio = (name, value) => UI.changeSettingRadio(name, value);
 window.syncSettings = () => UI.syncSettings();
 
-// ========================================================
-// Initialization
-// ========================================================
 Utils.init();
 UI.initEvents();
 Network.connect();

@@ -146,10 +146,32 @@
                 </div>
             </div>
 
+            <div id="chi-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:300; justify-content:center; align-items:center;">
+                <div style="background:#1e4b30; padding:20px; border-radius:10px; border:2px solid #27ae60; text-align:center;">
+                    <h3 style="color:#fff; margin-top:0;">チーする組み合わせを選んでください</h3>
+                    <div id="chi-options" style="display: flex; gap: 15px; margin-bottom: 20px; justify-content: center; flex-wrap: wrap;"></div>
+                    <button onclick="document.getElementById('chi-modal').style.display='none';" style="background:#e74c3c;">キャンセル</button>
+                </div>
+            </div>
+
+            <div id="kan-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:300; justify-content:center; align-items:center;">
+                <div style="background:#1e4b30; padding:20px; border-radius:10px; border:2px solid #8e44ad; text-align:center;">
+                    <h3 style="color:#fff; margin-top:0;">カンする牌を選んでください</h3>
+                    <div id="kan-options" style="display: flex; gap: 15px; margin-bottom: 20px; justify-content: center; flex-wrap: wrap;"></div>
+                    <button onclick="document.getElementById('kan-modal').style.display='none';" style="background:#e74c3c;">キャンセル</button>
+                </div>
+            </div>
+
             <div id="game-info"></div>
 
             <div id="result-overlay" style="display:none;">
                 <h2 id="result-text"></h2>
+            </div>
+
+            <div id="final-result-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:400; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+                <h1 id="final-result-reason" style="color:#e74c3c; font-size:3rem; margin-bottom:10px; text-shadow: 0 0 15px #c0392b;"></h1>
+                <div id="final-result-ranking" style="background:rgba(255,255,255,0.1); padding:30px; border-radius:10px; border:2px solid #f1c40f; min-width: 300px;"></div>
+                <p style="color:#bdc3c7; margin-top:30px; font-size:1.2rem;">まもなくロビーに戻ります...</p>
             </div>
 
             <div id="mahjong-table" onclick="deselectTile(event)">
@@ -161,7 +183,7 @@
                     <button id="btn-kan" onclick="sendGameAction('KAN')" style="display:none; background: #8e44ad;">カン</button>
                     <button id="btn-chi"  onclick="sendGameAction('CHI')" style="display:none; background: #27ae60;">チー</button>
                     <button id="btn-riichi" onclick="sendGameAction('RIICHI')" style="display:none; background: #e74c3c;">リーチ</button>
-                    <button id="btn-pass" onclick="sendGameAction('PASS')" style="display:none;">パス</button>
+                    <button id="btn-kita" onclick="sendGameAction('KITA')" style="display:none; background: #34495e;">北抜</button> <button id="btn-pass" onclick="sendGameAction('PASS')" style="display:none;">パス</button>
                     <button id="btn-kyuushu" onclick="sendGameAction('KYUUSHU')" style="display:none; background: #95a5a6;">九種</button>
                 </div>
 
@@ -202,6 +224,5 @@
         </div>
     </div>
     <script src="app.js"></script>
-    <script src="https://unpkg.com/@discord/embedded-app-sdk"></script>
 </body>
 </html>

@@ -1,7 +1,5 @@
 /**
  * Mahjong Server Engine (Professional Edition)
- * - 1ファイル内で「役判定」「点数計算」「手牌操作」「ターン管理」「AI」を完全にオブジェクト分離
- * - マジックナンバー排除、堅牢なエラーハンドリング
  */
 
 const CONSTANTS = {
@@ -28,7 +26,6 @@ class MahjongGame {
         this.playerIds = playerIds;
         this.settings = room.settings;
         
-        // 基本状態
         this.roundWind = '1z'; 
         this.kyoku = 1;        
         this.dealerIndex = 0;  
@@ -63,6 +60,10 @@ class MahjongGame {
         this.chankanTile = null;
         this.isIppatsuValid = false;
         this.turnCount = 0;
+        this.suukansanraPending = false;
+
+        this.finalResults = null;
+        this.endReason = null;
 
         this._setupManagers();
         this.startRound();
@@ -71,9 +72,6 @@ class MahjongGame {
     _setupManagers() {
         const self = this;
 
-        // ==========================================
-        // 1. Turn Manager (ターン管理)
-        // ==========================================
         this.turnManager = {
             getCurrent: () => self.playerIds[self.currentTurn],
             next: () => {
@@ -83,9 +81,6 @@ class MahjongGame {
             isCurrentPlayer: (id) => self.playerIds[self.currentTurn] === id
         };
 
-        // ==========================================
-        // 2. Score Calculator (点数計算)
-        // ==========================================
         this.scoreCalculator = {
             calculateFu: (melds, pair, winTile, isTsumo, isMenzen, bakaze, jikaze, isPinfu, isChiitoitsu) => {
                 if (isChiitoitsu) return 25;
@@ -137,17 +132,33 @@ class MahjongGame {
                 }
 
                 let point = { total: 0, dealerPay: 0, nonDealerPay: 0, isTsumo: isTsumo };
+                let isSanma = (self.settings.mode === 3);
+
                 if (isTsumo) {
-                    if (isDealer) {
-                        let pay = Math.ceil((basePoint * 2) / 100) * 100;
-                        point.total = pay * 3;
-                        point.nonDealerPay = pay;
+                    if (isSanma) {
+                        let ronTotal = Math.ceil((basePoint * (isDealer ? 6 : 4)) / 100) * 100;
+                        if (isDealer) {
+                            let pay = Math.ceil((ronTotal / 2) / 100) * 100;
+                            point.total = pay * 2;
+                            point.nonDealerPay = pay;
+                        } else {
+                            let pay = Math.ceil((ronTotal / 2) / 100) * 100;
+                            point.total = pay * 2;
+                            point.dealerPay = pay;
+                            point.nonDealerPay = pay;
+                        }
                     } else {
-                        let dPay = Math.ceil((basePoint * 2) / 100) * 100;
-                        let nPay = Math.ceil(basePoint / 100) * 100;
-                        point.total = dPay + nPay * 2;
-                        point.dealerPay = dPay;
-                        point.nonDealerPay = nPay;
+                        if (isDealer) {
+                            let pay = Math.ceil((basePoint * 2) / 100) * 100;
+                            point.total = pay * 3;
+                            point.nonDealerPay = pay;
+                        } else {
+                            let dPay = Math.ceil((basePoint * 2) / 100) * 100;
+                            let nPay = Math.ceil(basePoint / 100) * 100;
+                            point.total = dPay + nPay * 2;
+                            point.dealerPay = dPay;
+                            point.nonDealerPay = nPay;
+                        }
                     }
                 } else {
                     point.total = Math.ceil((basePoint * (isDealer ? 6 : 4)) / 100) * 100;
@@ -156,9 +167,6 @@ class MahjongGame {
             }
         };
 
-        // ==========================================
-        // 3. Yaku Evaluator (役判定エンジン)
-        // ==========================================
         this.yakuEvaluator = {
             helper: {
                 winningTilesCache: new Map(),
@@ -299,7 +307,7 @@ class MahjongGame {
                         if (isTsumo && isRinshan) { han++; yaku.push('嶺上開花'); }
                         if (!isTsumo && isChankan) { han++; yaku.push('槍槓'); }
                         if (isHaitei) { han++; yaku.push('海底摸月'); }
-                        if (isHoutei) { han++; yaku.push('河底撈魚'); }
+                        if (isHoutei) { han++; yaku.push('河底捞魚'); }
                         
                         if (!handNorm.some(t => t.match(/[19z]/))) { han++; yaku.push('タンヤオ'); }
                         
@@ -411,7 +419,7 @@ class MahjongGame {
                 }
 
                 if (result && result.han > 0) {
-                    let doraHan = self.yakuEvaluator.helper.countDora(allTilesRaw, doraIndicators, uraDoraIndicators, isRiichi || isDoubleRiichi);
+                    let doraHan = self.yakuEvaluator.helper.countDora(allTilesRaw, doraIndicators, uraDoraIndicators, isRiichi || isDoubleRiichi) + (stateObj.kitaCount || 0);
                     if (doraHan > 0 && result.han < 13) {
                         result.han += doraHan;
                         result.yaku.push(`ドラ${doraHan}`);
@@ -423,9 +431,6 @@ class MahjongGame {
             }
         };
 
-        // ==========================================
-        // 4. Hand Manager (手牌操作)
-        // ==========================================
         this.handManager = {
             draw: (playerId) => {
                 if (self.wall.length === 0) return false;
@@ -434,38 +439,39 @@ class MahjongGame {
                 return true;
             },
             drawRinshan: (playerId) => {
+                if (self.kanCount >= 4) return false; 
                 self.kanPlayers.add(playerId);
-                if (self.kanCount === 4 && self.kanPlayers.size > 1) return false; 
-                if (self.kanCount < 4) {
-                    self.players[playerId].hand.push(self.deadWall.pop());
-                    self.doraIndicators.push(self.deadWall[self.kanCount * 2 + 2]);
-                    self.uraDoraIndicators.push(self.deadWall[self.kanCount * 2 + 3]);
-                    self.kanCount++;
-                    self.wall.pop(); 
-                    return true;
+                self.players[playerId].hand.push(self.deadWall.pop());
+                self.doraIndicators.push(self.deadWall[self.kanCount * 2 + 2]);
+                self.uraDoraIndicators.push(self.deadWall[self.kanCount * 2 + 3]);
+                self.kanCount++;
+                self.wall.pop(); 
+                
+                if (self.kanCount === 4 && self.kanPlayers.size > 1) {
+                    self.suukansanraPending = true;
                 }
-                return false;
+                return true;
             },
             discard: (playerId, tileIndex) => {
                 if (!playerId || typeof playerId !== 'string') throw new Error('Invalid playerId');
                 if (tileIndex < 0 || tileIndex >= self.players[playerId].hand.length) throw new Error('Invalid index');
                 const tile = self.players[playerId].hand.splice(tileIndex, 1)[0];
                 if (!tile || typeof tile !== 'string') throw new Error('Invalid tile');
+                
                 self.players[playerId].discards.push(tile);
+                // 【修正】鳴かれても消えないフリテン専用の履歴に追加
+                self.players[playerId].furitenDiscards.push(tile); 
                 self.players[playerId].firstTurn = false;
                 return tile;
             }
         };
 
-        // ==========================================
-        // 5. AI Engine (思考)
-        // ==========================================
         this.ai = {
             chooseDiscard: (playerId, level) => {
                 let p = self.players[playerId];
                 if (level === 'easy') return { type: 'DISCARD', payload: { tileIndex: p.hand.length - 1 } };
 
-                let stateTemplate = { isRiichi: true, bakaze: self.roundWind, jikaze: CONSTANTS.WINDS[(self.playerIds.indexOf(playerId) - self.dealerIndex + 4) % 4] };
+                let stateTemplate = { isRiichi: true, bakaze: self.roundWind, jikaze: CONSTANTS.WINDS[(self.playerIds.indexOf(playerId) - self.dealerIndex + self.playerIds.length) % self.playerIds.length] };
                 let reachable = [];
                 for (let i = 0; i < p.hand.length; i++) {
                     let testHand = [...p.hand]; testHand.splice(i, 1);
@@ -475,13 +481,18 @@ class MahjongGame {
 
                 if (reachable.length > 0) {
                     reachable.sort((a, b) => b.winningTiles.length - a.winningTiles.length);
-                    if (reachable[0].winningTiles.length >= 4 || self.points[playerId] >= 1000) return { type: 'RIICHI' }; 
-                    return { type: 'DISCARD', payload: { tileIndex: reachable[0].index } };
+                    for (let r of reachable) {
+                        let norm = self.yakuEvaluator.helper.safeNormalize(r.tile);
+                        if (!p.forbiddenDiscards.includes(norm)) {
+                            if (r.winningTiles.length >= 4 || self.points[playerId] >= 1000) return { type: 'RIICHI' }; 
+                            return { type: 'DISCARD', payload: { tileIndex: r.index } };
+                        }
+                    }
                 }
 
                 let hand = p.hand;
                 let tileCounts = self.yakuEvaluator.helper.countTiles(hand);
-                let bestIndex = hand.length - 1;
+                let bestIndex = -1;
                 let maxScore = -9999;
                 
                 let safeTiles = new Set();
@@ -496,6 +507,9 @@ class MahjongGame {
                 for (let i = 0; i < hand.length; i++) {
                     let tile = hand[i];
                     let norm = self.yakuEvaluator.helper.safeNormalize(tile);
+                    
+                    if (p.forbiddenDiscards.includes(norm)) continue;
+
                     let score = 0; 
                     let suit = norm[1]; let num = parseInt(norm[0]);
 
@@ -520,6 +534,9 @@ class MahjongGame {
 
                     if (score > maxScore) { maxScore = score; bestIndex = i; }
                 }
+                
+                if (bestIndex === -1) bestIndex = hand.length - 1;
+
                 return { type: 'DISCARD', payload: { tileIndex: bestIndex } };
             }
         };
@@ -530,7 +547,10 @@ class MahjongGame {
         
         const tiles = [];
         for (let suit of ['m', 'p', 's']) {
-            for (let i = 1; i <= 9; i++) { for(let j=0; j<4; j++) tiles.push(i + suit); }
+            for (let i = 1; i <= 9; i++) { 
+                if (this.settings.mode === 3 && suit === 'm' && i >= 2 && i <= 8) continue;
+                for(let j=0; j<4; j++) tiles.push(i + suit); 
+            }
         }
         for (let i = 1; i <= 7; i++) { for(let j=0; j<4; j++) tiles.push(i + 'z'); }
         
@@ -552,9 +572,11 @@ class MahjongGame {
         this.players = {};
         this.playerIds.forEach(id => {
             this.players[id] = { 
-                hand: [], discards: [], melds: [], 
+                // 【追加】furitenDiscards: 鳴かれても消えないフリテン履歴, pao: 責任払い対象者
+                hand: [], discards: [], furitenDiscards: [], melds: [], 
                 riichi: false, doubleRiichi: false, openHand: false,
-                tempFuriten: false, riichiFuriten: false, firstTurn: true 
+                tempFuriten: false, riichiFuriten: false, firstTurn: true,
+                kita: 0, forbiddenDiscards: [], pao: null 
             };
         });
         
@@ -574,6 +596,7 @@ class MahjongGame {
         this.chankanTile = null;
         this.isIppatsuValid = false;
         this.turnCount = 0;
+        this.suukansanraPending = false;
 
         this.yakuEvaluator.helper.winningTilesCache.clear();
 
@@ -586,10 +609,46 @@ class MahjongGame {
         this.triggerAILogic(this.turnManager.getCurrent());
     }
 
-    nextRound(isDealerWin, isDealerTenpai) {
-        if (this.settings.length === 'east' && this.roundWind === '2z' && this.kyoku === 1) {
-            this.room.endGame(); return;
+    checkGameEnd() {
+        let isEnd = false;
+        let endReason = '';
+
+        if (this.settings.tobi) {
+            for (const id of this.playerIds) {
+                if (this.points[id] < 0) {
+                    isEnd = true;
+                    endReason = 'トビ終了';
+                    break;
+                }
+            }
         }
+
+        if (!isEnd) {
+            const isEastOnly = this.settings.length === 'east';
+            const isSouthOnly = this.settings.length === 'south';
+            const windIndex = CONSTANTS.WINDS.indexOf(this.roundWind); 
+
+            if (isEastOnly && windIndex >= 1) { 
+                isEnd = true; endReason = '東風戦終了';
+            } else if (isSouthOnly && windIndex >= 2) { 
+                isEnd = true; endReason = '半荘戦終了';
+            }
+        }
+
+        if (isEnd) {
+            const sortedPlayers = [...this.playerIds].sort((a, b) => this.points[b] - this.points[a]);
+            const finalResults = sortedPlayers.map((id, index) => ({
+                id, rank: index + 1, points: this.points[id]
+            }));
+            this.room.handleGameEnd(finalResults, endReason);
+            return true;
+        }
+        return false;
+    }
+
+    nextRound(isDealerWin, isDealerTenpai) {
+        if (this.checkGameEnd()) return;
+
         if (isDealerWin || (this.winningType === 'RYUUKYOKU' && isDealerTenpai)) {
             this.honba++; 
         } else {
@@ -604,11 +663,75 @@ class MahjongGame {
                 this.roundWind = CONSTANTS.WINDS[(wIdx + 1) % 4];
             }
         }
+
+        if (this.checkGameEnd()) return;
         this.startRound();
     }
 
     handleRyuukyoku(reason = '荒牌平局') {
         log(`Ryuukyoku: ${reason}`);
+        
+        // 【追加】流し満貫の判定
+        if (reason === '荒牌平局') {
+            let nagashiWinners = [];
+            let nagashiYakuList = [];
+            
+            this.playerIds.forEach(id => {
+                let p = this.players[id];
+                // 一度も鳴かれておらず、全てヤオチュー牌であること
+                if (p.discards.length > 0 && p.discards.length === p.furitenDiscards.length) {
+                    let isAllYaochu = p.discards.every(d => CONSTANTS.YAOCHU.includes(this.yakuEvaluator.helper.safeNormalize(d)));
+                    if (isAllYaochu) {
+                        nagashiWinners.push(id);
+                        let isDealer = (this.playerIds.indexOf(id) === this.dealerIndex);
+                        let point = this.scoreCalculator.calculate(5, 20, isDealer, true); // 満貫ツモ扱い
+                        nagashiYakuList.push({ han: 5, fu: 20, yaku: ['流し満貫'], point: point });
+                    }
+                }
+            });
+
+            if (nagashiWinners.length > 0) {
+                this.phase = 'FINISHED';
+                this.winningType = 'TSUMO';
+                this.winner = nagashiWinners;
+                this.winningYaku = nagashiYakuList;
+                
+                let isDealerWin = false;
+                nagashiWinners.forEach((pId, idx) => {
+                    let yakuData = nagashiYakuList[idx];
+                    let pInfo = yakuData.point;
+                    let isD = (this.playerIds.indexOf(pId) === this.dealerIndex);
+                    if (isD) isDealerWin = true;
+
+                    if (pInfo.dealerPay === 0) {
+                        let pay = pInfo.nonDealerPay;
+                        this.playerIds.forEach(id => { if (id !== pId) this.points[id] -= pay; });
+                        let totalGet = pay * (this.playerIds.length - 1);
+                        yakuData.point.total = totalGet;
+                        this.points[pId] += totalGet + (this.kyoutaku * CONSTANTS.COST.RIICHI);
+                    } else {
+                        let dPay = pInfo.dealerPay;
+                        let nPay = pInfo.nonDealerPay;
+                        this.playerIds.forEach(id => {
+                            if (id !== pId) {
+                                let isD2 = (this.playerIds.indexOf(id) === this.dealerIndex);
+                                this.points[id] -= isD2 ? dPay : nPay;
+                            }
+                        });
+                        let totalGet = dPay + nPay * (this.playerIds.length - 2);
+                        yakuData.point.total = totalGet;
+                        this.points[pId] += totalGet + (this.kyoutaku * CONSTANTS.COST.RIICHI);
+                    }
+                    if (idx === 0) this.kyoutaku = 0;
+                });
+                
+                this.playerIds.forEach(id => this.players[id].openHand = true);
+                this.room.broadcastState();
+                setTimeout(() => this.nextRound(isDealerWin, true), 7000);
+                return;
+            }
+        }
+
         this.phase = 'FINISHED';
         this.winningType = 'RYUUKYOKU';
         
@@ -646,10 +769,25 @@ class MahjongGame {
         setTimeout(() => this.nextRound(false, isDealerTenpai), 7000);
     }
 
+    // 【追加】責任払い（パオ）の確定チェック
+    checkPao(playerId, tileNorm, discarderId) {
+        let p = this.players[playerId];
+        let sangenCount = p.melds.filter(m => m.isOpen && CONSTANTS.SANGEN.includes(this.yakuEvaluator.helper.safeNormalize(m.tile))).length;
+        let windsCount = p.melds.filter(m => m.isOpen && CONSTANTS.WINDS.includes(this.yakuEvaluator.helper.safeNormalize(m.tile))).length;
+        
+        if (sangenCount === 3 && CONSTANTS.SANGEN.includes(tileNorm)) {
+            p.pao = discarderId;
+        } else if (windsCount === 4 && CONSTANTS.WINDS.includes(tileNorm)) {
+            p.pao = discarderId;
+        }
+    }
+
     checkWin(playerId, winTile, isTsumo, isChankan = false) {
         let player = this.players[playerId];
         let actualWinTile = winTile || player.hand[player.hand.length - 1];
         let playerIndex = this.playerIds.indexOf(playerId);
+        
+        let jikazeIdx = (playerIndex - this.dealerIndex + this.playerIds.length) % this.playerIds.length;
         
         let stateObj = {
             winTileRaw: actualWinTile, isTsumo: isTsumo, isRiichi: player.riichi, isDoubleRiichi: player.doubleRiichi,
@@ -657,8 +795,9 @@ class MahjongGame {
             isHoutei: (!isTsumo && this.wall.length === 0), isHaitei: (isTsumo && this.wall.length === 0),
             isTenhou: (isTsumo && player.firstTurn && playerIndex === this.dealerIndex),
             isChiihou: (isTsumo && player.firstTurn && playerIndex !== this.dealerIndex && this.kanCount === 0),
-            bakaze: this.roundWind, jikaze: CONSTANTS.WINDS[(playerIndex - this.dealerIndex + 4) % 4], 
-            doraIndicators: this.doraIndicators, uraDoraIndicators: this.uraDoraIndicators, settings: this.settings
+            bakaze: this.roundWind, jikaze: CONSTANTS.WINDS[jikazeIdx], 
+            doraIndicators: this.doraIndicators, uraDoraIndicators: this.uraDoraIndicators, settings: this.settings,
+            kitaCount: player.kita
         };
         return this.yakuEvaluator.evaluate(player.hand, player.melds, stateObj);
     }
@@ -667,13 +806,14 @@ class MahjongGame {
         let p = this.players[playerId];
         let hand = testHand || p.hand;
         let playerIndex = this.playerIds.indexOf(playerId);
+        let jikazeIdx = (playerIndex - this.dealerIndex + this.playerIds.length) % this.playerIds.length;
         
         let winning = [];
         for (let winTile of CONSTANTS.TILES) {
             let totalCount = hand.filter(t => t === winTile).length;
             p.melds.forEach(m => { if (m.tile === winTile) totalCount += (m.type === 'kantsu' ? 4 : 3); });
             if (totalCount >= 4) continue;
-            let state = { winTileRaw: winTile, isTsumo: false, isRiichi: p.riichi, bakaze: this.roundWind, jikaze: CONSTANTS.WINDS[(playerIndex - this.dealerIndex + 4) % 4], doraIndicators: [], uraDoraIndicators: [] };
+            let state = { winTileRaw: winTile, isTsumo: false, isRiichi: p.riichi, bakaze: this.roundWind, jikaze: CONSTANTS.WINDS[jikazeIdx], doraIndicators: [], uraDoraIndicators: [], kitaCount: p.kita };
             if (this.yakuEvaluator.evaluate([...hand, winTile], p.melds, state)) {
                 winning.push(winTile);
             }
@@ -681,26 +821,14 @@ class MahjongGame {
         return winning;
     }
 
-    isTenpai(playerId) {
-        let p = this.players[playerId];
-        let hLen = p.hand.length;
-        if (hLen % 3 === 1) return this.getWinningTiles(playerId, p.hand).length > 0;
-        if (hLen % 3 === 2) {
-            for (let i = 0; i < p.hand.length; i++) {
-                let testHand = [...p.hand]; testHand.splice(i, 1);
-                if (this.getWinningTiles(playerId, testHand).length > 0) return true;
-            }
-        }
-        return false;
-    }
-
+    // 【修正】フリテンチェックに furitenDiscards を使用
     isFuriten(playerId) {
         let p = this.players[playerId];
         if (p.tempFuriten || p.riichiFuriten) return true;
         let winningTiles = this.getWinningTiles(playerId);
         for (let wt of winningTiles) {
             let normWt = this.yakuEvaluator.helper.safeNormalize(wt);
-            if (p.discards.some(d => this.yakuEvaluator.helper.safeNormalize(d) === normWt)) return true;
+            if (p.furitenDiscards.some(d => this.yakuEvaluator.helper.safeNormalize(d) === normWt)) return true;
         }
         return false;
     }
@@ -710,11 +838,56 @@ class MahjongGame {
         return this.checkWin(playerId, tile, false, isChankan) !== null; 
     }
 
+    getChiOptions(playerId, tile) {
+        if (this.settings.mode === 3) return []; 
+        const p = this.players[playerId];
+        if (p.riichi) return [];
+        const norm = this.yakuEvaluator.helper.safeNormalize(tile);
+        if (!norm || norm.includes('z')) return [];
+        
+        const suit = norm[1];
+        const num = parseInt(norm[0]);
+        const counts = this.yakuEvaluator.helper.countTiles(p.hand);
+        let options = [];
+        
+        if (num >= 3 && counts[(num-2)+suit] > 0 && counts[(num-1)+suit] > 0) options.push([(num-2)+suit, (num-1)+suit]);
+        if (num >= 2 && num <= 8 && counts[(num-1)+suit] > 0 && counts[(num+1)+suit] > 0) options.push([(num-1)+suit, (num+1)+suit]);
+        if (num <= 7 && counts[(num+1)+suit] > 0 && counts[(num+2)+suit] > 0) options.push([(num+1)+suit, (num+2)+suit]);
+        return options;
+    }
+
+    getKanOptions(playerId) {
+        const p = this.players[playerId];
+        if (p.riichi) return { ankan: [], kakan: [] }; 
+        const counts = this.yakuEvaluator.helper.countTiles(p.hand);
+        let ankan = []; let kakan = [];
+        
+        for (const [tile, count] of Object.entries(counts)) {
+            if (count === 4) ankan.push(tile);
+        }
+        p.melds.forEach(m => {
+            if (m.type === 'koutsu' && m.isOpen) {
+                const normMeld = this.yakuEvaluator.helper.safeNormalize(m.tile);
+                if (counts[normMeld] > 0) kakan.push(normMeld);
+            }
+        });
+        return { ankan, kakan };
+    }
+
     handlePlayerDiscard(playerId, tileIndex) {
         try {
+            const tileCode = this.players[playerId].hand[tileIndex];
+            if (!tileCode) return;
+            const normCode = this.yakuEvaluator.helper.safeNormalize(tileCode);
+            
+            if (this.players[playerId].forbiddenDiscards && this.players[playerId].forbiddenDiscards.includes(normCode)) {
+                return; 
+            }
+            this.players[playerId].forbiddenDiscards = [];
+
             this.lastDiscardTile = this.handManager.discard(playerId, tileIndex);
         } catch (e) {
-            Logger.error('Discard Error', e); return;
+            console.error('Discard Error', e); return;
         }
         
         this.lastDiscardPlayer = playerId;
@@ -723,12 +896,21 @@ class MahjongGame {
         this.actionResolved = false; 
         this.rinshan = false; 
         
+        const discardIdx = this.playerIds.indexOf(playerId);
+
         this.playerIds.forEach(id => {
             if (id !== playerId) {
                 let canR = this.canRon(id, this.lastDiscardTile);
-                let canP = !this.players[id].riichi && this.players[id].hand.filter(t => this.yakuEvaluator.helper.safeNormalize(t) === this.yakuEvaluator.helper.safeNormalize(this.lastDiscardTile)).length >= 2;
-                if (canR || canP) this.waitingFor.push(id);
-                else this.actionResponses[id] = 'PASS';
+                let canP = !this.players[id].riichi && this.players[id].hand.filter(t => this.yakuEvaluator.helper.safeNormalize(t) === this.yakuEvaluator.helper.safeNormalize(this.lastDiscardTile)).length >= 3; 
+                if (!canP) canP = !this.players[id].riichi && this.players[id].hand.filter(t => this.yakuEvaluator.helper.safeNormalize(t) === this.yakuEvaluator.helper.safeNormalize(this.lastDiscardTile)).length >= 2; 
+                
+                let canC = false;
+                if (!this.players[id].riichi && this.playerIds.indexOf(id) === (discardIdx + 1) % this.playerIds.length) {
+                    canC = this.getChiOptions(id, this.lastDiscardTile).length > 0;
+                }
+
+                if (canR || canP || canC) this.waitingFor.push(id);
+                else this.actionResponses[id] = { type: 'PASS' }; 
             }
         });
 
@@ -737,26 +919,34 @@ class MahjongGame {
             this.room.broadcastState();
             this.waitingFor.forEach(id => this.triggerAILogic(id));
         } else {
+            if (this.suukansanraPending) {
+                this.handleRyuukyoku('四槓散了');
+                return;
+            }
             this.proceedToNextTurn();
         }
     }
 
     proceedToNextTurn() {
         this.turnCount++;
+        this.playerIds.forEach(id => this.players[id].tempFuriten = false);
         
-        if (this.turnCount === 4) {
+        if (this.turnCount === 4 && this.settings.mode === 4) {
             let noMelds = this.playerIds.every(id => this.players[id].melds.length === 0);
             if (noMelds) {
                 let firstDiscard = this.players[this.playerIds[0]].discards[0];
-                if (['1z','2z','3z','4z'].includes(this.yakuEvaluator.helper.safeNormalize(firstDiscard))) {
-                    let allSame = this.playerIds.every(id => this.yakuEvaluator.helper.safeNormalize(this.players[id].discards[0]) === this.yakuEvaluator.helper.safeNormalize(firstDiscard));
+                if (firstDiscard && ['1z','2z','3z','4z'].includes(this.yakuEvaluator.helper.safeNormalize(firstDiscard))) {
+                    let allSame = this.playerIds.every(id => {
+                        let d = this.players[id].discards[0];
+                        return d && this.yakuEvaluator.helper.safeNormalize(d) === this.yakuEvaluator.helper.safeNormalize(firstDiscard);
+                    });
                     if (allSame) { this.handleRyuukyoku('四風連打'); return; }
                 }
             }
         }
         
-        if (this.playerIds.filter(id => this.players[id].riichi).length === 4) {
-            this.handleRyuukyoku('四家立直'); return;
+        if (this.playerIds.filter(id => this.players[id].riichi).length === this.settings.mode) {
+            this.handleRyuukyoku(this.settings.mode === 3 ? '三家立直' : '四家立直'); return;
         }
 
         this.phase = 'DRAW';
@@ -778,15 +968,27 @@ class MahjongGame {
 
         this.actionResolved = true; 
 
-        let ronPlayers = []; let ponPlayer = null;
+        let ronPlayers = []; 
+        let ponPlayer = null;
+        let minkanPlayer = null;
+        let chiPlayer = null;
+        let chiTiles = null;
+
         let discardIdx = this.playerIds.indexOf(this.lastDiscardPlayer);
         
         for (let i = 1; i < this.playerIds.length; i++) {
             let idx = (discardIdx + i) % this.playerIds.length;
             let id = this.playerIds[idx];
-            if (this.actionResponses[id]?.type === 'RON') ronPlayers.push(id);
-            else if (this.actionResponses[id]?.type === 'PON' && !ponPlayer) ponPlayer = id;
-            else if (this.actionResponses[id] === 'PASS' || this.actionResponses[id]?.type === 'PASS') {
+            let res = this.actionResponses[id];
+            
+            if (res?.type === 'RON') ronPlayers.push(id);
+            else if (res?.type === 'PON' && !ponPlayer && !minkanPlayer) ponPlayer = id;
+            else if (res?.type === 'MINKAN' && !ponPlayer && !minkanPlayer) minkanPlayer = id;
+            else if (res?.type === 'CHI' && !chiPlayer && i === 1) { 
+                chiPlayer = id;
+                chiTiles = res.payload.tiles;
+            }
+            else if (res === 'PASS' || res?.type === 'PASS') {
                 if (this.canRon(id, this.lastDiscardTile, this.chankanTile !== null)) {
                     this.players[id].tempFuriten = true;
                     if (this.players[id].riichi) this.players[id].riichiFuriten = true;
@@ -798,17 +1000,31 @@ class MahjongGame {
             this.phase = 'FINISHED';
             this.winner = ronPlayers;
             this.winningType = ronPlayers.length === 1 ? 'RON' : 'RON_MULTI';
-            this.winningYaku = ronPlayers.map(pId => this.checkWin(pId, this.lastDiscardTile, false, this.chankanTile !== null));
+            let actualWinTile = this.chankanTile !== null ? this.chankanTile : this.lastDiscardTile;
+            this.winningYaku = ronPlayers.map(pId => this.checkWin(pId, actualWinTile, false, this.chankanTile !== null));
             
             let isDealerWin = false;
             ronPlayers.forEach((pId, idx) => {
-                this.players[pId].hand.push(this.lastDiscardTile);
+                this.players[pId].hand.push(actualWinTile);
                 let yakuData = this.winningYaku[idx];
                 let pt = yakuData.point.total + (this.honba * CONSTANTS.COST.HONBA);
-                yakuData.point.total = pt; 
                 
-                this.points[this.lastDiscardPlayer] -= pt;
+                // 【追加】パオ（責任払い）の適用
+                let paoPlayer = null;
+                if (this.players[pId].pao && (yakuData.yaku.includes('大三元') || yakuData.yaku.includes('大四喜'))) {
+                    paoPlayer = this.players[pId].pao;
+                }
+
+                if (paoPlayer && paoPlayer !== this.lastDiscardPlayer) {
+                    let halfPt = Math.ceil(pt / 2);
+                    this.points[this.lastDiscardPlayer] -= (pt - halfPt);
+                    this.points[paoPlayer] -= halfPt;
+                } else {
+                    this.points[this.lastDiscardPlayer] -= pt;
+                }
+                
                 this.points[pId] += pt;
+                yakuData.point.total = pt; 
                 
                 if (idx === 0) { 
                     this.points[pId] += (this.kyoutaku * CONSTANTS.COST.RIICHI);
@@ -820,30 +1036,108 @@ class MahjongGame {
             this.playerIds.forEach(id => this.players[id].openHand = true);
             this.room.broadcastState();
             setTimeout(() => this.nextRound(isDealerWin, true), 7000);
-        } else if (ponPlayer) {
+
+        } else if (this.chankanTile !== null) {
+            let kakanPlayer = this.lastDiscardPlayer; 
+            this.chankanTile = null;
+            if (this.handManager.drawRinshan(kakanPlayer)) {
+                this.phase = 'DRAW';
+                this.rinshan = true;
+                this.room.broadcastState();
+                this.triggerAILogic(kakanPlayer);
+            } else {
+                this.handleRyuukyoku('四槓散了');
+            }
+
+        } else if (ponPlayer || minkanPlayer) {
             this.isIppatsuValid = false; 
-            let activeId = ponPlayer;
+            this.playerIds.forEach(id => this.players[id].tempFuriten = false);
+
+            let activeId = ponPlayer || minkanPlayer;
             let player = this.players[activeId];
             let t = this.lastDiscardTile; 
+            let normT = this.yakuEvaluator.helper.safeNormalize(t);
             
             player.firstTurn = false;
+            // 鳴かれた牌は「河（表示上）」からは消すが「フリテン履歴」には残るため pop のみ
             this.players[this.lastDiscardPlayer].discards.pop(); 
             
             let c = 0;
+            let removeCount = ponPlayer ? 2 : 3;
             for (let i = player.hand.length - 1; i >= 0; i--) {
-                if (this.yakuEvaluator.helper.safeNormalize(player.hand[i]) === this.yakuEvaluator.helper.safeNormalize(t) && c < 2) { 
+                if (this.yakuEvaluator.helper.safeNormalize(player.hand[i]) === normT && c < removeCount) { 
                     player.hand.splice(i, 1); c++; 
                 }
             }
-            player.melds.push({ type: 'koutsu', tile: t, isOpen: true });
+            
+            if (ponPlayer) {
+                player.forbiddenDiscards = [normT];
+                player.melds.push({ type: 'koutsu', tile: t, isOpen: true });
+                this.checkPao(activeId, normT, this.lastDiscardPlayer); // パオのチェック
+                
+                this.currentTurn = this.playerIds.indexOf(activeId);
+                this.actionResponses = {}; this.waitingFor = [];
+                this.phase = 'DRAW'; 
+                this.room.broadcastState();
+                this.triggerAILogic(activeId); 
+            } else if (minkanPlayer) {
+                player.melds.push({ type: 'kantsu', tile: t, isOpen: true });
+                this.checkPao(activeId, normT, this.lastDiscardPlayer); // パオのチェック
+                
+                this.currentTurn = this.playerIds.indexOf(activeId);
+                this.actionResponses = {}; this.waitingFor = [];
+                if (this.handManager.drawRinshan(activeId)) {
+                    this.phase = 'DRAW';
+                    this.rinshan = true;
+                    this.room.broadcastState();
+                    this.triggerAILogic(activeId);
+                } else {
+                    this.handleRyuukyoku('四槓散了');
+                }
+            }
+
+        } else if (chiPlayer) {
+            this.isIppatsuValid = false; 
+            this.playerIds.forEach(id => this.players[id].tempFuriten = false);
+
+            let activeId = chiPlayer;
+            let player = this.players[activeId];
+            let t = this.lastDiscardTile; 
+            let normT = this.yakuEvaluator.helper.safeNormalize(t);
+            
+            player.firstTurn = false;
+            this.players[this.lastDiscardPlayer].discards.pop(); 
+
+            for (let ct of chiTiles) {
+                let idx = player.hand.findIndex(h => this.yakuEvaluator.helper.safeNormalize(h) === this.yakuEvaluator.helper.safeNormalize(ct));
+                if (idx !== -1) player.hand.splice(idx, 1);
+            }
+
+            let numT = parseInt(normT[0]);
+            let suitT = normT[1];
+            let normChi = chiTiles.map(ct => this.yakuEvaluator.helper.safeNormalize(ct)).sort();
+            let numC1 = parseInt(normChi[0][0]);
+            let numC2 = parseInt(normChi[1][0]);
+
+            let forbidden = [normT];
+            if (numC1 === numT + 1 && numC2 === numT + 2 && numT + 3 <= 9) forbidden.push(`${numT + 3}${suitT}`);
+            if (numC1 === numT - 2 && numC2 === numT - 1 && numT - 3 >= 1) forbidden.push(`${numT - 3}${suitT}`);
+            player.forbiddenDiscards = forbidden;
+
+            let meldTiles = [t, ...chiTiles].sort();
+            player.melds.push({ type: 'shuntsu', tiles: meldTiles, isOpen: true });
             
             this.currentTurn = this.playerIds.indexOf(activeId);
             this.actionResponses = {}; this.waitingFor = [];
-            
             this.phase = 'DRAW'; 
             this.room.broadcastState();
             this.triggerAILogic(activeId); 
+
         } else {
+            if (this.suukansanraPending) {
+                this.handleRyuukyoku('四槓散了');
+                return;
+            }
             this.proceedToNextTurn();
         }
     }
@@ -853,6 +1147,23 @@ class MahjongGame {
 
         if (this.phase === 'DRAW') {
             if (!this.turnManager.isCurrentPlayer(playerId)) return;
+
+            if (action.type === 'KITA' && this.settings.mode === 3) {
+                const player = this.players[playerId];
+                let idx = player.hand.findIndex(t => this.yakuEvaluator.helper.safeNormalize(t) === '4z');
+                if (idx !== -1) {
+                    player.hand.splice(idx, 1);
+                    player.kita++;
+                    if (this.handManager.draw(playerId)) {
+                        this.rinshan = true;
+                        this.room.broadcastState();
+                        this.triggerAILogic(playerId);
+                    } else {
+                        this.handleRyuukyoku('荒牌平局');
+                    }
+                }
+                return;
+            }
 
             if (action.type === 'KYUUSHU') {
                 this.handleRyuukyoku('九種九牌');
@@ -890,6 +1201,64 @@ class MahjongGame {
                 return;
             }
 
+            if (action.type === 'ANKAN' || action.type === 'KAKAN') {
+                const targetTile = action.payload.tile;
+                const player = this.players[playerId];
+                
+                if (action.type === 'ANKAN') {
+                    let c = 0;
+                    for (let i = player.hand.length - 1; i >= 0; i--) {
+                        if (this.yakuEvaluator.helper.safeNormalize(player.hand[i]) === this.yakuEvaluator.helper.safeNormalize(targetTile) && c < 4) { 
+                            player.hand.splice(i, 1); c++; 
+                        }
+                    }
+                    player.melds.push({ type: 'kantsu', tile: targetTile, isOpen: false });
+                    
+                    if (this.handManager.drawRinshan(playerId)) {
+                        this.rinshan = true;
+                        this.room.broadcastState();
+                        this.triggerAILogic(playerId);
+                    } else {
+                        this.handleRyuukyoku('四槓散了');
+                    }
+                } else if (action.type === 'KAKAN') {
+                    const meldIdx = player.melds.findIndex(m => m.type === 'koutsu' && m.isOpen && this.yakuEvaluator.helper.safeNormalize(m.tile) === this.yakuEvaluator.helper.safeNormalize(targetTile));
+                    if (meldIdx !== -1) {
+                        player.melds[meldIdx].type = 'kantsu'; 
+                        let handIdx = player.hand.findIndex(h => this.yakuEvaluator.helper.safeNormalize(h) === this.yakuEvaluator.helper.safeNormalize(targetTile));
+                        if(handIdx !== -1) player.hand.splice(handIdx, 1);
+
+                        this.chankanTile = targetTile;
+                        this.lastDiscardPlayer = playerId; 
+                        this.actionResponses = {};
+                        this.waitingFor = [];
+                        this.actionResolved = false;
+
+                        this.playerIds.forEach(id => {
+                            if (id !== playerId) {
+                                if (this.canRon(id, targetTile, true)) this.waitingFor.push(id);
+                            }
+                        });
+
+                        if (this.waitingFor.length > 0) {
+                            this.phase = 'ACTION_WAIT';
+                            this.room.broadcastState();
+                            this.waitingFor.forEach(id => this.triggerAILogic(id));
+                        } else {
+                            this.chankanTile = null;
+                            if (this.handManager.drawRinshan(playerId)) {
+                                this.rinshan = true;
+                                this.room.broadcastState();
+                                this.triggerAILogic(playerId);
+                            } else {
+                                this.handleRyuukyoku('四槓散了');
+                            }
+                        }
+                    }
+                }
+                return;
+            }
+
             if (action.type === 'DISCARD') {
                 this.rinshan = false; 
                 this.handlePlayerDiscard(playerId, action.payload.tileIndex);
@@ -902,24 +1271,37 @@ class MahjongGame {
                     let pInfo = yakuResult.point;
                     let isDealerWin = (playerId === this.playerIds[this.dealerIndex]);
                     
-                    if (pInfo.dealerPay === 0) { 
-                        let pay = pInfo.nonDealerPay + (this.honba * CONSTANTS.COST.TSUMO_HONBA);
-                        this.playerIds.forEach(id => { if (id !== playerId) this.points[id] -= pay; });
-                        let totalGet = pay * (this.playerIds.length - 1);
-                        yakuResult.point.total = totalGet;
-                        this.points[playerId] += totalGet + (this.kyoutaku * CONSTANTS.COST.RIICHI);
-                    } else { 
-                        let dPay = pInfo.dealerPay + (this.honba * CONSTANTS.COST.TSUMO_HONBA);
-                        let nPay = pInfo.nonDealerPay + (this.honba * CONSTANTS.COST.TSUMO_HONBA);
-                        this.playerIds.forEach(id => {
-                            if (id !== playerId) {
-                                let isD = (this.playerIds.indexOf(id) === this.dealerIndex);
-                                this.points[id] -= isD ? dPay : nPay;
-                            }
-                        });
-                        let totalGet = dPay + nPay * (this.playerIds.length - 2);
-                        yakuResult.point.total = totalGet;
-                        this.points[playerId] += totalGet + (this.kyoutaku * CONSTANTS.COST.RIICHI);
+                    // 【追加】パオ（責任払い）の適用
+                    let paoPlayer = null;
+                    if (this.players[playerId].pao && (yakuResult.yaku.includes('大三元') || yakuResult.yaku.includes('大四喜'))) {
+                        paoPlayer = this.players[playerId].pao;
+                    }
+
+                    if (paoPlayer) {
+                        let totalPay = pInfo.total + (this.honba * CONSTANTS.COST.TSUMO_HONBA * (this.playerIds.length - 1));
+                        this.points[paoPlayer] -= totalPay;
+                        this.points[playerId] += totalPay + (this.kyoutaku * CONSTANTS.COST.RIICHI);
+                        yakuResult.point.total = totalPay;
+                    } else {
+                        if (pInfo.dealerPay === 0) { 
+                            let pay = pInfo.nonDealerPay + (this.honba * CONSTANTS.COST.TSUMO_HONBA);
+                            this.playerIds.forEach(id => { if (id !== playerId) this.points[id] -= pay; });
+                            let totalGet = pay * (this.playerIds.length - 1);
+                            yakuResult.point.total = totalGet;
+                            this.points[playerId] += totalGet + (this.kyoutaku * CONSTANTS.COST.RIICHI);
+                        } else { 
+                            let dPay = pInfo.dealerPay + (this.honba * CONSTANTS.COST.TSUMO_HONBA);
+                            let nPay = pInfo.nonDealerPay + (this.honba * CONSTANTS.COST.TSUMO_HONBA);
+                            this.playerIds.forEach(id => {
+                                if (id !== playerId) {
+                                    let isD = (this.playerIds.indexOf(id) === this.dealerIndex);
+                                    this.points[id] -= isD ? dPay : nPay;
+                                }
+                            });
+                            let totalGet = dPay + nPay * (this.playerIds.length - 2);
+                            yakuResult.point.total = totalGet;
+                            this.points[playerId] += totalGet + (this.kyoutaku * CONSTANTS.COST.RIICHI);
+                        }
                     }
                     this.kyoutaku = 0;
 
@@ -931,9 +1313,25 @@ class MahjongGame {
         } 
         else if (this.phase === 'ACTION_WAIT') {
             if (playerId === this.lastDiscardPlayer || !this.waitingFor.includes(playerId)) return;
-            if (action.type === 'RON' && !this.isFuriten(playerId) && this.checkWin(playerId, this.lastDiscardTile, false, this.chankanTile !== null)) this.actionResponses[playerId] = { type: 'RON' };
-            else if (action.type === 'PON' && !this.players[playerId].riichi && this.players[playerId].hand.filter(t => this.yakuEvaluator.helper.safeNormalize(t) === this.yakuEvaluator.helper.safeNormalize(this.lastDiscardTile)).length >= 2) this.actionResponses[playerId] = { type: 'PON' };
-            else if (action.type === 'PASS') this.actionResponses[playerId] = { type: 'PASS' };
+            
+            let actualTargetTile = this.chankanTile !== null ? this.chankanTile : this.lastDiscardTile;
+
+            if (action.type === 'RON' && !this.isFuriten(playerId) && this.checkWin(playerId, actualTargetTile, false, this.chankanTile !== null)) {
+                this.actionResponses[playerId] = { type: 'RON' };
+            } 
+            else if (this.chankanTile === null) {
+                if (action.type === 'MINKAN' && !this.players[playerId].riichi && this.players[playerId].hand.filter(t => this.yakuEvaluator.helper.safeNormalize(t) === this.yakuEvaluator.helper.safeNormalize(this.lastDiscardTile)).length >= 3) {
+                    this.actionResponses[playerId] = { type: 'MINKAN' };
+                } else if (action.type === 'PON' && !this.players[playerId].riichi && this.players[playerId].hand.filter(t => this.yakuEvaluator.helper.safeNormalize(t) === this.yakuEvaluator.helper.safeNormalize(this.lastDiscardTile)).length >= 2) {
+                    this.actionResponses[playerId] = { type: 'PON' };
+                } else if (action.type === 'CHI' && !this.players[playerId].riichi && action.payload && action.payload.tiles) {
+                    this.actionResponses[playerId] = { type: 'CHI', payload: { tiles: action.payload.tiles } };
+                } else {
+                    this.actionResponses[playerId] = { type: 'PASS' }; 
+                }
+            } else {
+                this.actionResponses[playerId] = { type: 'PASS' }; 
+            }
             this.resolveActions();
         }
     }
@@ -946,6 +1344,12 @@ class MahjongGame {
         if (this.phase === 'DRAW' && this.turnManager.isCurrentPlayer(playerId)) {
             setTimeout(() => {
                 if (this.phase !== 'DRAW') return;
+                
+                if (isBot && this.settings.mode === 3 && player.hand.some(t => t.endsWith('4z'))) {
+                    this.handlePlayerAction(playerId, { type: 'KITA' });
+                    return;
+                }
+
                 let canWin = this.checkWin(playerId, null, true);
                 if (canWin) {
                     this.handlePlayerAction(playerId, { type: 'TSUMO' });
@@ -965,27 +1369,48 @@ class MahjongGame {
             if (isBot) {
                 setTimeout(() => {
                     if (this.phase !== 'ACTION_WAIT') return;
-                    if (!this.isFuriten(playerId) && this.checkWin(playerId, this.lastDiscardTile, false, this.chankanTile !== null)) this.handlePlayerAction(playerId, { type: 'RON' });
-                    else this.handlePlayerAction(playerId, { type: 'PASS' });
+                    let actualTargetTile = this.chankanTile !== null ? this.chankanTile : this.lastDiscardTile;
+                    if (!this.isFuriten(playerId) && this.checkWin(playerId, actualTargetTile, false, this.chankanTile !== null)) {
+                        this.handlePlayerAction(playerId, { type: 'RON' });
+                    } 
+                    else if (this.chankanTile === null && !player.riichi) {
+                        let discNorm = this.yakuEvaluator.helper.safeNormalize(this.lastDiscardTile);
+                        let counts = this.yakuEvaluator.helper.countTiles(player.hand);
+                        let jikazeIdx = (this.playerIds.indexOf(playerId) - this.dealerIndex + this.playerIds.length) % this.playerIds.length;
+                        let isYakuhai = CONSTANTS.SANGEN.includes(discNorm) || discNorm === this.roundWind || discNorm === CONSTANTS.WINDS[jikazeIdx];
+                        
+                        if (isYakuhai && counts[discNorm] >= 2) {
+                            this.handlePlayerAction(playerId, { type: 'PON' });
+                        } else {
+                            this.handlePlayerAction(playerId, { type: 'PASS' });
+                        }
+                    } else {
+                        this.handlePlayerAction(playerId, { type: 'PASS' });
+                    }
                 }, 800);
             }
         }
     }
 
     getClientState(targetPlayerId) {
-        const maskedHands = {}; const mappedMelds = {}; const mappedDiscards = {}; const mappedRiichi = {};
+        const maskedHands = {}; const mappedMelds = {}; const mappedDiscards = {}; const mappedRiichi = {}; const mappedKita = {};
         const mappedPlayers = this.playerIds.map(id => ({ id, points: this.points[id], isRiichi: this.players[id].riichi }));
 
         this.playerIds.forEach(id => {
             let p = this.players[id];
             if (id === targetPlayerId || this.phase === 'FINISHED' || this.room.settings.openHands || p.openHand) maskedHands[id] = p.hand;
             else maskedHands[id] = p.hand.map(() => 'back');
-            mappedMelds[id] = p.melds; mappedDiscards[id] = p.discards; mappedRiichi[id] = p.riichi;
+            mappedMelds[id] = p.melds; mappedDiscards[id] = p.discards; mappedRiichi[id] = p.riichi; mappedKita[id] = p.kita;
         });
 
         let allowedActions = [];
+        let chiOptions = [];
+        let kanOptions = { ankan: [], kakan: [] };
+        let forbiddenDiscards = [];
+
         if (this.phase === 'DRAW' && this.turnManager.isCurrentPlayer(targetPlayerId)) {
             let p = this.players[targetPlayerId];
+            forbiddenDiscards = p.forbiddenDiscards || [];
             
             if (p.firstTurn && p.melds.length === 0 && p.hand.length % 3 === 2) {
                 let yaochuCount = new Set(p.hand.map(t => this.yakuEvaluator.helper.safeNormalize(t)).filter(t => t && t.match(/[19z]/))).size;
@@ -995,13 +1420,35 @@ class MahjongGame {
             if (p.hand.length % 3 === 2 && !p.riichi) {
                 if (this.checkWin(targetPlayerId, null, true)) allowedActions.push('TSUMO');
                 if (this.points[targetPlayerId] >= 1000 && this.isTenpai(targetPlayerId)) allowedActions.push('RIICHI');
+                
+                kanOptions = this.getKanOptions(targetPlayerId);
+                if (kanOptions.ankan.length > 0) allowedActions.push('ANKAN');
+                if (kanOptions.kakan.length > 0) allowedActions.push('KAKAN');
+                
+                if (this.settings.mode === 3 && p.hand.some(t => this.yakuEvaluator.helper.safeNormalize(t) === '4z')) {
+                    allowedActions.push('KITA');
+                }
             } else if (p.hand.length % 3 === 2 && p.riichi) {
                 if (this.checkWin(targetPlayerId, null, true)) allowedActions.push('TSUMO');
             }
         } else if (this.phase === 'ACTION_WAIT' && this.waitingFor.includes(targetPlayerId)) {
             if (!this.actionResponses[targetPlayerId]) {
-                if (!this.isFuriten(targetPlayerId) && this.checkWin(targetPlayerId, this.lastDiscardTile, false, this.chankanTile !== null)) allowedActions.push('RON');
-                if (!this.players[targetPlayerId].riichi && this.players[targetPlayerId].hand.filter(t => this.yakuEvaluator.helper.safeNormalize(t) === this.yakuEvaluator.helper.safeNormalize(this.lastDiscardTile)).length >= 2) allowedActions.push('PON');
+                let actualTargetTile = this.chankanTile !== null ? this.chankanTile : this.lastDiscardTile;
+                if (!this.isFuriten(targetPlayerId) && this.checkWin(targetPlayerId, actualTargetTile, false, this.chankanTile !== null)) {
+                    allowedActions.push('RON');
+                }
+                
+                if (this.chankanTile === null && !this.players[targetPlayerId].riichi) {
+                    let handNorm = this.players[targetPlayerId].hand.map(t => this.yakuEvaluator.helper.safeNormalize(t));
+                    let discNorm = this.yakuEvaluator.helper.safeNormalize(this.lastDiscardTile);
+                    let count = handNorm.filter(t => t === discNorm).length;
+                    
+                    if (count >= 3) allowedActions.push('MINKAN');
+                    if (count >= 2) allowedActions.push('PON');
+                    
+                    chiOptions = this.getChiOptions(targetPlayerId, this.lastDiscardTile);
+                    if (chiOptions.length > 0) allowedActions.push('CHI');
+                }
                 allowedActions.push('PASS'); 
             }
         }
@@ -1011,11 +1458,13 @@ class MahjongGame {
         return {
             phase: this.phase, turnPlayerId: this.turnManager.getCurrent(), wallCount: this.wall.length,
             hands: maskedHands, melds: mappedMelds, discards: mappedDiscards, allowedActions: allowedActions,
-            lastDiscard: { playerId: this.lastDiscardPlayer, tile: this.lastDiscardTile },
+            chiOptions: chiOptions, kanOptions: kanOptions, forbiddenDiscards: forbiddenDiscards,
+            lastDiscard: { playerId: this.lastDiscardPlayer, tile: this.chankanTile !== null ? this.chankanTile : this.lastDiscardTile },
             winner: this.winner, winningType: this.winningType, winningYaku: this.winningYaku, 
-            riichiPlayers: mappedRiichi, doraIndicators: this.doraIndicators,
+            riichiPlayers: mappedRiichi, kitaPlayers: mappedKita, doraIndicators: this.doraIndicators,
             players: mappedPlayers, kyoutaku: this.kyoutaku,
-            roundInfo: `${roundName} ${this.honba}本場`
+            roundInfo: `${roundName} ${this.honba}本場`,
+            finalResults: this.finalResults, endReason: this.endReason
         };
     }
 }
