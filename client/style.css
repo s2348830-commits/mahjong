@@ -75,7 +75,6 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     transform-origin: center;
 }
 
-/* ★修正: 完全な5枚切り対応（はみ出さないようにwidthを固定） */
 .discard-area {
     position: absolute; 
     display: grid; 
@@ -145,11 +144,10 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     z-index: 200;
 }
 
-/* ★オレンジ色のカウントダウンタイマー */
 #action-timer-display {
     font-size: 4.5rem;
     font-weight: 900;
-    color: #ff9800; /* オレンジ色 */
+    color: #ff9800; 
     text-shadow: 
         -2px -2px 0 #fff,  
          2px -2px 0 #fff,
@@ -165,25 +163,25 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     gap: 10px;
 }
 
-/* ★スプライト画像の均等切り取り */
+/* ★修正: ボタンサイズを266x104の比率(長方形)に合わせる */
 .action-btn {
-    width: 70px; 
-    height: 70px;
-    background-image: url('game_buttonUI.png'); 
-    background-size: calc(100% * 7) 100%; /* 横に7枚均等 */
+    width: 106px; /* 266pxの縮小版 */
+    height: 41px; /* 104pxの縮小版 */
+    background-image: url('game_buttonUI.jpg'); 
+    background-size: 700% 100%; 
     background-color: transparent;
     background-repeat: no-repeat;
     border: none;
     box-shadow: none;
     cursor: pointer;
     transition: transform 0.1s, filter 0.1s;
-    border-radius: 50%; 
+    border-radius: 8px; /* 丸から長方形の角丸に変更 */
     padding: 0;
 }
-.action-btn:hover { transform: translateY(-8px); filter: brightness(1.2); }
-.action-btn:active { transform: scale(0.9); }
+.action-btn:hover { transform: translateY(-5px); filter: brightness(1.2); }
+.action-btn:active { transform: scale(0.95); }
 
-/* 画像にない特殊ボタン（リーチ・九種）用のフォールバックテキストボタン */
+/* 画像にない特殊ボタン（リーチ等）用のフォールバック */
 .action-btn.text-btn {
     background-image: none;
     background-color: #e74c3c;
@@ -194,15 +192,14 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     box-shadow: 0 4px 10px rgba(0,0,0,0.5);
 }
 
-/* ★画像ごとの切り取り位置（ロン、ツモ、北抜き、カン、ポン、チー、スキップ） */
-.btn-ron   { background-position: calc(0 * 100% / 6) 0; }
-.btn-tsumo { background-position: calc(1 * 100% / 6) 0; }
-.btn-kita  { background-position: calc(2 * 100% / 6) 0; }
-.btn-kan   { background-position: calc(3 * 100% / 6) 0; }
-.btn-pon   { background-position: calc(4 * 100% / 6) 0; }
-.btn-chi   { background-position: calc(5 * 100% / 6) 0; }
-.btn-pass  { background-position: calc(6 * 100% / 6) 0; }
-
+/* ★修正: 7枚の均等切り取りを計算式(calc)で正確に指定 */
+.btn-ron   { background-position: calc(100% / 6 * 0) 0; }
+.btn-tsumo { background-position: calc(100% / 6 * 1) 0; }
+.btn-kita  { background-position: calc(100% / 6 * 2) 0; }
+.btn-kan   { background-position: calc(100% / 6 * 3) 0; }
+.btn-pon   { background-position: calc(100% / 6 * 4) 0; }
+.btn-chi   { background-position: calc(100% / 6 * 5) 0; }
+.btn-pass  { background-position: calc(100% / 6 * 6) 0; }
 
 #result-overlay {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -228,7 +225,6 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     .tile { width: 9vh; height: 12.3vh; }
     .tile.small { width: 4.8vh; height: 6.6vh; }
     
-    /* 5枚切り対応 (スマホ) */
     .discard-area { 
         grid-template-columns: repeat(5, 4.8vh);
         grid-auto-rows: 6.6vh;
@@ -249,14 +245,14 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     #action-ui-area {
         bottom: 15vh;
         right: 2vw;
-        gap: 15px;
+        gap: 10px;
     }
     #action-timer-display {
-        font-size: 10vh;
+        font-size: 8vh; /* スマホでも見やすいサイズに調整 */
     }
     .action-btn {
-        width: 12vh;
-        height: 12vh;
+        width: 16vh;
+        height: 6.2vh; /* 比率を維持 */
     }
 }
 

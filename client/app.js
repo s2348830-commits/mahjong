@@ -172,17 +172,25 @@ function render() {
             Renderer.updateLocalSelection();
             
             UI.renderReachModal(state.reachOptions);
-            
-            // 【修正】エラーの原因だった関数名のタイポを修正
             UI.updateWinningTilesDisplay(state.currentWinningTiles);
 
+            // ★タイマーを手番の人・鳴ける人にだけ見せる処理
             const prevGame = prevState ? prevState.game : null;
+            const isMyTurn = (state.game.phase === 'DRAW' && state.game.turnPlayerId === state.playerId);
+            const hasAction = (state.game.phase === 'ACTION_WAIT' && state.game.allowedActions && state.game.allowedActions.length > 0);
+
             if (!prevGame || prevGame.turnPlayerId !== state.game.turnPlayerId || prevGame.phase !== state.game.phase || prevGame.lastDiscard?.tile !== state.game.lastDiscard?.tile) {
-                if (state.game.phase === 'DRAW' || state.game.phase === 'ACTION_WAIT') {
-                    Renderer.startTimer(state.room.settings.thinkTime);
+                if (isMyTurn || hasAction) {
+                    if (state.dealAnimationStep === -1) {
+                        Renderer.startTimer(state.room.settings.thinkTime);
+                    }
                 } else {
                     Renderer.stopTimer();
                 }
+            } else if (state.dealAnimationStep === -1 && !Renderer.timerInterval && (isMyTurn || hasAction)) {
+                Renderer.startTimer(state.room.settings.thinkTime);
+            } else if (!isMyTurn && !hasAction) {
+                Renderer.stopTimer();
             }
         }
     }
@@ -338,6 +346,8 @@ const Network = {
 };
 
 const Renderer = {
+    timerInterval: null,
+
     startTimer(timeStr) {
         this.stopTimer();
         const display = document.getElementById('action-timer-display');
@@ -349,11 +359,11 @@ const Renderer = {
             if (parts.length === 2) totalSeconds = parseInt(parts[0]) + parseInt(parts[1]);
             else totalSeconds = parseInt(timeStr) || 15;
         }
-        totalSeconds += 2; // サーバー猶予
+        totalSeconds += 2; // サーバー側での通信猶予を2秒持たせる
 
         display.style.display = 'block';
         display.innerText = totalSeconds;
-        display.style.color = '#ff9800'; // オレンジ色
+        display.style.color = '#ff9800'; // 基本はオレンジ
 
         this.timerInterval = setInterval(() => {
             totalSeconds--;
@@ -361,7 +371,7 @@ const Renderer = {
             display.innerText = totalSeconds;
             
             if (totalSeconds <= 5) {
-                display.style.color = '#e74c3c'; // 残りわずかで赤色
+                display.style.color = '#e74c3c'; // 残りわずかで赤色に変化
             }
             if (totalSeconds <= 0) {
                 this.stopTimer();
@@ -672,7 +682,6 @@ const Renderer = {
 
 const UI = {
     initEvents() {
-        // エラーの原因だった HTML 側の onclick="deselectTile(event)" を削除したので、ここで一元管理します
         document.getElementById('mahjong-table').addEventListener('click', (e) => {
             const tileEl = e.target.closest('.tile');
             if (tileEl) {
@@ -694,7 +703,7 @@ const UI = {
                         dispatch({ type: 'SET_SELECTED_TILE', payload: index });
                     }
                 }
-            } else if (!e.target.closest('#action-ui-area')) { // アクションUIエリア以外をクリックで選択解除
+            } else if (!e.target.closest('#action-ui-area')) {
                 if (state.selectedTileIndex !== -1) {
                     dispatch({ type: 'SET_SELECTED_TILE', payload: -1 });
                 }
@@ -788,7 +797,6 @@ const UI = {
         if(options.kakan) options.kakan.forEach(t => container.appendChild(createOpt(t, 'KAKAN')));
     },
 
-    // 【修正】関数名のタイポを直し、待ち牌を表示できるようにしました
     updateWinningTilesDisplay(winningTiles) {
         const container = document.getElementById('winning-tiles-container');
         const list = document.getElementById('winning-tiles-list');
