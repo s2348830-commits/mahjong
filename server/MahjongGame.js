@@ -1,20 +1,4 @@
-/**
- * Mahjong Server Engine (Professional Edition)
- */
-
-const CONSTANTS = {
-    TILES: [
-        '1m','2m','3m','4m','5m','6m','7m','8m','9m',
-        '1p','2p','3p','4p','5p','6p','7p','8p','9p',
-        '1s','2s','3s','4s','5s','6s','7s','8s','9s',
-        '1z','2z','3z','4z','5z','6z','7z'
-    ],
-    YAOCHU: ['1m','9m','1p','9p','1s','9s','1z','2z','3z','4z','5z','6z','7z'],
-    WINDS: ['1z', '2z', '3z', '4z'],
-    SANGEN: ['5z', '6z', '7z'],
-    BASE_POINT: { MANGAN: 2000, HANEMAN: 3000, BAIMAN: 4000, SANBAIMAN: 6000, YAKUMAN: 8000 },
-    COST: { RIICHI: 1000, HONBA: 300, TSUMO_HONBA: 100, RYUUKYOKU: 3000 }
-};
+const { CONSTANTS, YakuHelper, ScoreCalculator, YakuEvaluator } = require('./YakuEvaluator');
 
 function log(...args) {
     console.log('[MahjongGame]', ...args);
@@ -65,14 +49,12 @@ class MahjongGame {
         this.finalResults = null;
         this.endReason = null;
         
-        // 【追加】放置対策用のタイマー
         this.turnTimer = null;
 
         this._setupManagers();
         this.startRound();
     }
 
-    // 【追加】思考時間の文字列（例: '5+10'）を秒数にパースする
     parseThinkTime(str) {
         if (!str) return 15;
         let parts = str.split('+');
@@ -80,12 +62,10 @@ class MahjongGame {
         return parseInt(str) || 15;
     }
 
-    // 【追加】放置対策（AFK）タイマーの起動
     resetTimer() {
         clearTimeout(this.turnTimer);
         if (this.phase === 'FINISHED' || this.phase === 'FINISHED_GAME') return;
         
-        // 通信遅延やアニメーションを考慮して +2秒 の猶予を持たせる
         let timeMs = this.parseThinkTime(this.settings.thinkTime) * 1000 + 2000;
         
         this.turnTimer = setTimeout(() => {
@@ -93,24 +73,23 @@ class MahjongGame {
         }, timeMs);
     }
 
-    // 【追加】時間切れ時の自動処理
     handleTimeout() {
-        if (this.phase === 'DRAW') {
-            let current = this.turnManager.getCurrent();
-            let p = this.players[current];
-            if (p) {
-                // 自動ツモ切り
-                let tileIndex = p.hand.length - 1;
-                this.handlePlayerAction(current, { type: 'DISCARD', payload: { tileIndex } });
-            }
-        } else if (this.phase === 'ACTION_WAIT') {
-            // 未応答のプレイヤー全員を自動で「パス」にする
-            this.waitingFor.forEach(id => {
-                if (!this.actionResponses[id]) {
-                    this.handlePlayerAction(id, { type: 'PASS' });
+        try {
+            if (this.phase === 'DRAW') {
+                let current = this.turnManager.getCurrent();
+                let p = this.players[current];
+                if (p) {
+                    let tileIndex = p.hand.length - 1;
+                    this.handlePlayerAction(current, { type: 'DISCARD', payload: { tileIndex } });
                 }
-            });
-        }
+            } else if (this.phase === 'ACTION_WAIT') {
+                this.waitingFor.forEach(id => {
+                    if (!this.actionResponses[id]) {
+                        this.handlePlayerAction(id, { type: 'PASS' });
+                    }
+                });
+            }
+        } catch(e) { console.error('Timeout Error', e); }
     }
 
     _setupManagers() {
@@ -123,392 +102,6 @@ class MahjongGame {
                 return self.playerIds[self.currentTurn];
             },
             isCurrentPlayer: (id) => self.playerIds[self.currentTurn] === id
-        };
-
-        this.scoreCalculator = {
-            calculateFu: (melds, pair, winTile, isTsumo, isMenzen, bakaze, jikaze, isPinfu, isChiitoitsu) => {
-                if (isChiitoitsu) return 25;
-                if (isPinfu) return isTsumo ? 20 : 30;
-                
-                let fu = 20; 
-                if (isMenzen && !isTsumo) fu += 10; 
-                else if (isTsumo) fu += 2; 
-
-                let normWin = self.yakuEvaluator.helper.safeNormalize(winTile);
-                if (!normWin) return fu;
-
-                let wNum = parseInt(normWin[0]);
-                if (pair === normWin) fu += 2; 
-                else {
-                    melds.forEach(m => {
-                        if (m.type === 'shuntsu' && m.tiles.includes(normWin)) {
-                            let nums = m.tiles.map(t => parseInt(t[0])).sort();
-                            if (wNum === nums[1] || (nums[0] === 1 && wNum === 3) || (nums[2] === 9 && wNum === 7)) fu += 2; 
-                        }
-                    });
-                }
-
-                if (pair === bakaze) fu += 2;
-                if (pair === jikaze) fu += 2;
-                if (CONSTANTS.SANGEN.includes(pair)) fu += 2;
-
-                melds.forEach(m => {
-                    if (m.type === 'shuntsu') return;
-                    let isYaochu = m.tile.match(/[19z]/);
-                    let base = isYaochu ? 8 : 4;
-                    let isMinku = (m.isOpen || (!isTsumo && m.tile === normWin)); 
-                    if (m.type === 'kantsu') fu += (m.isOpen ? base * 4 : base * 8);
-                    else fu += (isMinku ? base / 2 : base);
-                });
-
-                if (fu === 20 && !isTsumo && !isMenzen) fu = 30; 
-                return Math.ceil(fu / 10) * 10;
-            },
-            calculate: (han, fu, isDealer, isTsumo) => {
-                let basePoint = 0;
-                if (han >= 13) basePoint = CONSTANTS.BASE_POINT.YAKUMAN * Math.floor(han / 13); 
-                else if (han >= 11) basePoint = CONSTANTS.BASE_POINT.SANBAIMAN;
-                else if (han >= 8) basePoint = CONSTANTS.BASE_POINT.BAIMAN;
-                else if (han >= 6) basePoint = CONSTANTS.BASE_POINT.HANEMAN;
-                else {
-                    basePoint = fu * Math.pow(2, han + 2);
-                    if (basePoint >= CONSTANTS.BASE_POINT.MANGAN || han >= 5) basePoint = CONSTANTS.BASE_POINT.MANGAN; 
-                }
-
-                let point = { total: 0, dealerPay: 0, nonDealerPay: 0, isTsumo: isTsumo };
-                let isSanma = (self.settings.mode === 3);
-
-                if (isTsumo) {
-                    if (isSanma) {
-                        let ronTotal = Math.ceil((basePoint * (isDealer ? 6 : 4)) / 100) * 100;
-                        if (isDealer) {
-                            let pay = Math.ceil((ronTotal / 2) / 100) * 100;
-                            point.total = pay * 2;
-                            point.nonDealerPay = pay;
-                        } else {
-                            let pay = Math.ceil((ronTotal / 2) / 100) * 100;
-                            point.total = pay * 2;
-                            point.dealerPay = pay;
-                            point.nonDealerPay = pay;
-                        }
-                    } else {
-                        if (isDealer) {
-                            let pay = Math.ceil((basePoint * 2) / 100) * 100;
-                            point.total = pay * 3;
-                            point.nonDealerPay = pay;
-                        } else {
-                            let dPay = Math.ceil((basePoint * 2) / 100) * 100;
-                            let nPay = Math.ceil(basePoint / 100) * 100;
-                            point.total = dPay + nPay * 2;
-                            point.dealerPay = dPay;
-                            point.nonDealerPay = nPay;
-                        }
-                    }
-                } else {
-                    point.total = Math.ceil((basePoint * (isDealer ? 6 : 4)) / 100) * 100;
-                }
-                return point;
-            }
-        };
-
-        this.yakuEvaluator = {
-            helper: {
-                winningTilesCache: new Map(),
-                safeNormalize: (t) => {
-                    try {
-                        if (!t || typeof t !== 'string') return null;
-                        return t[0] === '0' ? '5' + t[1] : t;
-                    } catch { return null; }
-                },
-                countTiles: (tiles) => {
-                    const counts = {};
-                    tiles.forEach(t => {
-                        let n = self.yakuEvaluator.helper.safeNormalize(t);
-                        if (n) counts[n] = (counts[n] || 0) + 1;
-                    });
-                    return counts;
-                },
-                getAllMeldPatterns: (counts, currentMelds = []) => {
-                    let patterns = [];
-                    const search = (curCounts, melds, hasPair) => {
-                        let keys = Object.keys(curCounts).filter(k => curCounts[k] > 0).sort();
-                        if (keys.length === 0) {
-                            if (melds.length === 4 && hasPair) patterns.push({ melds: [...melds], pair: hasPair });
-                            return;
-                        }
-                        let first = keys[0];
-                        if (!hasPair && curCounts[first] >= 2) {
-                            let next = { ...curCounts }; next[first] -= 2; search(next, melds, first);
-                        }
-                        if (curCounts[first] >= 3) {
-                            let next = { ...curCounts }; next[first] -= 3;
-                            melds.push({ type: 'koutsu', tile: first }); search(next, melds, hasPair); melds.pop();
-                        }
-                        let num = parseInt(first[0]); let suit = first[1];
-                        if (suit !== 'z' && num <= 7) {
-                            let t2 = (num + 1) + suit; let t3 = (num + 2) + suit;
-                            if (curCounts[t2] > 0 && curCounts[t3] > 0) {
-                                let next = { ...curCounts }; next[first]--; next[t2]--; next[t3]--;
-                                melds.push({ type: 'shuntsu', tiles: [first, t2, t3] }); search(next, melds, hasPair); melds.pop();
-                            }
-                        }
-                    };
-                    search({ ...counts }, [...currentMelds], null);
-                    return patterns;
-                },
-                getDoraTile: (indicator) => {
-                    const norm = self.yakuEvaluator.helper.safeNormalize(indicator);
-                    if(!norm) return null;
-                    const suit = norm[1]; const num = parseInt(norm[0]);
-                    if (suit === 'z') {
-                        if (num <= 4) return (num % 4 + 1) + 'z'; 
-                        return ((num - 5 + 1) % 3 + 5) + 'z'; 
-                    }
-                    return (num % 9 + 1) + suit;
-                },
-                countDora: (allTilesRaw, doraIndicators = [], uraDoraIndicators = [], isRiichi) => {
-                    let count = 0;
-                    let activeIndicators = [...doraIndicators];
-                    if (isRiichi) activeIndicators.push(...uraDoraIndicators);
-                    
-                    let doras = activeIndicators.map(ind => self.yakuEvaluator.helper.getDoraTile(ind)).filter(d=>d);
-                    allTilesRaw.forEach(t => {
-                        if (t && t[0] === '0') count++; 
-                        let norm = self.yakuEvaluator.helper.safeNormalize(t);
-                        if(norm) doras.forEach(d => { if (norm === d) count++; });
-                    });
-                    return count;
-                }
-            },
-            special: {
-                isChiitoitsu: (counts) => Object.keys(counts).filter(k => counts[k] === 2).length === 7,
-                isKokushi: (counts) => {
-                    let hasPair = false;
-                    for (let y of CONSTANTS.YAOCHU) {
-                        if (!counts[y]) return false;
-                        if (counts[y] >= 2) hasPair = true;
-                    }
-                    return hasPair;
-                },
-                // 【追加】ローカル役：十三不塔（シーサンプーター）の判定
-                isShiisanpuutaa: (handNorm) => {
-                    let counts = {};
-                    handNorm.forEach(t => counts[t] = (counts[t] || 0) + 1);
-                    let pairs = 0;
-                    for (let k in counts) {
-                        if (counts[k] > 2) return false;
-                        if (counts[k] === 2) pairs++;
-                    }
-                    if (pairs !== 1) return false;
-                    let suits = { m: [], p: [], s: [] };
-                    handNorm.forEach(t => { if (t[1] !== 'z') suits[t[1]].push(parseInt(t[0])); });
-                    for (let suit in suits) {
-                        let arr = suits[suit].sort((a,b) => a-b);
-                        for (let i = 0; i < arr.length - 1; i++) {
-                            if (arr[i+1] - arr[i] < 3) return false; 
-                        }
-                    }
-                    return true;
-                }
-            },
-            standard: {
-                isPinfu: (melds, pair, bakaze, jikaze, isMenzen, winTile) => {
-                    if (!isMenzen) return false;
-                    let shuntsu = melds.filter(m => m.type === 'shuntsu');
-                    if (shuntsu.length !== 4) return false;
-                    if (CONSTANTS.SANGEN.includes(pair) || [bakaze, jikaze].includes(pair)) return false;
-
-                    let normWin = self.yakuEvaluator.helper.safeNormalize(winTile);
-                    if (!normWin) return false;
-
-                    return shuntsu.some(s => {
-                        if (!s.tiles.includes(normWin)) return false;
-                        let nums = s.tiles.map(t => parseInt(t[0])).sort((a,b)=>a-b);
-                        let w = parseInt(normWin[0]);
-                        if (!(nums[0]+1 === nums[1] && nums[1]+1 === nums[2])) return false;
-                        if (w === nums[1]) return false; 
-                        if (nums[0] === 1 && w === 3) return false; 
-                        if (nums[2] === 9 && w === 7) return false; 
-                        return true;
-                    });
-                },
-                evaluateStandard: (handRaw, declaredMelds, stateObj, counts, allTilesRaw, handNorm, winTile, isMenzen) => {
-                    let { isTsumo, isRiichi, isDoubleRiichi, isIppatsu, isRinshan, isChankan, isHoutei, isHaitei, bakaze, jikaze } = stateObj;
-                    let normDeclaredMelds = declaredMelds.map(m => ({ ...m, tile: self.yakuEvaluator.helper.safeNormalize(m.tile), tiles: m.tiles?.map(t => self.yakuEvaluator.helper.safeNormalize(t)) }));
-                    
-                    let patterns = self.yakuEvaluator.helper.getAllMeldPatterns(counts, normDeclaredMelds);
-                    let maxPointTotal = -1; let bestResultObj = null;
-
-                    for (let pat of patterns) {
-                        let han = 0; let yaku = []; let { melds, pair } = pat;
-
-                        let yakumanList = [];
-                        let koutsu = melds.filter(m => m.type === 'koutsu' || m.type === 'kantsu');
-                        let closedKoutsuCount = koutsu.length - normDeclaredMelds.filter(m => m.isOpen).length;
-                        if (!isTsumo && koutsu.some(m => m.tile === winTile)) closedKoutsuCount--;
-                        
-                        if (closedKoutsuCount === 4) yakumanList.push(pair === winTile ? '四暗刻単騎' : '四暗刻');
-                        if (koutsu.some(m=>m.tile==='5z') && koutsu.some(m=>m.tile==='6z') && koutsu.some(m=>m.tile==='7z')) yakumanList.push('大三元');
-                        if (handNorm.every(t => t.match(/z/))) yakumanList.push('字一色');
-                        if (handNorm.every(t => t.match(/[19]/))) yakumanList.push('清老頭');
-                        
-                        let windsMelds = koutsu.filter(m => CONSTANTS.WINDS.includes(m.tile)).length;
-                        let windsCount = windsMelds + (CONSTANTS.WINDS.includes(pair) ? 1 : 0);
-                        if (windsMelds === 4) yakumanList.push('大四喜'); 
-                        else if (windsCount === 4 && windsMelds === 3) yakumanList.push('小四喜');
-
-                        if (yakumanList.length > 0) {
-                            let yHan = yakumanList.length * 13;
-                            if (yakumanList.includes('四暗刻単騎') || yakumanList.includes('大四喜')) yHan += 13;
-                            return { han: yHan, yaku: yakumanList, fu: 20 };
-                        }
-
-                        if (isDoubleRiichi && isMenzen) { han += 2; yaku.push('ダブル立直'); }
-                        else if (isRiichi && isMenzen) { han++; yaku.push('立直'); }
-                        
-                        if (isIppatsu) { han++; yaku.push('一発'); }
-                        if (isTsumo && isMenzen) { han++; yaku.push('門前清自摸和'); }
-                        if (isTsumo && isRinshan) { han++; yaku.push('嶺上開花'); }
-                        if (!isTsumo && isChankan) { han++; yaku.push('槍槓'); }
-                        if (isHaitei) { han++; yaku.push('海底摸月'); }
-                        if (isHoutei) { han++; yaku.push('河底撈魚'); }
-                        
-                        if (!handNorm.some(t => t.match(/[19z]/))) { han++; yaku.push('タンヤオ'); }
-                        
-                        let yakuhaiSet = new Set();
-                        melds.forEach(m => {
-                            if (m.type === 'koutsu' || m.type === 'kantsu') {
-                                if (m.tile === '5z') yakuhaiSet.add('白');
-                                if (m.tile === '6z') yakuhaiSet.add('發');
-                                if (m.tile === '7z') yakuhaiSet.add('中');
-                                if (m.tile === bakaze) yakuhaiSet.add('場風');
-                                if (m.tile === jikaze) yakuhaiSet.add('自風');
-                            }
-                        });
-                        if (yakuhaiSet.size > 0) { yaku.push(...yakuhaiSet); han += yakuhaiSet.size; }
-
-                        let isPin = self.yakuEvaluator.standard.isPinfu(melds, pair, bakaze, jikaze, isMenzen, winTile);
-                        if (isPin) { han++; yaku.push('平和'); }
-                        
-                        let shuntsuStr = melds.filter(m => m.type === 'shuntsu').map(s => s.tiles.join('')).sort();
-                        let iipeiko = 0;
-                        for(let i=0; i<shuntsuStr.length-1; i++) {
-                            if(shuntsuStr[i] === shuntsuStr[i+1]) { iipeiko++; i++; }
-                        }
-                        if (isMenzen && iipeiko === 1) { han++; yaku.push('一盃口'); }
-                        else if (isMenzen && iipeiko === 2) { han+=3; yaku.push('二盃口'); }
-
-                        if (koutsu.length === 4) { han+=2; yaku.push('対々和'); }
-                        
-                        let honroutou = handNorm.every(t => t.match(/[19z]/));
-                        let chanta = melds.every(m => (m.type === 'koutsu' || m.type === 'kantsu') ? m.tile.match(/[19z]/) : m.tiles.some(t => t.match(/[19]/))) && pair.match(/[19z]/);
-                        let hasZ = handNorm.some(t => t.match(/z/));
-                        
-                        if (honroutou) {
-                            han += 2; yaku.push('混老頭');
-                        } else if (chanta) {
-                            if (!hasZ) { han += (isMenzen?3:2); yaku.push('純全帯幺九'); }
-                            else { han += (isMenzen?2:1); yaku.push('混全帯幺九'); }
-                        }
-
-                        let suits = new Set(handNorm.filter(t => !t.match(/z/)).map(t => t[1]));
-                        if (suits.size === 1) {
-                            if (hasZ) { han += (isMenzen?3:2); yaku.push('混一色'); }
-                            else { han += (isMenzen?6:5); yaku.push('清一色'); }
-                        }
-
-                        if (han > 0) { 
-                            let fu = self.scoreCalculator.calculateFu(melds, pair, winTile, isTsumo, isMenzen, bakaze, jikaze, isPin, false);
-                            let tempPoint = self.scoreCalculator.calculate(han, fu, bakaze === jikaze, isTsumo);
-                            if (tempPoint.total > maxPointTotal || (tempPoint.total === maxPointTotal && han > (bestResultObj ? bestResultObj.han : 0))) {
-                                maxPointTotal = tempPoint.total;
-                                bestResultObj = { han, fu, yaku };
-                            }
-                        }
-                    }
-                    return bestResultObj;
-                }
-            },
-            evaluate: (handRaw, declaredMelds, stateObj) => {
-                let { winTileRaw, isTsumo, isRiichi, isDoubleRiichi, isIppatsu, isRinshan, isHaitei, isHoutei, isTenhou, isChiihou, bakaze, jikaze, doraIndicators, uraDoraIndicators } = stateObj;
-                let isMenzen = declaredMelds.filter(m => m.isOpen).length === 0;
-
-                let allTilesRaw = [...handRaw];
-                if (!isTsumo && winTileRaw) allTilesRaw.push(winTileRaw);
-                declaredMelds.forEach(m => { 
-                    if (m.type === 'koutsu') allTilesRaw.push(m.tile, m.tile, m.tile);
-                    if (m.type === 'kantsu') allTilesRaw.push(m.tile, m.tile, m.tile, m.tile); 
-                });
-
-                let handNorm = handRaw.map(t => self.yakuEvaluator.helper.safeNormalize(t));
-                let winTile = self.yakuEvaluator.helper.safeNormalize(winTileRaw);
-                if (!isTsumo && winTile) handNorm.push(winTile);
-
-                let counts = self.yakuEvaluator.helper.countTiles(handRaw);
-                if (!isTsumo && winTile) counts[winTile] = (counts[winTile] || 0) + 1;
-
-                let startYakuman = [];
-                if (isTenhou) startYakuman.push('天和');
-                if (isChiihou) startYakuman.push('地和');
-
-                let result = null;
-
-                if (isMenzen && handNorm.length === 14) {
-                    // 【追加】ローカル役：十三不塔
-                    if (stateObj.settings.localYaku && stateObj.isFirstTurn && stateObj.kanCount === 0) {
-                        if (self.yakuEvaluator.special.isShiisanpuutaa(handNorm)) {
-                            let point = self.scoreCalculator.calculate(13, 20, stateObj.isDealer, stateObj.isTsumo);
-                            return { han: 13, yaku: ['十三不塔'], fu: 20, point: point };
-                        }
-                    }
-
-                    if (self.yakuEvaluator.special.isKokushi(counts)) {
-                        let han = 13 + (startYakuman.length * 13); 
-                        let yaku = counts[winTile] === 2 ? ['国士無双十三面待ち'] : ['国士無双'];
-                        if (isTsumo && startYakuman.length === 0) yaku.push('門前清自摸和');
-                        yaku.push(...startYakuman);
-                        result = { han, yaku, fu: 20 };
-                    } else if (self.yakuEvaluator.special.isChiitoitsu(counts)) {
-                        let han = 2; let yaku = ['七対子'];
-                        if (!handNorm.some(t => t.match(/[19z]/))) { han++; yaku.push('タンヤオ'); }
-                        if (isDoubleRiichi) { han+=2; yaku.push('ダブル立直'); } else if (isRiichi) { han++; yaku.push('立直'); }
-                        if (isIppatsu) { han++; yaku.push('一発'); }
-                        if (isTsumo) { han++; yaku.push('門前清自摸和'); }
-                        
-                        let hasZ = handNorm.some(t => t.match(/z/));
-                        let suits = new Set(handNorm.filter(t => !t.match(/z/)).map(t => t[1]));
-                        if (suits.size === 1) {
-                            if (hasZ) { han+=3; yaku.push('混一色'); }
-                            else { han+=6; yaku.push('清一色'); }
-                        }
-                        result = { han, yaku, fu: 25 };
-                    }
-                }
-
-                let standardResult = self.yakuEvaluator.standard.evaluateStandard(handRaw, declaredMelds, stateObj, counts, allTilesRaw, handNorm, winTile, isMenzen);
-                if (standardResult && (!result || standardResult.han > result.han)) {
-                    result = standardResult;
-                }
-
-                // 【追加】ローカル役：人和（レンホウ）
-                if (result && result.han > 0) {
-                    if (stateObj.settings.localYaku && !isTsumo && stateObj.isFirstTurn && stateObj.kanCount === 0 && !stateObj.isDealer) {
-                        result.han = 13;
-                        result.yaku = ['人和'];
-                        result.point = self.scoreCalculator.calculate(13, 20, false, false);
-                        return result;
-                    }
-
-                    let doraHan = self.yakuEvaluator.helper.countDora(allTilesRaw, doraIndicators, uraDoraIndicators, isRiichi || isDoubleRiichi) + (stateObj.kitaCount || 0);
-                    if (doraHan > 0 && result.han < 13) {
-                        result.han += doraHan;
-                        result.yaku.push(`ドラ${doraHan}`);
-                    }
-                    result.point = self.scoreCalculator.calculate(result.han, result.fu, bakaze === jikaze, isTsumo);
-                    return result;
-                }
-                return null;
-            }
         };
 
         this.handManager = {
@@ -550,7 +143,6 @@ class MahjongGame {
                 let p = self.players[playerId];
                 if (level === 'easy') return { type: 'DISCARD', payload: { tileIndex: p.hand.length - 1 } };
 
-                let stateTemplate = { isRiichi: true, bakaze: self.roundWind, jikaze: CONSTANTS.WINDS[(self.playerIds.indexOf(playerId) - self.dealerIndex + self.playerIds.length) % self.playerIds.length] };
                 let reachable = [];
                 for (let i = 0; i < p.hand.length; i++) {
                     let testHand = [...p.hand]; testHand.splice(i, 1);
@@ -561,7 +153,7 @@ class MahjongGame {
                 if (reachable.length > 0) {
                     reachable.sort((a, b) => b.winningTiles.length - a.winningTiles.length);
                     for (let r of reachable) {
-                        let norm = self.yakuEvaluator.helper.safeNormalize(r.tile);
+                        let norm = YakuHelper.safeNormalize(r.tile);
                         if (!p.forbiddenDiscards.includes(norm)) {
                             if (r.winningTiles.length >= 4 || self.points[playerId] >= 1000) return { type: 'RIICHI' }; 
                             return { type: 'DISCARD', payload: { tileIndex: r.index } };
@@ -570,7 +162,7 @@ class MahjongGame {
                 }
 
                 let hand = p.hand;
-                let tileCounts = self.yakuEvaluator.helper.countTiles(hand);
+                let tileCounts = YakuHelper.countTiles(hand);
                 let bestIndex = -1;
                 let maxScore = -9999;
                 
@@ -579,11 +171,10 @@ class MahjongGame {
                 self.playerIds.forEach(id => {
                     if (id !== playerId && self.players[id].riichi) {
                         isSomeoneRiichi = true;
-                        self.players[id].discards.forEach(d => safeTiles.add(self.yakuEvaluator.helper.safeNormalize(d)));
+                        self.players[id].discards.forEach(d => safeTiles.add(YakuHelper.safeNormalize(d)));
                     }
                 });
 
-                // 【追加】AIの高度な手作り（Honitsu判定用）
                 let suitCounts = { m: 0, p: 0, s: 0, z: 0 };
                 if (level === 'hard') {
                     hand.forEach(t => { suitCounts[t[1]]++; });
@@ -596,7 +187,7 @@ class MahjongGame {
 
                 for (let i = 0; i < hand.length; i++) {
                     let tile = hand[i];
-                    let norm = self.yakuEvaluator.helper.safeNormalize(tile);
+                    let norm = YakuHelper.safeNormalize(tile);
                     
                     if (p.forbiddenDiscards.includes(norm)) continue;
 
@@ -611,25 +202,21 @@ class MahjongGame {
                             if (tileCounts[tPrev] || tileCounts[tNext]) score -= 10; 
                             if (tileCounts[tPrev2] || tileCounts[tNext2]) score -= 5; 
                             if (num === 1 || num === 9) score += 5; 
-                            
-                            // 【追加】中張牌（3〜7）を大切にする（AI強化）
                             if (level === 'hard' && num >= 3 && num <= 7) score -= 8;
                         } else {
                             score += 15; 
-                            // 【追加】役牌の対子・暗刻は大切にする
                             if (level === 'hard' && (CONSTANTS.SANGEN.includes(norm) || norm === self.roundWind || norm === CONSTANTS.WINDS[(self.playerIds.indexOf(playerId) - self.dealerIndex + self.playerIds.length) % self.playerIds.length])) {
                                 if (tileCounts[norm] >= 2) score -= 30;
                             }
                         }
                     }
 
-                    // 【追加】ホンイツ狙いの場合の重み付け
                     if (level === 'hard' && targetSuit) {
-                        if (suit !== targetSuit && suit !== 'z') score += 40; // 違う色は真っ先に捨てる
-                        if (suit === targetSuit) score -= 20; // ターゲット色は残す
+                        if (suit !== targetSuit && suit !== 'z') score += 40; 
+                        if (suit === targetSuit) score -= 20; 
                     }
 
-                    let isDora = self.doraIndicators.map(ind => self.yakuEvaluator.helper.getDoraTile(ind)).includes(norm);
+                    let isDora = self.doraIndicators.map(ind => YakuHelper.getDoraTile(ind)).includes(norm);
                     if (isDora) score -= 30; 
                     
                     if (isSomeoneRiichi) {
@@ -702,7 +289,7 @@ class MahjongGame {
         this.turnCount = 0;
         this.suukansanraPending = false;
 
-        this.yakuEvaluator.helper.winningTilesCache.clear();
+        YakuHelper.winningTilesCache.clear();
 
         this.playerIds.forEach(id => {
             for (let i = 0; i < 13; i++) { this.players[id].hand.push(this.wall.pop()); }
@@ -712,7 +299,7 @@ class MahjongGame {
         this.room.broadcastState();
         this.triggerAILogic(this.turnManager.getCurrent());
         
-        this.resetTimer(); // タイマー開始
+        this.resetTimer();
     }
 
     checkGameEnd() {
@@ -786,11 +373,11 @@ class MahjongGame {
             this.playerIds.forEach(id => {
                 let p = this.players[id];
                 if (p.discards.length > 0 && p.discards.length === p.furitenDiscards.length) {
-                    let isAllYaochu = p.discards.every(d => CONSTANTS.YAOCHU.includes(this.yakuEvaluator.helper.safeNormalize(d)));
+                    let isAllYaochu = p.discards.every(d => CONSTANTS.YAOCHU.includes(YakuHelper.safeNormalize(d)));
                     if (isAllYaochu) {
                         nagashiWinners.push(id);
                         let isDealer = (this.playerIds.indexOf(id) === this.dealerIndex);
-                        let point = this.scoreCalculator.calculate(5, 20, isDealer, true); 
+                        let point = ScoreCalculator.calculate(5, 20, isDealer, true); 
                         nagashiYakuList.push({ han: 5, fu: 20, yaku: ['流し満貫'], point: point });
                     }
                 }
@@ -877,8 +464,8 @@ class MahjongGame {
 
     checkPao(playerId, tileNorm, discarderId) {
         let p = this.players[playerId];
-        let sangenCount = p.melds.filter(m => m.isOpen && CONSTANTS.SANGEN.includes(this.yakuEvaluator.helper.safeNormalize(m.tile))).length;
-        let windsCount = p.melds.filter(m => m.isOpen && CONSTANTS.WINDS.includes(this.yakuEvaluator.helper.safeNormalize(m.tile))).length;
+        let sangenCount = p.melds.filter(m => m.isOpen && CONSTANTS.SANGEN.includes(YakuHelper.safeNormalize(m.tile))).length;
+        let windsCount = p.melds.filter(m => m.isOpen && CONSTANTS.WINDS.includes(YakuHelper.safeNormalize(m.tile))).length;
         
         if (sangenCount === 3 && CONSTANTS.SANGEN.includes(tileNorm)) {
             p.pao = discarderId;
@@ -905,7 +492,11 @@ class MahjongGame {
             doraIndicators: this.doraIndicators, uraDoraIndicators: this.uraDoraIndicators, settings: this.settings,
             kitaCount: player.kita
         };
-        return this.yakuEvaluator.evaluate(player.hand, player.melds, stateObj);
+        try {
+            return YakuEvaluator.evaluate(player.hand, player.melds, stateObj);
+        } catch(e) {
+            console.error("Yaku Evaluator Error", e); return null;
+        }
     }
 
     getWinningTiles(playerId, testHand = null) {
@@ -924,9 +515,11 @@ class MahjongGame {
                 doraIndicators: [], uraDoraIndicators: [], kitaCount: p.kita, settings: this.settings, isFirstTurn: p.firstTurn, 
                 kanCount: this.kanCount, isDealer: playerIndex === this.dealerIndex 
             };
-            if (this.yakuEvaluator.evaluate([...hand, winTile], p.melds, state)) {
-                winning.push(winTile);
-            }
+            try {
+                if (YakuEvaluator.evaluate([...hand, winTile], p.melds, state)) {
+                    winning.push(winTile);
+                }
+            } catch(e) {}
         }
         return winning;
     }
@@ -949,8 +542,8 @@ class MahjongGame {
         if (p.tempFuriten || p.riichiFuriten) return true;
         let winningTiles = this.getWinningTiles(playerId);
         for (let wt of winningTiles) {
-            let normWt = this.yakuEvaluator.helper.safeNormalize(wt);
-            if (p.furitenDiscards.some(d => this.yakuEvaluator.helper.safeNormalize(d) === normWt)) return true;
+            let normWt = YakuHelper.safeNormalize(wt);
+            if (p.furitenDiscards.some(d => YakuHelper.safeNormalize(d) === normWt)) return true;
         }
         return false;
     }
@@ -964,12 +557,12 @@ class MahjongGame {
         if (this.settings.mode === 3) return []; 
         const p = this.players[playerId];
         if (p.riichi) return [];
-        const norm = this.yakuEvaluator.helper.safeNormalize(tile);
+        const norm = YakuHelper.safeNormalize(tile);
         if (!norm || norm.includes('z')) return [];
         
         const suit = norm[1];
         const num = parseInt(norm[0]);
-        const counts = this.yakuEvaluator.helper.countTiles(p.hand);
+        const counts = YakuHelper.countTiles(p.hand);
         let options = [];
         
         if (num >= 3 && counts[(num-2)+suit] > 0 && counts[(num-1)+suit] > 0) options.push([(num-2)+suit, (num-1)+suit]);
@@ -981,7 +574,7 @@ class MahjongGame {
     getKanOptions(playerId) {
         const p = this.players[playerId];
         if (p.riichi) return { ankan: [], kakan: [] }; 
-        const counts = this.yakuEvaluator.helper.countTiles(p.hand);
+        const counts = YakuHelper.countTiles(p.hand);
         let ankan = []; let kakan = [];
         
         for (const [tile, count] of Object.entries(counts)) {
@@ -989,7 +582,7 @@ class MahjongGame {
         }
         p.melds.forEach(m => {
             if (m.type === 'koutsu' && m.isOpen) {
-                const normMeld = this.yakuEvaluator.helper.safeNormalize(m.tile);
+                const normMeld = YakuHelper.safeNormalize(m.tile);
                 if (counts[normMeld] > 0) kakan.push(normMeld);
             }
         });
@@ -1000,7 +593,7 @@ class MahjongGame {
         try {
             const tileCode = this.players[playerId].hand[tileIndex];
             if (!tileCode) return;
-            const normCode = this.yakuEvaluator.helper.safeNormalize(tileCode);
+            const normCode = YakuHelper.safeNormalize(tileCode);
             
             if (this.players[playerId].forbiddenDiscards && this.players[playerId].forbiddenDiscards.includes(normCode)) {
                 return; 
@@ -1023,8 +616,8 @@ class MahjongGame {
         this.playerIds.forEach(id => {
             if (id !== playerId) {
                 let canR = this.canRon(id, this.lastDiscardTile);
-                let canP = !this.players[id].riichi && this.players[id].hand.filter(t => this.yakuEvaluator.helper.safeNormalize(t) === this.yakuEvaluator.helper.safeNormalize(this.lastDiscardTile)).length >= 3; 
-                if (!canP) canP = !this.players[id].riichi && this.players[id].hand.filter(t => this.yakuEvaluator.helper.safeNormalize(t) === this.yakuEvaluator.helper.safeNormalize(this.lastDiscardTile)).length >= 2; 
+                let canP = !this.players[id].riichi && this.players[id].hand.filter(t => YakuHelper.safeNormalize(t) === YakuHelper.safeNormalize(this.lastDiscardTile)).length >= 3; 
+                if (!canP) canP = !this.players[id].riichi && this.players[id].hand.filter(t => YakuHelper.safeNormalize(t) === YakuHelper.safeNormalize(this.lastDiscardTile)).length >= 2; 
                 
                 let canC = false;
                 if (!this.players[id].riichi && this.playerIds.indexOf(id) === (discardIdx + 1) % this.playerIds.length) {
@@ -1039,7 +632,7 @@ class MahjongGame {
         if (this.waitingFor.length > 0) {
             this.phase = 'ACTION_WAIT';
             this.room.broadcastState();
-            this.triggerAILogic(null); // AIおよびタイマー発動用
+            this.triggerAILogic(null); 
             this.resetTimer();
         } else {
             if (this.suukansanraPending) {
@@ -1058,10 +651,10 @@ class MahjongGame {
             let noMelds = this.playerIds.every(id => this.players[id].melds.length === 0);
             if (noMelds) {
                 let firstDiscard = this.players[this.playerIds[0]].discards[0];
-                if (firstDiscard && ['1z','2z','3z','4z'].includes(this.yakuEvaluator.helper.safeNormalize(firstDiscard))) {
+                if (firstDiscard && ['1z','2z','3z','4z'].includes(YakuHelper.safeNormalize(firstDiscard))) {
                     let allSame = this.playerIds.every(id => {
                         let d = this.players[id].discards[0];
-                        return d && this.yakuEvaluator.helper.safeNormalize(d) === this.yakuEvaluator.helper.safeNormalize(firstDiscard);
+                        return d && YakuHelper.safeNormalize(d) === YakuHelper.safeNormalize(firstDiscard);
                     });
                     if (allSame) { this.handleRyuukyoku('四風連打'); return; }
                 }
@@ -1181,7 +774,7 @@ class MahjongGame {
             let activeId = ponPlayer || minkanPlayer;
             let player = this.players[activeId];
             let t = this.lastDiscardTile; 
-            let normT = this.yakuEvaluator.helper.safeNormalize(t);
+            let normT = YakuHelper.safeNormalize(t);
             
             player.firstTurn = false;
             this.players[this.lastDiscardPlayer].discards.pop(); 
@@ -1189,7 +782,7 @@ class MahjongGame {
             let c = 0;
             let removeCount = ponPlayer ? 2 : 3;
             for (let i = player.hand.length - 1; i >= 0; i--) {
-                if (this.yakuEvaluator.helper.safeNormalize(player.hand[i]) === normT && c < removeCount) { 
+                if (YakuHelper.safeNormalize(player.hand[i]) === normT && c < removeCount) { 
                     player.hand.splice(i, 1); c++; 
                 }
             }
@@ -1229,19 +822,19 @@ class MahjongGame {
             let activeId = chiPlayer;
             let player = this.players[activeId];
             let t = this.lastDiscardTile; 
-            let normT = this.yakuEvaluator.helper.safeNormalize(t);
+            let normT = YakuHelper.safeNormalize(t);
             
             player.firstTurn = false;
             this.players[this.lastDiscardPlayer].discards.pop(); 
 
             for (let ct of chiTiles) {
-                let idx = player.hand.findIndex(h => this.yakuEvaluator.helper.safeNormalize(h) === this.yakuEvaluator.helper.safeNormalize(ct));
+                let idx = player.hand.findIndex(h => YakuHelper.safeNormalize(h) === YakuHelper.safeNormalize(ct));
                 if (idx !== -1) player.hand.splice(idx, 1);
             }
 
             let numT = parseInt(normT[0]);
             let suitT = normT[1];
-            let normChi = chiTiles.map(ct => this.yakuEvaluator.helper.safeNormalize(ct)).sort();
+            let normChi = chiTiles.map(ct => YakuHelper.safeNormalize(ct)).sort();
             let numC1 = parseInt(normChi[0][0]);
             let numC2 = parseInt(normChi[1][0]);
 
@@ -1277,7 +870,7 @@ class MahjongGame {
 
             if (action.type === 'KITA' && this.settings.mode === 3) {
                 const player = this.players[playerId];
-                let idx = player.hand.findIndex(t => this.yakuEvaluator.helper.safeNormalize(t) === '4z');
+                let idx = player.hand.findIndex(t => YakuHelper.safeNormalize(t) === '4z');
                 if (idx !== -1) {
                     player.hand.splice(idx, 1);
                     player.kita++;
@@ -1336,7 +929,7 @@ class MahjongGame {
                 if (action.type === 'ANKAN') {
                     let c = 0;
                     for (let i = player.hand.length - 1; i >= 0; i--) {
-                        if (this.yakuEvaluator.helper.safeNormalize(player.hand[i]) === this.yakuEvaluator.helper.safeNormalize(targetTile) && c < 4) { 
+                        if (YakuHelper.safeNormalize(player.hand[i]) === YakuHelper.safeNormalize(targetTile) && c < 4) { 
                             player.hand.splice(i, 1); c++; 
                         }
                     }
@@ -1351,10 +944,10 @@ class MahjongGame {
                         this.handleRyuukyoku('四槓散了');
                     }
                 } else if (action.type === 'KAKAN') {
-                    const meldIdx = player.melds.findIndex(m => m.type === 'koutsu' && m.isOpen && this.yakuEvaluator.helper.safeNormalize(m.tile) === this.yakuEvaluator.helper.safeNormalize(targetTile));
+                    const meldIdx = player.melds.findIndex(m => m.type === 'koutsu' && m.isOpen && YakuHelper.safeNormalize(m.tile) === YakuHelper.safeNormalize(targetTile));
                     if (meldIdx !== -1) {
                         player.melds[meldIdx].type = 'kantsu'; 
-                        let handIdx = player.hand.findIndex(h => this.yakuEvaluator.helper.safeNormalize(h) === this.yakuEvaluator.helper.safeNormalize(targetTile));
+                        let handIdx = player.hand.findIndex(h => YakuHelper.safeNormalize(h) === YakuHelper.safeNormalize(targetTile));
                         if(handIdx !== -1) player.hand.splice(handIdx, 1);
 
                         this.chankanTile = targetTile;
@@ -1451,9 +1044,9 @@ class MahjongGame {
                 this.actionResponses[playerId] = { type: 'RON' };
             } 
             else if (this.chankanTile === null) {
-                if (action.type === 'MINKAN' && !this.players[playerId].riichi && this.players[playerId].hand.filter(t => this.yakuEvaluator.helper.safeNormalize(t) === this.yakuEvaluator.helper.safeNormalize(this.lastDiscardTile)).length >= 3) {
+                if (action.type === 'MINKAN' && !this.players[playerId].riichi && this.players[playerId].hand.filter(t => YakuHelper.safeNormalize(t) === YakuHelper.safeNormalize(this.lastDiscardTile)).length >= 3) {
                     this.actionResponses[playerId] = { type: 'MINKAN' };
-                } else if (action.type === 'PON' && !this.players[playerId].riichi && this.players[playerId].hand.filter(t => this.yakuEvaluator.helper.safeNormalize(t) === this.yakuEvaluator.helper.safeNormalize(this.lastDiscardTile)).length >= 2) {
+                } else if (action.type === 'PON' && !this.players[playerId].riichi && this.players[playerId].hand.filter(t => YakuHelper.safeNormalize(t) === YakuHelper.safeNormalize(this.lastDiscardTile)).length >= 2) {
                     this.actionResponses[playerId] = { type: 'PON' };
                 } else if (action.type === 'CHI' && !this.players[playerId].riichi && action.payload && action.payload.tiles) {
                     this.actionResponses[playerId] = { type: 'CHI', payload: { tiles: action.payload.tiles } };
@@ -1468,7 +1061,6 @@ class MahjongGame {
     }
 
     triggerAILogic(playerId) {
-        // playerIdがnullの場合は全員の待機チェックのみ
         if (playerId) {
             let player = this.players[playerId];
             const playerInfo = this.room.players.get(playerId);
@@ -1515,12 +1107,11 @@ class MahjongGame {
                             this.handlePlayerAction(id, { type: 'RON' });
                         } 
                         else if (this.chankanTile === null && !p.riichi) {
-                            let discNorm = this.yakuEvaluator.helper.safeNormalize(this.lastDiscardTile);
-                            let counts = this.yakuEvaluator.helper.countTiles(p.hand);
+                            let discNorm = YakuHelper.safeNormalize(this.lastDiscardTile);
+                            let counts = YakuHelper.countTiles(p.hand);
                             let jikazeIdx = (this.playerIds.indexOf(id) - this.dealerIndex + this.playerIds.length) % this.playerIds.length;
                             let isYakuhai = CONSTANTS.SANGEN.includes(discNorm) || discNorm === this.roundWind || discNorm === CONSTANTS.WINDS[jikazeIdx];
                             
-                            // 【AI強化】役牌やタンヤオを鳴くロジック
                             if (isYakuhai && counts[discNorm] >= 2) {
                                 this.handlePlayerAction(id, { type: 'PON' });
                             } else if (level === 'hard') {
@@ -1529,7 +1120,7 @@ class MahjongGame {
                                     this.handlePlayerAction(id, { type: 'PON' });
                                 } else {
                                     let chiOpts = this.getChiOptions(id, this.lastDiscardTile);
-                                    let tanyaoChi = chiOpts.find(opt => opt.every(t => !!this.yakuEvaluator.helper.safeNormalize(t).match(/^[2-8][mps]$/)));
+                                    let tanyaoChi = chiOpts.find(opt => opt.every(t => !!YakuHelper.safeNormalize(t).match(/^[2-8][mps]$/)));
                                     if (isTanyaoTile && tanyaoChi && this.actionResponses[id] === undefined) {
                                         this.handlePlayerAction(id, { type: 'CHI', payload: { tiles: tanyaoChi }});
                                     } else {
@@ -1569,7 +1160,7 @@ class MahjongGame {
             forbiddenDiscards = p.forbiddenDiscards || [];
             
             if (p.firstTurn && p.melds.length === 0 && p.hand.length % 3 === 2) {
-                let yaochuCount = new Set(p.hand.map(t => this.yakuEvaluator.helper.safeNormalize(t)).filter(t => t && t.match(/[19z]/))).size;
+                let yaochuCount = new Set(p.hand.map(t => YakuHelper.safeNormalize(t)).filter(t => t && t.match(/[19z]/))).size;
                 if (yaochuCount >= 9) allowedActions.push('KYUUSHU');
             }
 
@@ -1581,7 +1172,7 @@ class MahjongGame {
                 if (kanOptions.ankan.length > 0) allowedActions.push('ANKAN');
                 if (kanOptions.kakan.length > 0) allowedActions.push('KAKAN');
                 
-                if (this.settings.mode === 3 && p.hand.some(t => this.yakuEvaluator.helper.safeNormalize(t) === '4z')) {
+                if (this.settings.mode === 3 && p.hand.some(t => YakuHelper.safeNormalize(t) === '4z')) {
                     allowedActions.push('KITA');
                 }
             } else if (p.hand.length % 3 === 2 && p.riichi) {
@@ -1595,8 +1186,8 @@ class MahjongGame {
                 }
                 
                 if (this.chankanTile === null && !this.players[targetPlayerId].riichi) {
-                    let handNorm = this.players[targetPlayerId].hand.map(t => this.yakuEvaluator.helper.safeNormalize(t));
-                    let discNorm = this.yakuEvaluator.helper.safeNormalize(this.lastDiscardTile);
+                    let handNorm = this.players[targetPlayerId].hand.map(t => YakuHelper.safeNormalize(t));
+                    let discNorm = YakuHelper.safeNormalize(this.lastDiscardTile);
                     let count = handNorm.filter(t => t === discNorm).length;
                     
                     if (count >= 3) allowedActions.push('MINKAN');

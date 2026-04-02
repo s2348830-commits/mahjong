@@ -49,13 +49,13 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 #center-discards {
     position: absolute; top: 50%; left: 50%;
     transform: translate(-50%, -50%);
-    width: 50%; height: 50%;
+    width: 320px; height: 320px; /* パーセントより固定値のほうが安定する */
     background-color: rgba(0, 0, 0, 0.15); border-radius: 10px;
 }
 
 #dora-area {
     position: absolute;
-    top: 42%;
+    top: 35%;
     left: 50%;
     transform: translate(-50%, -50%);
     display: flex;
@@ -75,19 +75,21 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     transform-origin: center;
 }
 
+/* ★修正: フレックスボックスにして自動で綺麗に折り返すように修正（5枚切り） */
 .discard-area {
     position: absolute; 
-    display: grid; 
-    grid-template-columns: repeat(5, 23px);
-    grid-auto-rows: 32px;
+    display: flex; 
+    flex-wrap: wrap;
+    align-content: flex-start;
     gap: 2px;
-    justify-content: center;
-    width: calc(23px * 5 + 2px * 4);
+    width: 123px; /* 23px * 5 + 2px * 4 = 115 + 8 = 123px */
+    height: 100px;
 }
-.discard-area.bottom { bottom: 5px; left: 50%; transform: translateX(-50%); }
-.discard-area.top    { top: 5px; left: 50%; transform: translateX(-50%) rotate(180deg); }
-.discard-area.left   { left: 5px; top: 50%; transform: translateY(-50%) rotate(90deg); }
-.discard-area.right  { right: 5px; top: 50%; transform: translateY(-50%) rotate(-90deg); }
+/* 方向によって左に寄せる起点を調整 */
+.discard-area.bottom { bottom: 5px; left: 50%; transform: translateX(-50%); justify-content: flex-start; }
+.discard-area.top    { top: 5px; left: 50%; transform: translateX(-50%) rotate(180deg); justify-content: flex-start; }
+.discard-area.left   { left: 5px; top: 50%; transform: translateY(-50%) rotate(90deg); justify-content: flex-start; }
+.discard-area.right  { right: 5px; top: 50%; transform: translateY(-50%) rotate(-90deg); justify-content: flex-start; }
 
 .player-area { position: absolute; display: flex; align-items: flex-end; z-index: 10; }
 .player-area.bottom { bottom: 2%; left: 50%; transform: translateX(-50%); }
@@ -163,12 +165,12 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     gap: 10px;
 }
 
-/* ★修正: 3x3のグリッド画像(800x312)に対応した設定 */
+/* ★修正: 800x312の画像を3段x3列で正確に切り取る指定 */
 .action-btn {
-    width: 106px; /* 約266pxの縮小比率 */
-    height: 41px; /* 約104pxの縮小比率 */
+    width: 106px; /* 横266pxの約40% */
+    height: 41px; /* 縦104pxの約40% */
     background-image: url('game_buttonUI.png'); 
-    background-size: 300% 300%; /* 横3列、縦3段に設定 */
+    background-size: 320px 124px; /* 元画像全体を40%に縮小 */
     background-color: transparent;
     background-repeat: no-repeat;
     border: none;
@@ -191,17 +193,16 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     box-shadow: 0 4px 10px rgba(0,0,0,0.5);
 }
 
-/* ★修正: 3×3のマス目から画像を正確に切り取る */
-/* 1段目 */
-.btn-ron   { background-position: 0% 0%; }        /* 左上 */
-.btn-tsumo { background-position: 50% 0%; }       /* 中上 */
-.btn-kita  { background-position: 100% 0%; }      /* 右上 */
-/* 2段目 */
-.btn-kan   { background-position: 0% 50%; }       /* 左中 */
-.btn-pon   { background-position: 50% 50%; }      /* 中中 */
-.btn-chi   { background-position: 100% 50%; }     /* 右中 */
-/* 3段目 */
-.btn-pass  { background-position: 0% 100%; }      /* 左下 */
+/* 各ボタンの正確なピクセル切り抜き位置（マイナスにしてずらす） */
+.btn-ron   { background-position: -0px -0px; }       /* 左上 */
+.btn-tsumo { background-position: -106px -0px; }     /* 中上 */
+.btn-kita  { background-position: -212px -0px; }     /* 右上 */
+
+.btn-kan   { background-position: -0px -41px; }      /* 左中 */
+.btn-pon   { background-position: -106px -41px; }    /* 中中 */
+.btn-chi   { background-position: -212px -41px; }    /* 右中 */
+
+.btn-pass  { background-position: -0px -82px; }      /* 左下 */
 
 
 #result-overlay {
@@ -228,16 +229,14 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     .tile.small { width: 4.8vh; height: 6.6vh; }
     
     .discard-area { 
-        grid-template-columns: repeat(5, 4.8vh);
-        grid-auto-rows: 6.6vh;
+        width: calc(4.8vh * 5 + 1px * 4); /* 5枚切り幅の再指定 */
         gap: 1px;
-        width: calc(4.8vh * 5 + 1px * 4);
     }
     .player-area.left { left: 3%; }
     .player-area.right { right: 3%; }
 
     #dora-area {
-        top: 36%;
+        top: 30%;
         padding: 4px 8px;
     }
     #dora-indicators .tile {
@@ -255,7 +254,15 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     .action-btn {
         width: 16vh;
         height: 6.2vh; 
+        background-size: 48vh 18.6vh;
     }
+    .btn-ron   { background-position: calc(-16vh * 0) calc(-6.2vh * 0); }
+    .btn-tsumo { background-position: calc(-16vh * 1) calc(-6.2vh * 0); }
+    .btn-kita  { background-position: calc(-16vh * 2) calc(-6.2vh * 0); }
+    .btn-kan   { background-position: calc(-16vh * 0) calc(-6.2vh * 1); }
+    .btn-pon   { background-position: calc(-16vh * 1) calc(-6.2vh * 1); }
+    .btn-chi   { background-position: calc(-16vh * 2) calc(-6.2vh * 1); }
+    .btn-pass  { background-position: calc(-16vh * 0) calc(-6.2vh * 2); }
 }
 
 .reachable-tile {
