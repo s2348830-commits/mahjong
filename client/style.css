@@ -54,11 +54,12 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     background-color: rgba(0, 0, 0, 0.15); border-radius: 10px;
 }
 
-/* ★追加: 局・本場・残り山・供託・ツモ等の情報 (ドラUIの上に配置) */
+/* ★修正: 局等の情報 (ドラUIの上に配置し、右端基準にして見切れを防止) */
 #round-info {
     position: absolute;
-    top: 15px; /* ドラ(y:45)の上に配置 */
-    left: 610px; /* ドラと同じX座標で揃える */
+    top: 15px; 
+    right: 20px; 
+    left: auto;
     background: rgba(0, 0, 0, 0.6);
     color: #fff;
     padding: 4px 10px;
@@ -91,44 +92,44 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     transform-origin: center;
 }
 
-/* ★修正: 河の段落処理崩れを防止 (幅と高さを厳格に固定し5x3を強制) */
+/* 河の段落処理 (幅と高さを厳格に固定し5x3を強制) */
 .discard-area {
     position: absolute; 
     display: grid; 
-    grid-template-columns: repeat(5, 23px); /* 確実に5枚で折り返し */
-    grid-template-rows: repeat(3, 32px); /* 確実に3段で確保 */
+    grid-template-columns: repeat(5, 23px); 
+    grid-template-rows: repeat(3, 32px); 
     grid-auto-flow: row; 
     column-gap: 2px;
     row-gap: 2px;
-    width: 123px; /* 幅を 23*5 + 2*4 に固定 */
-    height: 100px; /* 高さを 32*3 + 2*2 に固定 */
+    width: 123px; 
+    height: 100px; 
     justify-content: start;
     align-content: start;
 }
 
-/* 中央を基準に4方向の河を完全対称に配置 */
+/* ★修正: 中央を基準に4方向の河を完全対称に配置（手牌に被らない正しい位置） */
 .discard-area.bottom { 
-    top: 470px; 
+    top: 450px; 
     left: 50%; 
     transform: translateX(-50%); 
 }
 .discard-area.top { 
-    top: 230px; 
+    top: 250px; 
     left: 50%; 
     transform: translateX(-50%) rotate(180deg); 
 }
 .discard-area.left { 
-    left: 218px; 
+    left: 250px; 
     top: 50%; 
     transform: translateY(-50%) rotate(90deg); 
 }
 .discard-area.right { 
-    right: 218px; 
+    right: 250px; 
     top: 50%; 
     transform: translateY(-50%) rotate(-90deg); 
 }
 
-/* 捨て牌コンテナ内の牌サイズを厳格に指定し、レイアウト崩れを完全に防ぐ */
+/* 捨て牌コンテナ内の牌サイズを厳格に指定 */
 .discard-area .tile { width: 23px !important; height: 32px !important; margin: 0; }
 
 /* 手牌・プレイヤーエリア */
@@ -138,13 +139,13 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 .player-area.left   { left: 2%; top: 50%; transform: translateY(-50%) rotate(90deg); }
 .player-area.right  { right: 2%; top: 50%; transform: translateY(-50%) rotate(-90deg); }
 
-/* ★追加: プレイヤーの名前表示 (各プレイヤーの手牌の真上中央) */
+/* プレイヤーの名前表示 (各プレイヤーの手牌の真上中央) */
 .player-name-label {
     position: absolute;
-    bottom: 100%; /* 手牌の真上に配置 */
+    bottom: 100%; 
     left: 50%;
     transform: translateX(-50%);
-    margin-bottom: 8px; /* 手牌との隙間 */
+    margin-bottom: 8px; 
     background: rgba(0,0,0,0.6);
     padding: 4px 10px;
     border-radius: 4px;
@@ -155,7 +156,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     z-index: 55;
 }
 
-/* ★修正: 点数表示 (以前の名前表示から分離、図の「○○○」の位置) */
+/* ★修正: 点数表示 (河の外側・手牌寄りに配置) */
 .player-score {
     position: absolute;
     background: rgba(0,0,0,0.8); 
@@ -169,28 +170,28 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     white-space: nowrap;
 }
 #score-bottom { 
-    top: 425px; 
+    top: 560px; 
     left: 50%; 
     bottom: auto; 
     right: auto; 
     transform: translateX(-50%); 
 }
 #score-top { 
-    top: 341px; 
+    top: 210px; 
     left: 50%; 
     bottom: auto; 
     right: auto; 
     transform: translateX(-50%); 
 }
 #score-left { 
-    left: 315px; 
+    left: 210px; 
     top: 50%; 
     bottom: auto; 
     right: auto; 
     transform: translateY(-50%) rotate(90deg); 
 }
 #score-right { 
-    right: 315px; 
+    right: 210px; 
     top: 50%; 
     bottom: auto; 
     left: auto; 
@@ -232,11 +233,12 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     cursor: not-allowed !important;
 }
 
-/* ★修正: タイマーを分離して固定配置 (x:400, y:545) */
+/* ★修正: タイマーを分離してアクションボタンの右側に固定配置 */
 #action-timer-display {
     position: absolute;
     top: 545px; 
-    left: 400px; /* アクションボタン群より少し左に完全固定 */
+    right: 30px; 
+    left: auto;
     font-size: 3.5rem;
     font-weight: 900;
     color: #ff9800; 
@@ -341,7 +343,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     .player-area.left { left: 3%; }
     .player-area.right { right: 3%; }
 
-    #round-info { top: 5px; left: 15px; }
+    #round-info { top: 5px; left: auto; right: 15px; }
     #dora-area { top: 35px; left: 15px; padding: 4px 8px; }
     #dora-indicators .tile { transform: scale(0.7); }
 
