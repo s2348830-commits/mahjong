@@ -54,7 +54,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     background-color: rgba(0, 0, 0, 0.15); border-radius: 10px;
 }
 
-/* ★修正: 局等の情報 (ドラUIの上に配置し、右端基準にして見切れを防止) */
+/* 局等の情報 (ドラUIの上に配置し、右端基準にして見切れを防止) */
 #round-info {
     position: absolute;
     top: 15px; 
@@ -70,7 +70,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     white-space: nowrap;
 }
 
-/* ドラ表示牌の場所 (前回指定座標 x:610, y:45) */
+/* ドラ表示牌の場所 */
 #dora-area {
     position: absolute;
     top: 45px;
@@ -107,24 +107,24 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     align-content: start;
 }
 
-/* ★修正: 中央を基準に4方向の河を完全対称に配置（手牌に被らない正しい位置） */
+/* ★大修正: 380x380の中央エリアを基準に、4方向の河を完全対称に配置 */
 .discard-area.bottom { 
-    top: 450px; 
+    top: 210px; /* 中央のすぐ下から手前へ */
     left: 50%; 
     transform: translateX(-50%); 
 }
 .discard-area.top { 
-    top: 250px; 
+    top: 70px;  /* 中央のすぐ上から奥へ */
     left: 50%; 
     transform: translateX(-50%) rotate(180deg); 
 }
 .discard-area.left { 
-    left: 250px; 
+    left: 60px; /* 左側へ正常に配置 */
     top: 50%; 
     transform: translateY(-50%) rotate(90deg); 
 }
 .discard-area.right { 
-    right: 250px; 
+    right: 60px; /* 右側へ正常に配置 */
     top: 50%; 
     transform: translateY(-50%) rotate(-90deg); 
 }
@@ -156,7 +156,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     z-index: 55;
 }
 
-/* ★修正: 点数表示 (河の外側・手牌寄りに配置) */
+/* ★修正: 点数表示 (河のすぐ外側に対称になるように調整) */
 .player-score {
     position: absolute;
     background: rgba(0,0,0,0.8); 
@@ -170,28 +170,28 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     white-space: nowrap;
 }
 #score-bottom { 
-    top: 560px; 
+    top: 540px; 
     left: 50%; 
     bottom: auto; 
     right: auto; 
     transform: translateX(-50%); 
 }
 #score-top { 
-    top: 210px; 
+    top: 240px; 
     left: 50%; 
     bottom: auto; 
     right: auto; 
     transform: translateX(-50%); 
 }
 #score-left { 
-    left: 210px; 
+    left: 240px; 
     top: 50%; 
     bottom: auto; 
     right: auto; 
     transform: translateY(-50%) rotate(90deg); 
 }
 #score-right { 
-    right: 210px; 
+    right: 240px; 
     top: 50%; 
     bottom: auto; 
     left: auto; 
@@ -233,7 +233,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     cursor: not-allowed !important;
 }
 
-/* ★修正: タイマーを分離してアクションボタンの右側に固定配置 */
+/* タイマーを分離してアクションボタンの右側に固定配置 */
 #action-timer-display {
     position: absolute;
     top: 545px; 
@@ -255,7 +255,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     z-index: 200;
 }
 
-/* ポンなどのアクションエリア (前回指定座標 x:480, y:545) */
+/* ポンなどのアクションエリア */
 #action-ui-area {
     position: absolute; 
     top: 545px; 
