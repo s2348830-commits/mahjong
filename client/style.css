@@ -70,11 +70,12 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     white-space: nowrap;
 }
 
-/* ドラ表示牌の場所 */
+/* ★修正: ドラ表示牌の場所 (中央基準レイアウトに統一) */
 #dora-area {
     position: absolute;
-    top: 45px;
-    left: 610px;
+    top: 32%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     display: flex;
     align-items: center;
     gap: 4px;
@@ -92,17 +93,16 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     transform-origin: center;
 }
 
-/* ★大修正: 河のコンテナを4段分(20枚)の絶対サイズで固定し、レイアウト崩れと重なりを完全に防ぐ */
+/* 河のコンテナを4段分(20枚)の絶対サイズで固定し、レイアウト崩れと重なりを完全に防ぐ */
 .discard-area {
     position: absolute; 
     display: grid; 
     grid-template-columns: repeat(5, 23px); 
-    grid-auto-rows: 32px; 
-    grid-auto-flow: row; 
+    grid-template-rows: repeat(4, 32px); 
     column-gap: 2px;
     row-gap: 2px;
     width: 123px; 
-    height: 134px; /* 4段分の高さを完全固定 (32px*4 + 2px*3) */
+    height: 134px; 
     justify-content: start;
     align-content: start;
     
@@ -112,14 +112,19 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     transform-origin: center center;
 }
 
-/* ★大修正: テーブル中心(-50%,-50%)から回転させ、自分の手前方向(Y)へ87pxスライドさせる完璧な対称配置 */
+/* テーブル中心(-50%,-50%)から回転させ、手前方向(Y)へ87pxスライドさせる対称配置 */
 .discard-area.bottom { transform: translate(-50%, -50%) rotate(0deg) translateY(87px); }
 .discard-area.top    { transform: translate(-50%, -50%) rotate(180deg) translateY(87px); }
 .discard-area.left   { transform: translate(-50%, -50%) rotate(90deg) translateY(87px); }
 .discard-area.right  { transform: translate(-50%, -50%) rotate(-90deg) translateY(87px); }
 
 /* 捨て牌コンテナ内の牌サイズを厳格に指定 */
-.discard-area .tile { width: 23px !important; height: 32px !important; margin: 0; }
+.discard-area .tile { 
+    width: 23px !important; 
+    height: 32px !important; 
+    margin: 0; 
+    position: relative;
+}
 
 /* 手牌・プレイヤーエリア */
 .player-area { position: absolute; display: flex; align-items: flex-end; z-index: 10; }
@@ -329,7 +334,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
         column-gap: 1px;
         row-gap: 1px;
         grid-template-columns: repeat(5, 4.8vh); 
-        grid-auto-rows: 6.6vh; 
+        grid-template-rows: repeat(4, 6.6vh); 
     }
     .player-area.left { left: 3%; }
     .player-area.right { right: 3%; }
@@ -341,7 +346,14 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     .discard-area.right  { transform: translate(-50%, -50%) rotate(-90deg) translateY(16vh); }
 
     #round-info { top: 5px; left: auto; right: 15px; }
-    #dora-area { top: 35px; left: 15px; padding: 4px 8px; }
+
+    /* ★修正: スマホ用メディアクエリのドラ表示牌の位置 */
+    #dora-area { 
+        top: 18%; 
+        left: 50%; 
+        transform: translate(-50%, -50%); 
+        padding: 4px 8px; 
+    }
     #dora-indicators .tile { transform: scale(0.7); }
 
     #score-bottom { top: auto; bottom: 15px; left: 15px; transform: none; } 
