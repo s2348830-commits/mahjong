@@ -54,7 +54,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     background-color: rgba(0, 0, 0, 0.15); border-radius: 10px;
 }
 
-/* ★修正: ドラ表示牌の場所を指定座標(x:610, y:45)に変更 */
+/* ドラ表示牌の場所 (前回指定座標 x:610, y:45) */
 #dora-area {
     position: absolute;
     top: 45px;
@@ -76,29 +76,27 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     transform-origin: center;
 }
 
-/* 完全な5枚切り対応 (絶対重ならないように隙間を定義) */
+/* ★修正: 6枚切り対応 (6枚以上で崩れないように6列に変更) */
 .discard-area {
     position: absolute; 
     display: grid; 
-    grid-template-columns: repeat(5, 23px);
+    grid-template-columns: repeat(6, 23px); /* 5から6に変更 */
     grid-auto-rows: 32px;
     gap: 2px;
-    justify-content: center;
-    width: 123px; /* 23px*5 + 2px*4 */
+    justify-content: flex-start;
+    width: 148px; /* 23px*6 + 2px*5 = 148px */
 }
 
-/* ★修正: 自分の河(bottom)の場所を指定座標(x:340, y:460 〜 幅130, 高さ70)に変更 */
+/* ★修正: プレイヤー(bottom)の河の場所を修正 (指定座標 x:340, y:460 に配置) */
 .discard-area.bottom { 
     top: 460px; 
     left: 340px; 
-    width: 130px; 
-    height: 70px; 
     bottom: auto; 
     transform: none; 
 }
-.discard-area.top    { top: 10px; left: 50%; transform: translateX(-50%) rotate(180deg); }
-.discard-area.left   { left: 10px; top: 50%; transform: translateY(-50%) rotate(90deg); }
-.discard-area.right  { right: 10px; top: 50%; transform: translateY(-50%) rotate(-90deg); }
+.discard-area.top    { top: 180px; left: 50%; transform: translateX(-50%) rotate(180deg); }
+.discard-area.left   { left: 180px; top: 50%; transform: translateY(-50%) rotate(90deg); }
+.discard-area.right  { right: 180px; top: 50%; transform: translateY(-50%) rotate(-90deg); }
 
 .player-area { position: absolute; display: flex; align-items: flex-end; z-index: 10; }
 .player-area.bottom { bottom: 2%; left: 50%; transform: translateX(-50%); }
@@ -106,7 +104,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 .player-area.left   { left: 2%; top: 50%; transform: translateY(-50%) rotate(90deg); }
 .player-area.right  { right: 2%; top: 50%; transform: translateY(-50%) rotate(-90deg); }
 
-/* 各プレイヤーの点数表示(水色エリアなど)を四隅に独立して配置 */
+/* 各プレイヤーの点数表示 */
 .player-name {
     position: absolute;
     background: rgba(0,0,0,0.8); 
@@ -118,11 +116,11 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     z-index: 50;
     text-align: center;
 }
-/* ★修正: 自分のポイント表示位置を指定座標(x:100, y:645)に変更 */
-#name-bottom { top: 645px; left: 100px; bottom: auto; }
-#name-right  { bottom: 30px; right: 30px; }
-#name-top    { top: 30px; right: 30px; }
-#name-left   { top: 110px; left: 30px; } 
+/* ★修正: ポイントを濃い緑の外側の縁部分（四隅）に配置 */
+#name-bottom { bottom: 15px; left: 15px; top: auto; right: auto; }
+#name-right  { bottom: 15px; right: 15px; top: auto; left: auto; }
+#name-top    { top: 15px; right: 15px; bottom: auto; left: auto; }
+#name-left   { top: 15px; left: 15px; bottom: auto; right: auto; } 
 
 
 .hand { display: flex; gap: 1px; justify-content: center; }
@@ -160,13 +158,13 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     cursor: not-allowed !important;
 }
 
-/* ★修正: ポンなどのアクションエリアを指定座標(x:480, y:545)に変更 */
+/* ポンなどのアクションエリア (前回指定座標 x:480, y:545) */
 #action-ui-area {
     position: absolute; 
     top: 545px; 
     left: 480px; 
-    bottom: auto; /* デフォルトのbottom指定を解除 */
-    right: auto;  /* デフォルトのright指定を解除 */
+    bottom: auto; 
+    right: auto; 
     display: flex; 
     flex-direction: row; 
     align-items: center; 
@@ -179,7 +177,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     gap: 10px;
 }
 
-/* タイマーの数字を小さく(3.5rem)し、オレンジ色に設定 */
+/* タイマーの表示設定 */
 #action-timer-display {
     font-size: 3.5rem;
     font-weight: 900;
@@ -196,8 +194,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     text-align: center;
 }
 
-
-/* 3x3のグリッド画像(800x312)に対応した設定 */
+/* ボタン画像設定 */
 .action-btn {
     width: 106px; 
     height: 41px; 
@@ -225,18 +222,14 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     box-shadow: 0 4px 10px rgba(0,0,0,0.5);
 }
 
-/* 3×3のマス目から画像を正確に切り取る */
-/* 1段目 */
-.btn-ron   { background-position: 0% 0%; }        /* 左上 */
-.btn-tsumo { background-position: 50% 0%; }       /* 中上 */
-.btn-kita  { background-position: 100% 0%; }      /* 右上 */
-/* 2段目 */
-.btn-kan   { background-position: 0% 50%; }       /* 左中 */
-.btn-pon   { background-position: 50% 50%; }      /* 中中 */
-.btn-chi   { background-position: 100% 50%; }     /* 右中 */
-/* 3段目 */
-.btn-pass  { background-position: 0% 100%; }      /* 左下 */
-
+/* ボタン背景位置 */
+.btn-ron   { background-position: 0% 0%; }        
+.btn-tsumo { background-position: 50% 0%; }       
+.btn-kita  { background-position: 100% 0%; }      
+.btn-kan   { background-position: 0% 50%; }       
+.btn-pon   { background-position: 50% 50%; }      
+.btn-chi   { background-position: 100% 50%; }     
+.btn-pass  { background-position: 0% 100%; }      
 
 #result-overlay {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -262,7 +255,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     .tile.small { width: 4.8vh; height: 6.6vh; }
     
     .discard-area { 
-        width: calc(4.8vh * 5 + 1px * 4);
+        width: calc(4.8vh * 6 + 1px * 5); /* スマホ版も6枚切り対応に修正 */
         gap: 1px;
     }
     .player-area.left { left: 3%; }
@@ -274,20 +267,20 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     #dora-indicators .tile { transform: scale(0.7); }
 
     /* スマホ時の点数表示位置 */
-    #name-bottom { top: auto; bottom: 15px; left: 15px; } /* スマホ時は元のレイアウトに準拠 */
+    #name-bottom { bottom: 15px; left: 15px; } 
     #name-right  { bottom: 15px; right: 15px; }
     #name-top    { top: 15px; right: 15px; }
     #name-left   { top: 70px; left: 15px; }
 
     #action-ui-area {
-        top: auto; /* スマホ時は元のレイアウトに準拠 */
+        top: auto; 
         left: auto;
         bottom: 14vh;
         right: 2vw;
         gap: 10px;
     }
     #action-timer-display {
-        font-size: 7vh; /* スマホでも少し小さく */
+        font-size: 7vh; 
     }
     .action-btn {
         width: 16vh;
