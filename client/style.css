@@ -46,7 +46,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     overflow: hidden;
 }
 
-/* 捨て牌が重ならないように中央エリアを広めに確保 */
+/* 捨て牌が置かれる中央の380x380エリア */
 #center-discards {
     position: absolute; top: 50%; left: 50%;
     transform: translate(-50%, -50%);
@@ -76,27 +76,38 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     transform-origin: center;
 }
 
-/* ★修正: 6枚切り対応 (6枚以上で崩れないように6列に変更) */
+/* ★修正: 河を5個横並び×最大3段、中央エリアを基準に均等配置 */
 .discard-area {
     position: absolute; 
     display: grid; 
-    grid-template-columns: repeat(6, 23px); /* 5から6に変更 */
-    grid-auto-rows: 32px;
-    gap: 2px;
-    justify-content: flex-start;
-    width: 148px; /* 23px*6 + 2px*5 = 148px */
+    grid-template-columns: repeat(5, 23px); /* 5個横並び */
+    grid-auto-rows: 32px; /* 牌の高さ */
+    column-gap: 2px;
+    row-gap: 2px;
+    width: 123px; /* 23px*5 + 2px*4 = 123px */
 }
 
-/* ★修正: プレイヤー(bottom)の河の場所を修正 (指定座標 x:340, y:460 に配置) */
+/* 段数が増えても中央揃えを維持する配置設定 (380x380エリア内で端から30pxの位置を基準とする) */
 .discard-area.bottom { 
-    top: 460px; 
-    left: 340px; 
-    bottom: auto; 
-    transform: none; 
+    bottom: 30px; 
+    left: 50%; 
+    transform: translateX(-50%); 
 }
-.discard-area.top    { top: 180px; left: 50%; transform: translateX(-50%) rotate(180deg); }
-.discard-area.left   { left: 180px; top: 50%; transform: translateY(-50%) rotate(90deg); }
-.discard-area.right  { right: 180px; top: 50%; transform: translateY(-50%) rotate(-90deg); }
+.discard-area.top { 
+    top: 30px; 
+    left: 50%; 
+    transform: translateX(-50%) rotate(180deg); 
+}
+.discard-area.left { 
+    left: 30px; 
+    top: 50%; 
+    transform: translateY(-50%) rotate(90deg); 
+}
+.discard-area.right { 
+    right: 30px; 
+    top: 50%; 
+    transform: translateY(-50%) rotate(-90deg); 
+}
 
 .player-area { position: absolute; display: flex; align-items: flex-end; z-index: 10; }
 .player-area.bottom { bottom: 2%; left: 50%; transform: translateX(-50%); }
@@ -104,7 +115,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 .player-area.left   { left: 2%; top: 50%; transform: translateY(-50%) rotate(90deg); }
 .player-area.right  { right: 2%; top: 50%; transform: translateY(-50%) rotate(-90deg); }
 
-/* 各プレイヤーの点数表示 */
+/* 各プレイヤーの点数表示 (濃い緑の外側の縁部分・四隅に配置) */
 .player-name {
     position: absolute;
     background: rgba(0,0,0,0.8); 
@@ -116,12 +127,10 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     z-index: 50;
     text-align: center;
 }
-/* ★修正: ポイントを濃い緑の外側の縁部分（四隅）に配置 */
 #name-bottom { bottom: 15px; left: 15px; top: auto; right: auto; }
 #name-right  { bottom: 15px; right: 15px; top: auto; left: auto; }
 #name-top    { top: 15px; right: 15px; bottom: auto; left: auto; }
 #name-left   { top: 15px; left: 15px; bottom: auto; right: auto; } 
-
 
 .hand { display: flex; gap: 1px; justify-content: center; }
 
@@ -255,8 +264,9 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     .tile.small { width: 4.8vh; height: 6.6vh; }
     
     .discard-area { 
-        width: calc(4.8vh * 6 + 1px * 5); /* スマホ版も6枚切り対応に修正 */
-        gap: 1px;
+        width: calc(4.8vh * 5 + 1px * 4); /* 5枚切り幅に修正 */
+        column-gap: 1px;
+        row-gap: 1px;
     }
     .player-area.left { left: 3%; }
     .player-area.right { right: 3%; }
