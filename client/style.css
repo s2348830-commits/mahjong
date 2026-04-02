@@ -117,13 +117,15 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 .discard-area.left   { transform: translate(-50%, -50%) rotate(90deg) translateY(87px); }
 .discard-area.right  { transform: translate(-50%, -50%) rotate(-90deg) translateY(87px); }
 
-/* 捨て牌コンテナ内の牌サイズを厳格に指定し、JS側の変形を無効化 */
+/* JS側のインラインスタイル (absolute, left/top, transform) を強制的に無効化し、純粋なDOM順でGrid配置させる */
 .discard-area .tile {
     width: 23px !important;
     height: 32px !important;
-    margin: 0;
-    position: relative;
-    transform: none !important;
+    margin: 0 !important;
+    position: relative !important; /* JSによる absolute を上書き */
+    left: auto !important;         /* JSによる left 指定を無効化 */
+    top: auto !important;          /* JSによる top 指定を無効化 */
+    transform: none !important;    /* JSによる transform 指定を無効化 */
 }
 
 /* 手牌・プレイヤーエリア */
@@ -330,12 +332,18 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     
     .discard-area { 
         width: calc(4.8vh * 5 + 1px * 4);
-        height: calc(6.6vh * 4 + 1px * 3); /* スマホ版も高さを4段固定に */
+        height: calc(6.6vh * 4 + 1px * 3);
         column-gap: 1px;
         row-gap: 1px;
         grid-template-columns: repeat(5, 4.8vh); 
         grid-template-rows: repeat(4, 6.6vh); 
     }
+    /* スマホ版でも discard-area 内の tile サイズを強制上書き */
+    .discard-area .tile {
+        width: 4.8vh !important; 
+        height: 6.6vh !important; 
+    }
+
     .player-area.left { left: 3%; }
     .player-area.right { right: 3%; }
 
