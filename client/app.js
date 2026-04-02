@@ -72,6 +72,14 @@ function dispatch(action) {
                     state.hasDrawnThisTurn = true;
                     state.resetCache();
                     document.getElementById('final-result-overlay').style.display = 'none';
+                    
+                    const roundInfoEl = document.getElementById('round-info');
+                    if (roundInfoEl) roundInfoEl.style.display = 'none';
+                    ['bottom', 'right', 'top', 'left'].forEach(pos => {
+                        const scoreEl = document.getElementById(`score-${pos}`);
+                        if (scoreEl) scoreEl.style.display = 'none';
+                    });
+                    
                     Renderer.stopTimer();
                 } 
                 else if (serverState.status === 'FINISHED_GAME') {
@@ -386,9 +394,12 @@ const Renderer = {
 
     renderGameInfo(game) {
         const phaseText = game.phase === 'DRAW' ? 'ツモ・打牌' : (game.phase === 'ACTION_WAIT' ? 'アクション待機中...' : '終局');
-        const gameInfoEl = document.getElementById('game-info');
-        let html = `<div style="color:#f1c40f;">${game.roundInfo} | 残り山: ${game.wallCount} | 供託: ${game.kyoutaku * 1000} | ${phaseText}</div>`;
-        gameInfoEl.innerHTML = html;
+        
+        const roundInfoEl = document.getElementById('round-info');
+        if (roundInfoEl) {
+            roundInfoEl.style.display = 'block';
+            roundInfoEl.innerHTML = `${game.roundInfo || ''} | 残り山: ${game.wallCount || 0} | 供託: ${(game.kyoutaku || 0) * 1000} | ${phaseText}`;
+        }
 
         const doraArea = document.getElementById('dora-area');
         const doraIndicatorsEl = document.getElementById('dora-indicators');
@@ -478,6 +489,8 @@ const Renderer = {
             document.getElementById(`discard-${pos}`).style.display = 'none';
             const nameEl = document.getElementById(`name-${pos}`);
             if (nameEl) nameEl.style.display = 'none';
+            const scoreEl = document.getElementById(`score-${pos}`);
+            if (scoreEl) scoreEl.style.display = 'none';
         });
 
         pIds.forEach((pid, idx) => {
@@ -495,7 +508,9 @@ const Renderer = {
 
     renderPlayerInfo(pid, pos, game) {
         const nameEl = document.getElementById(`name-${pos}`);
-        if (!nameEl) return;
+        const scoreEl = document.getElementById(`score-${pos}`);
+        if (!nameEl && !scoreEl) return;
+        
         const isTurn = (game.turnPlayerId === pid && game.phase === 'DRAW');
         const isRiichi = game.riichiPlayers?.[pid];
         
@@ -505,10 +520,19 @@ const Renderer = {
         const pts = game.players?.find(p => p.id === pid)?.points || 0;
         const dispName = pid === state.playerId ? 'You' : pid;
         
-        nameEl.style.display = 'block';
-        nameEl.innerHTML = `${isRiichi ? '<span style="color:#e74c3c; background:#fff; padding:0 4px; border-radius:3px;">立直</span> ' : ''}${dispName} ${isTurn ? '👈' : ''}${kitaHtml}<br><span style="font-size:0.8rem; color:#bdc3c7;">${pts}点</span>`;
-        nameEl.style.color = isTurn ? '#f1c40f' : '#fff';
-        nameEl.style.boxShadow = isTurn ? '0 0 10px rgba(241,196,15,0.5)' : 'none';
+        // 名前の表示 (手配の上)
+        if (nameEl) {
+            nameEl.style.display = 'block';
+            nameEl.innerHTML = `${isRiichi ? '<span style="color:#e74c3c; background:#fff; padding:0 4px; border-radius:3px;">立直</span> ' : ''}${dispName} ${isTurn ? '👈' : ''}${kitaHtml}`;
+            nameEl.style.color = isTurn ? '#f1c40f' : '#fff';
+            nameEl.style.boxShadow = isTurn ? '0 0 10px rgba(241,196,15,0.5)' : 'none';
+        }
+        
+        // 点数の表示 (河の横)
+        if (scoreEl) {
+            scoreEl.style.display = 'block';
+            scoreEl.innerHTML = `${pts}`;
+        }
     },
 
     renderHand(pid, pos, game) {
