@@ -167,7 +167,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 .action-btn {
     width: 106px; /* 266pxの縮小版 */
     height: 41px; /* 104pxの縮小版 */
-    background-image: url('game_buttonUI.jpg'); 
+    background-image: url('game_buttonUI.png'); 
     background-size: 700% 100%; 
     background-color: transparent;
     background-repeat: no-repeat;
