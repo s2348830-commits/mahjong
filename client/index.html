@@ -177,8 +177,17 @@
 
             <div id="mahjong-table">
                 
+                <div id="dora-area" style="display:none;">
+                    <div style="color:#f1c40f; font-size:0.8rem; font-weight:bold; margin-right:5px; display:flex; align-items:center; white-space:nowrap;">ドラ表示牌:</div>
+                    <div id="dora-indicators" class="hand"></div>
+                </div>
+
+                <div id="name-bottom" class="player-name" style="display:none;"></div>
+                <div id="name-right" class="player-name" style="display:none;"></div>
+                <div id="name-top" class="player-name" style="display:none;"></div>
+                <div id="name-left" class="player-name" style="display:none;"></div>
+
                 <div id="action-ui-area">
-                    <div id="action-timer-display" style="display:none;">15</div>
                     <div id="action-buttons" style="display:none;">
                         <button id="btn-ron" class="action-btn btn-ron" onclick="sendGameAction('RON')" style="display:none;"></button>
                         <button id="btn-tsumo" class="action-btn btn-tsumo" onclick="sendGameAction('TSUMO')" style="display:none;"></button>
@@ -190,27 +199,24 @@
                         <button id="btn-riichi" class="action-btn text-btn btn-riichi" onclick="sendGameAction('RIICHI')" style="display:none;">リーチ</button>
                         <button id="btn-kyuushu" class="action-btn text-btn btn-kyuushu" onclick="sendGameAction('KYUUSHU')" style="display:none;">九種</button>
                     </div>
+                    <div id="action-timer-display" style="display:none;">15</div>
                 </div>
 
                 <div id="area-top" class="player-area top" style="display:none;">
-                    <div class="player-name" id="name-top"></div>
-                    <div id="meld-top" class="hand" style="margin-right: 15px;"></div>
                     <div id="hand-top" class="hand"></div>
+                    <div id="meld-top" class="hand" style="margin-left: 20px;"></div>
                 </div>
                 <div id="area-left" class="player-area left" style="display:none;">
-                    <div class="player-name" id="name-left"></div>
-                    <div id="meld-left" class="hand" style="margin-right: 15px;"></div>
                     <div id="hand-left" class="hand"></div>
+                    <div id="meld-left" class="hand" style="margin-left: 20px;"></div>
                 </div>
                 <div id="area-right" class="player-area right" style="display:none;">
-                    <div class="player-name" id="name-right"></div>
-                    <div id="meld-right" class="hand" style="margin-right: 15px;"></div>
                     <div id="hand-right" class="hand"></div>
+                    <div id="meld-right" class="hand" style="margin-left: 20px;"></div>
                 </div>
                 <div id="area-bottom" class="player-area bottom">
-                    <div class="player-name" id="name-bottom" style="display: none; position:absolute; top:-30px;"></div>
-                    <div id="meld-bottom" class="hand" style="margin-right: 15px;"></div>
                     <div id="hand-bottom" class="hand"></div>
+                    <div id="meld-bottom" class="hand" style="margin-left: 20px;"></div>
                 </div>
 
                 <div id="center-discards">
@@ -218,11 +224,6 @@
                     <div id="discard-left" class="discard-area left" style="display:none;"></div>
                     <div id="discard-right" class="discard-area right" style="display:none;"></div>
                     <div id="discard-bottom" class="discard-area bottom"></div>
-                </div>
-
-                <div id="dora-area" style="display:none;">
-                    <div style="color:#f1c40f; font-size:0.8rem; font-weight:bold; margin-right:5px; display:flex; align-items:center; white-space:nowrap;">ドラ表示牌:</div>
-                    <div id="dora-indicators" class="hand"></div>
                 </div>
 
             </div>

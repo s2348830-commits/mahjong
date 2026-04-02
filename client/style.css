@@ -46,18 +46,19 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     overflow: hidden;
 }
 
+/* ★修正: 捨て牌が重ならないように中央エリアを広めに確保 */
 #center-discards {
     position: absolute; top: 50%; left: 50%;
     transform: translate(-50%, -50%);
-    width: 320px; height: 320px; /* パーセントより固定値のほうが安定する */
+    width: 380px; height: 380px; 
     background-color: rgba(0, 0, 0, 0.15); border-radius: 10px;
 }
 
+/* ★修正: ドラ表示牌は左上(黄色エリア)に固定 */
 #dora-area {
     position: absolute;
-    top: 35%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    top: 25px;
+    left: 25px;
     display: flex;
     align-items: center;
     gap: 4px;
@@ -75,21 +76,21 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     transform-origin: center;
 }
 
-/* ★修正: フレックスボックスにして自動で綺麗に折り返すように修正（5枚切り） */
+/* ★修正: 完全な5枚切り対応 (絶対重ならないように隙間を定義) */
 .discard-area {
     position: absolute; 
-    display: flex; 
-    flex-wrap: wrap;
-    align-content: flex-start;
+    display: grid; 
+    grid-template-columns: repeat(5, 23px);
+    grid-auto-rows: 32px;
     gap: 2px;
-    width: 123px; /* 23px * 5 + 2px * 4 = 115 + 8 = 123px */
-    height: 100px;
+    justify-content: center;
+    width: 123px; /* 23px*5 + 2px*4 */
 }
-/* 方向によって左に寄せる起点を調整 */
-.discard-area.bottom { bottom: 5px; left: 50%; transform: translateX(-50%); justify-content: flex-start; }
-.discard-area.top    { top: 5px; left: 50%; transform: translateX(-50%) rotate(180deg); justify-content: flex-start; }
-.discard-area.left   { left: 5px; top: 50%; transform: translateY(-50%) rotate(90deg); justify-content: flex-start; }
-.discard-area.right  { right: 5px; top: 50%; transform: translateY(-50%) rotate(-90deg); justify-content: flex-start; }
+/* 中央エリア(380x380)の内側に配置し、角が絶対にぶつからないようにする */
+.discard-area.bottom { bottom: 10px; left: 50%; transform: translateX(-50%); }
+.discard-area.top    { top: 10px; left: 50%; transform: translateX(-50%) rotate(180deg); }
+.discard-area.left   { left: 10px; top: 50%; transform: translateY(-50%) rotate(90deg); }
+.discard-area.right  { right: 10px; top: 50%; transform: translateY(-50%) rotate(-90deg); }
 
 .player-area { position: absolute; display: flex; align-items: flex-end; z-index: 10; }
 .player-area.bottom { bottom: 2%; left: 50%; transform: translateX(-50%); }
@@ -97,8 +98,24 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 .player-area.left   { left: 2%; top: 50%; transform: translateY(-50%) rotate(90deg); }
 .player-area.right  { right: 2%; top: 50%; transform: translateY(-50%) rotate(-90deg); }
 
-.player-name { background: rgba(0,0,0,0.8); padding: 4px 12px; border-radius: 6px; font-weight: bold; color: #fff; font-size: 0.85rem; margin-right: 10px; margin-bottom: 20px;}
-.player-area.left .player-name, .player-area.right .player-name { writing-mode: vertical-rl; text-orientation: upright; transform: rotate(-90deg); margin-top: 6px; }
+/* ★修正: 各プレイヤーの点数表示(水色エリアなど)を四隅に独立して配置 */
+.player-name {
+    position: absolute;
+    background: rgba(0,0,0,0.8); 
+    padding: 8px 15px; 
+    border-radius: 8px; 
+    font-weight: bold; 
+    color: #fff; 
+    font-size: 1.1rem; 
+    z-index: 50;
+    text-align: center;
+}
+/* 自分の点数は左下、他家はそれぞれの隅に配置 */
+#name-bottom { bottom: 30px; left: 30px; }
+#name-right  { bottom: 30px; right: 30px; }
+#name-top    { top: 30px; right: 30px; }
+#name-left   { top: 110px; left: 30px; } /* ドラと被らないように少し下へ */
+
 
 .hand { display: flex; gap: 1px; justify-content: center; }
 
@@ -135,29 +152,16 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     cursor: not-allowed !important;
 }
 
+/* ★修正: ボタンが左、タイマーが右になるように配置 */
 #action-ui-area {
     position: absolute; 
-    bottom: 110px; 
+    bottom: 95px; 
     right: 30px; 
     display: flex; 
-    flex-direction: row;
+    flex-direction: row; /* HTMLでボタンを先に記述しているので、自然にボタン→タイマーの順になる */
     align-items: center; 
-    gap: 20px; 
+    gap: 15px; 
     z-index: 200;
-}
-
-#action-timer-display {
-    font-size: 4.5rem;
-    font-weight: 900;
-    color: #ff9800; 
-    text-shadow: 
-        -2px -2px 0 #fff,  
-         2px -2px 0 #fff,
-        -2px  2px 0 #fff,
-         2px  2px 0 #fff,
-         0px  0px 15px rgba(0,0,0,0.9);
-    font-family: 'Courier New', Courier, monospace;
-    display: none;
 }
 
 #action-buttons {
@@ -165,12 +169,30 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     gap: 10px;
 }
 
-/* ★修正: 800x312の画像を3段x3列で正確に切り取る指定 */
+/* ★修正: タイマーの数字を小さく(3.5rem)し、オレンジ色に設定 */
+#action-timer-display {
+    font-size: 3.5rem;
+    font-weight: 900;
+    color: #ff9800; 
+    text-shadow: 
+        -2px -2px 0 #fff,  
+         2px -2px 0 #fff,
+        -2px  2px 0 #fff,
+         2px  2px 0 #fff,
+         0px  0px 10px rgba(0,0,0,0.8);
+    font-family: 'Courier New', Courier, monospace;
+    display: none;
+    min-width: 60px;
+    text-align: center;
+}
+
+
+/* ★3x3のグリッド画像(800x312)に対応した設定 */
 .action-btn {
-    width: 106px; /* 横266pxの約40% */
-    height: 41px; /* 縦104pxの約40% */
+    width: 106px; /* 約266pxの縮小比率 */
+    height: 41px; /* 約104pxの縮小比率 */
     background-image: url('game_buttonUI.png'); 
-    background-size: 320px 124px; /* 元画像全体を40%に縮小 */
+    background-size: 300% 300%; /* 横3列、縦3段に設定 */
     background-color: transparent;
     background-repeat: no-repeat;
     border: none;
@@ -193,16 +215,17 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     box-shadow: 0 4px 10px rgba(0,0,0,0.5);
 }
 
-/* 各ボタンの正確なピクセル切り抜き位置（マイナスにしてずらす） */
-.btn-ron   { background-position: -0px -0px; }       /* 左上 */
-.btn-tsumo { background-position: -106px -0px; }     /* 中上 */
-.btn-kita  { background-position: -212px -0px; }     /* 右上 */
-
-.btn-kan   { background-position: -0px -41px; }      /* 左中 */
-.btn-pon   { background-position: -106px -41px; }    /* 中中 */
-.btn-chi   { background-position: -212px -41px; }    /* 右中 */
-
-.btn-pass  { background-position: -0px -82px; }      /* 左下 */
+/* 3×3のマス目から画像を正確に切り取る */
+/* 1段目 */
+.btn-ron   { background-position: 0% 0%; }        /* 左上 */
+.btn-tsumo { background-position: 50% 0%; }       /* 中上 */
+.btn-kita  { background-position: 100% 0%; }      /* 右上 */
+/* 2段目 */
+.btn-kan   { background-position: 0% 50%; }       /* 左中 */
+.btn-pon   { background-position: 50% 50%; }      /* 中中 */
+.btn-chi   { background-position: 100% 50%; }     /* 右中 */
+/* 3段目 */
+.btn-pass  { background-position: 0% 100%; }      /* 左下 */
 
 
 #result-overlay {
@@ -224,45 +247,40 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
         width: 100vw; height: 100dvh; max-width: none; max-height: none;
         margin: 0; border: none; border-radius: 0;
     }
-    #center-discards { width: 60vh; height: 60vh; }
+    #center-discards { width: 55vh; height: 55vh; }
     .tile { width: 9vh; height: 12.3vh; }
     .tile.small { width: 4.8vh; height: 6.6vh; }
     
     .discard-area { 
-        width: calc(4.8vh * 5 + 1px * 4); /* 5枚切り幅の再指定 */
+        width: calc(4.8vh * 5 + 1px * 4);
         gap: 1px;
     }
     .player-area.left { left: 3%; }
     .player-area.right { right: 3%; }
 
     #dora-area {
-        top: 30%;
-        padding: 4px 8px;
+        top: 15px; left: 15px; padding: 4px 8px;
     }
-    #dora-indicators .tile {
-        transform: scale(0.7);
-    }
+    #dora-indicators .tile { transform: scale(0.7); }
+
+    /* スマホ時の点数表示位置 */
+    #name-bottom { bottom: 15px; left: 15px; }
+    #name-right  { bottom: 15px; right: 15px; }
+    #name-top    { top: 15px; right: 15px; }
+    #name-left   { top: 70px; left: 15px; }
 
     #action-ui-area {
-        bottom: 15vh;
+        bottom: 14vh;
         right: 2vw;
-        gap: 15px;
+        gap: 10px;
     }
     #action-timer-display {
-        font-size: 10vh;
+        font-size: 7vh; /* スマホでも少し小さく */
     }
     .action-btn {
         width: 16vh;
         height: 6.2vh; 
-        background-size: 48vh 18.6vh;
     }
-    .btn-ron   { background-position: calc(-16vh * 0) calc(-6.2vh * 0); }
-    .btn-tsumo { background-position: calc(-16vh * 1) calc(-6.2vh * 0); }
-    .btn-kita  { background-position: calc(-16vh * 2) calc(-6.2vh * 0); }
-    .btn-kan   { background-position: calc(-16vh * 0) calc(-6.2vh * 1); }
-    .btn-pon   { background-position: calc(-16vh * 1) calc(-6.2vh * 1); }
-    .btn-chi   { background-position: calc(-16vh * 2) calc(-6.2vh * 1); }
-    .btn-pass  { background-position: calc(-16vh * 0) calc(-6.2vh * 2); }
 }
 
 .reachable-tile {
