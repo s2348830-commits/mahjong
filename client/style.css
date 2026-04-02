@@ -163,25 +163,24 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     gap: 10px;
 }
 
-/* ★修正: ボタンサイズを266x104の比率(長方形)に合わせる */
+/* ★修正: 3x3のグリッド画像(800x312)に対応した設定 */
 .action-btn {
-    width: 106px; /* 266pxの縮小版 */
-    height: 41px; /* 104pxの縮小版 */
+    width: 106px; /* 約266pxの縮小比率 */
+    height: 41px; /* 約104pxの縮小比率 */
     background-image: url('game_buttonUI.png'); 
-    background-size: 700% 100%; 
+    background-size: 300% 300%; /* 横3列、縦3段に設定 */
     background-color: transparent;
     background-repeat: no-repeat;
     border: none;
     box-shadow: none;
     cursor: pointer;
     transition: transform 0.1s, filter 0.1s;
-    border-radius: 8px; /* 丸から長方形の角丸に変更 */
+    border-radius: 8px; 
     padding: 0;
 }
 .action-btn:hover { transform: translateY(-5px); filter: brightness(1.2); }
 .action-btn:active { transform: scale(0.95); }
 
-/* 画像にない特殊ボタン（リーチ等）用のフォールバック */
 .action-btn.text-btn {
     background-image: none;
     background-color: #e74c3c;
@@ -192,14 +191,18 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     box-shadow: 0 4px 10px rgba(0,0,0,0.5);
 }
 
-/* ★修正: 7枚の均等切り取りを計算式(calc)で正確に指定 */
-.btn-ron   { background-position: calc(100% / 6 * 0) 0; }
-.btn-tsumo { background-position: calc(100% / 6 * 1) 0; }
-.btn-kita  { background-position: calc(100% / 6 * 2) 0; }
-.btn-kan   { background-position: calc(100% / 6 * 3) 0; }
-.btn-pon   { background-position: calc(100% / 6 * 4) 0; }
-.btn-chi   { background-position: calc(100% / 6 * 5) 0; }
-.btn-pass  { background-position: calc(100% / 6 * 6) 0; }
+/* ★修正: 3×3のマス目から画像を正確に切り取る */
+/* 1段目 */
+.btn-ron   { background-position: 0% 0%; }        /* 左上 */
+.btn-tsumo { background-position: 50% 0%; }       /* 中上 */
+.btn-kita  { background-position: 100% 0%; }      /* 右上 */
+/* 2段目 */
+.btn-kan   { background-position: 0% 50%; }       /* 左中 */
+.btn-pon   { background-position: 50% 50%; }      /* 中中 */
+.btn-chi   { background-position: 100% 50%; }     /* 右中 */
+/* 3段目 */
+.btn-pass  { background-position: 0% 100%; }      /* 左下 */
+
 
 #result-overlay {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -215,7 +218,6 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     100% { transform: scale(1); opacity: 1; }
 }
 
-/* レスポンシブ対応 (スマホ横画面) */
 @media (max-height: 500px), screen and (orientation: landscape) and (max-width: 900px) {
     #mahjong-table {
         width: 100vw; height: 100dvh; max-width: none; max-height: none;
@@ -245,14 +247,14 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     #action-ui-area {
         bottom: 15vh;
         right: 2vw;
-        gap: 10px;
+        gap: 15px;
     }
     #action-timer-display {
-        font-size: 8vh; /* スマホでも見やすいサイズに調整 */
+        font-size: 10vh;
     }
     .action-btn {
         width: 16vh;
-        height: 6.2vh; /* 比率を維持 */
+        height: 6.2vh; 
     }
 }
 
