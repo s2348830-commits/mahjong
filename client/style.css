@@ -70,7 +70,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     white-space: nowrap;
 }
 
-/* ★修正: ドラ表示牌の場所 (中央基準レイアウトに統一) */
+/* ドラ表示牌の場所 (中央基準レイアウトに統一) */
 #dora-area {
     position: absolute;
     top: 32%;
@@ -95,21 +95,20 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 
 /* 河のコンテナを4段分(20枚)の絶対サイズで固定し、レイアウト崩れと重なりを完全に防ぐ */
 .discard-area {
-    position: absolute; 
-    display: grid; 
-    grid-template-columns: repeat(5, 23px); 
-    grid-template-rows: repeat(4, 32px); 
+    position: absolute;
+    display: grid;
+    grid-template-columns: repeat(5, 23px);
+    grid-template-rows: repeat(4, 32px);
     column-gap: 2px;
     row-gap: 2px;
-    width: 123px; 
-    height: 134px; 
+    width: 123px;
+    height: 134px;
     justify-content: start;
     align-content: start;
-    
-    /* 基準点をテーブルのド真ん中に置く */
     top: 50%;
     left: 50%;
     transform-origin: center center;
+    overflow: hidden;
 }
 
 /* テーブル中心(-50%,-50%)から回転させ、手前方向(Y)へ87pxスライドさせる対称配置 */
@@ -118,12 +117,13 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 .discard-area.left   { transform: translate(-50%, -50%) rotate(90deg) translateY(87px); }
 .discard-area.right  { transform: translate(-50%, -50%) rotate(-90deg) translateY(87px); }
 
-/* 捨て牌コンテナ内の牌サイズを厳格に指定 */
-.discard-area .tile { 
-    width: 23px !important; 
-    height: 32px !important; 
-    margin: 0; 
+/* 捨て牌コンテナ内の牌サイズを厳格に指定し、JS側の変形を無効化 */
+.discard-area .tile {
+    width: 23px !important;
+    height: 32px !important;
+    margin: 0;
     position: relative;
+    transform: none !important;
 }
 
 /* 手牌・プレイヤーエリア */
@@ -347,7 +347,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 
     #round-info { top: 5px; left: auto; right: 15px; }
 
-    /* ★修正: スマホ用メディアクエリのドラ表示牌の位置 */
+    /* スマホ用メディアクエリのドラ表示牌の位置 */
     #dora-area { 
         top: 18%; 
         left: 50%; 
