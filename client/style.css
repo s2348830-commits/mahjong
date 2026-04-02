@@ -46,7 +46,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     overflow: hidden;
 }
 
-/* ★修正: 捨て牌が重ならないように中央エリアを広めに確保 */
+/* 捨て牌が重ならないように中央エリアを広めに確保 */
 #center-discards {
     position: absolute; top: 50%; left: 50%;
     transform: translate(-50%, -50%);
@@ -54,11 +54,11 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     background-color: rgba(0, 0, 0, 0.15); border-radius: 10px;
 }
 
-/* ★修正: ドラ表示牌は左上(黄色エリア)に固定 */
+/* ★修正: ドラ表示牌の場所を指定座標(x:610, y:45)に変更 */
 #dora-area {
     position: absolute;
-    top: 25px;
-    left: 25px;
+    top: 45px;
+    left: 610px;
     display: flex;
     align-items: center;
     gap: 4px;
@@ -76,7 +76,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     transform-origin: center;
 }
 
-/* ★修正: 完全な5枚切り対応 (絶対重ならないように隙間を定義) */
+/* 完全な5枚切り対応 (絶対重ならないように隙間を定義) */
 .discard-area {
     position: absolute; 
     display: grid; 
@@ -86,8 +86,16 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     justify-content: center;
     width: 123px; /* 23px*5 + 2px*4 */
 }
-/* 中央エリア(380x380)の内側に配置し、角が絶対にぶつからないようにする */
-.discard-area.bottom { bottom: 10px; left: 50%; transform: translateX(-50%); }
+
+/* ★修正: 自分の河(bottom)の場所を指定座標(x:340, y:460 〜 幅130, 高さ70)に変更 */
+.discard-area.bottom { 
+    top: 460px; 
+    left: 340px; 
+    width: 130px; 
+    height: 70px; 
+    bottom: auto; 
+    transform: none; 
+}
 .discard-area.top    { top: 10px; left: 50%; transform: translateX(-50%) rotate(180deg); }
 .discard-area.left   { left: 10px; top: 50%; transform: translateY(-50%) rotate(90deg); }
 .discard-area.right  { right: 10px; top: 50%; transform: translateY(-50%) rotate(-90deg); }
@@ -98,7 +106,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 .player-area.left   { left: 2%; top: 50%; transform: translateY(-50%) rotate(90deg); }
 .player-area.right  { right: 2%; top: 50%; transform: translateY(-50%) rotate(-90deg); }
 
-/* ★修正: 各プレイヤーの点数表示(水色エリアなど)を四隅に独立して配置 */
+/* 各プレイヤーの点数表示(水色エリアなど)を四隅に独立して配置 */
 .player-name {
     position: absolute;
     background: rgba(0,0,0,0.8); 
@@ -110,11 +118,11 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     z-index: 50;
     text-align: center;
 }
-/* 自分の点数は左下、他家はそれぞれの隅に配置 */
-#name-bottom { bottom: 30px; left: 30px; }
+/* ★修正: 自分のポイント表示位置を指定座標(x:100, y:645)に変更 */
+#name-bottom { top: 645px; left: 100px; bottom: auto; }
 #name-right  { bottom: 30px; right: 30px; }
 #name-top    { top: 30px; right: 30px; }
-#name-left   { top: 110px; left: 30px; } /* ドラと被らないように少し下へ */
+#name-left   { top: 110px; left: 30px; } 
 
 
 .hand { display: flex; gap: 1px; justify-content: center; }
@@ -152,13 +160,15 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     cursor: not-allowed !important;
 }
 
-/* ★修正: ボタンが左、タイマーが右になるように配置 */
+/* ★修正: ポンなどのアクションエリアを指定座標(x:480, y:545)に変更 */
 #action-ui-area {
     position: absolute; 
-    bottom: 95px; 
-    right: 30px; 
+    top: 545px; 
+    left: 480px; 
+    bottom: auto; /* デフォルトのbottom指定を解除 */
+    right: auto;  /* デフォルトのright指定を解除 */
     display: flex; 
-    flex-direction: row; /* HTMLでボタンを先に記述しているので、自然にボタン→タイマーの順になる */
+    flex-direction: row; 
     align-items: center; 
     gap: 15px; 
     z-index: 200;
@@ -169,7 +179,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     gap: 10px;
 }
 
-/* ★修正: タイマーの数字を小さく(3.5rem)し、オレンジ色に設定 */
+/* タイマーの数字を小さく(3.5rem)し、オレンジ色に設定 */
 #action-timer-display {
     font-size: 3.5rem;
     font-weight: 900;
@@ -187,12 +197,12 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 }
 
 
-/* ★3x3のグリッド画像(800x312)に対応した設定 */
+/* 3x3のグリッド画像(800x312)に対応した設定 */
 .action-btn {
-    width: 106px; /* 約266pxの縮小比率 */
-    height: 41px; /* 約104pxの縮小比率 */
+    width: 106px; 
+    height: 41px; 
     background-image: url('game_buttonUI.png'); 
-    background-size: 300% 300%; /* 横3列、縦3段に設定 */
+    background-size: 300% 300%; 
     background-color: transparent;
     background-repeat: no-repeat;
     border: none;
@@ -264,12 +274,14 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     #dora-indicators .tile { transform: scale(0.7); }
 
     /* スマホ時の点数表示位置 */
-    #name-bottom { bottom: 15px; left: 15px; }
+    #name-bottom { top: auto; bottom: 15px; left: 15px; } /* スマホ時は元のレイアウトに準拠 */
     #name-right  { bottom: 15px; right: 15px; }
     #name-top    { top: 15px; right: 15px; }
     #name-left   { top: 70px; left: 15px; }
 
     #action-ui-area {
+        top: auto; /* スマホ時は元のレイアウトに準拠 */
+        left: auto;
         bottom: 14vh;
         right: 2vw;
         gap: 10px;
