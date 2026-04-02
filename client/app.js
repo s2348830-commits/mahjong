@@ -174,22 +174,18 @@ function render() {
             UI.renderReachModal(state.reachOptions);
             UI.updateWinningTilesDisplay(state.currentWinningTiles);
 
-            // ★タイマーを手番の人・鳴ける人にだけ見せる処理
             const prevGame = prevState ? prevState.game : null;
             const isMyTurn = (state.game.phase === 'DRAW' && state.game.turnPlayerId === state.playerId);
             const hasAction = (state.game.phase === 'ACTION_WAIT' && state.game.allowedActions && state.game.allowedActions.length > 0);
 
-            if (!prevGame || prevGame.turnPlayerId !== state.game.turnPlayerId || prevGame.phase !== state.game.phase || prevGame.lastDiscard?.tile !== state.game.lastDiscard?.tile) {
-                if (isMyTurn || hasAction) {
+            if (isMyTurn || hasAction) {
+                const turnChanged = !prevGame || prevGame.turnPlayerId !== state.game.turnPlayerId || prevGame.phase !== state.game.phase || prevGame.lastDiscard?.tile !== state.game.lastDiscard?.tile;
+                if (turnChanged || (state.dealAnimationStep === -1 && !Renderer.timerInterval)) {
                     if (state.dealAnimationStep === -1) {
                         Renderer.startTimer(state.room.settings.thinkTime);
                     }
-                } else {
-                    Renderer.stopTimer();
                 }
-            } else if (state.dealAnimationStep === -1 && !Renderer.timerInterval && (isMyTurn || hasAction)) {
-                Renderer.startTimer(state.room.settings.thinkTime);
-            } else if (!isMyTurn && !hasAction) {
+            } else {
                 Renderer.stopTimer();
             }
         }
@@ -359,11 +355,11 @@ const Renderer = {
             if (parts.length === 2) totalSeconds = parseInt(parts[0]) + parseInt(parts[1]);
             else totalSeconds = parseInt(timeStr) || 15;
         }
-        totalSeconds += 2; // サーバー側での通信猶予を2秒持たせる
+        totalSeconds += 2; 
 
         display.style.display = 'block';
         display.innerText = totalSeconds;
-        display.style.color = '#ff9800'; // 基本はオレンジ
+        display.style.color = '#ff9800'; 
 
         this.timerInterval = setInterval(() => {
             totalSeconds--;
@@ -371,7 +367,7 @@ const Renderer = {
             display.innerText = totalSeconds;
             
             if (totalSeconds <= 5) {
-                display.style.color = '#e74c3c'; // 残りわずかで赤色に変化
+                display.style.color = '#e74c3c'; 
             }
             if (totalSeconds <= 0) {
                 this.stopTimer();
@@ -480,6 +476,8 @@ const Renderer = {
         ['bottom', 'right', 'top', 'left'].forEach(pos => {
             document.getElementById(`area-${pos}`).style.display = 'none';
             document.getElementById(`discard-${pos}`).style.display = 'none';
+            const nameEl = document.getElementById(`name-${pos}`);
+            if (nameEl) nameEl.style.display = 'none';
         });
 
         pIds.forEach((pid, idx) => {
