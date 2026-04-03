@@ -617,7 +617,10 @@ const Renderer = {
     },
 
     renderDiscards(pid, pos, game) {
-        const discards = game.discards?.[pid] || [];
+        const rawDiscards = game.discards?.[pid] || [];
+        // ★修正: 15枚目までで切り捨てる（16枚目以降は追加されない）
+        const discards = rawDiscards.slice(0, 15);
+        
         const discardCacheKey = Utils.generateCacheKey(discards);
         if (state.cache.discards[pid] === discardCacheKey) return;
         

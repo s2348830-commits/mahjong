@@ -93,22 +93,22 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     transform-origin: center;
 }
 
-/* 河のコンテナを4段分(20枚)の絶対サイズで固定し、レイアウト崩れと重なりを完全に防ぐ */
+/* 河のコンテナを3段分(15枚)の絶対サイズで固定し、レイアウト崩れと重なりを完全に防ぐ */
 .discard-area {
     position: absolute;
     display: grid;
     grid-template-columns: repeat(5, 23px);
-    grid-template-rows: repeat(4, 32px);
+    grid-template-rows: repeat(3, 32px); /* 3段に修正 */
     column-gap: 2px;
     row-gap: 2px;
     width: 123px;
-    height: 134px;
+    height: 100px; /* 32px * 3 + 2px * 2 */
     justify-content: start;
     align-content: start;
     top: 50%;
     left: 50%;
     transform-origin: center center;
-    overflow: hidden;
+    overflow: hidden; /* 枠外にはみ出たものを隠す */
 }
 
 /* テーブル中心(-50%,-50%)から回転させ、手前方向(Y)へ87pxスライドさせる対称配置 */
@@ -332,11 +332,11 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     
     .discard-area { 
         width: calc(4.8vh * 5 + 1px * 4);
-        height: calc(6.6vh * 4 + 1px * 3);
+        height: calc(6.6vh * 3 + 1px * 2); /* 3段に修正 */
         column-gap: 1px;
         row-gap: 1px;
         grid-template-columns: repeat(5, 4.8vh); 
-        grid-template-rows: repeat(4, 6.6vh); 
+        grid-template-rows: repeat(3, 6.6vh); /* 3段に修正 */
     }
     /* スマホ版でも discard-area 内の tile サイズを強制上書き */
     .discard-area .tile {
