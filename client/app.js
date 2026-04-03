@@ -496,8 +496,10 @@ const Renderer = {
         pIds.forEach((pid, idx) => {
             let relIdx = (idx - myIndex + numPlayers) % numPlayers;
             let pos = posMap[relIdx];
+            
+            // ★修正: flexを削除してCSSのGridを有効にする
             document.getElementById(`area-${pos}`).style.display = 'flex';
-            document.getElementById(`discard-${pos}`).style.display = 'flex';
+            document.getElementById(`discard-${pos}`).style.display = 'grid'; 
             
             this.renderPlayerInfo(pid, pos, game);
             this.renderHand(pid, pos, game);
@@ -618,32 +620,42 @@ const Renderer = {
 
     renderDiscards(pid, pos, game) {
         const rawDiscards = game.discards?.[pid] || [];
-        const discards = rawDiscards.slice(0, 15);
-        
-        const discardCacheKey = Utils.generateCacheKey(discards);
+        const discardCacheKey = Utils.generateCacheKey(rawDiscards);
         if (state.cache.discards[pid] === discardCacheKey) return;
         
         const prevCount = state.cache.discards[pid] ? state.cache.discards[pid].split(',').length : 0;
         state.cache.discards[pid] = discardCacheKey;
 
         const discardDiv = document.getElementById(`discard-${pos}`);
-        discardDiv.innerHTML = '';
         const doraTiles = Utils.getDoraTiles(game.doraIndicators);
 
-        discards.forEach((tileCode, dIdx) => {
-            // ★追加: DOM追加前に確実な15枚制限
-            if (discardDiv.children.length >= 15) return; 
+        // サーバー側のデータが減った場合(次局など)はクリア
+        if (rawDiscards.length < discardDiv.children.length || rawDiscards.length === 0) {
+            discardDiv.innerHTML = '';
+        }
 
+        for (let i = discardDiv.children.length; i < rawDiscards.length; i++) {
+            if (discardDiv.children.length >= 15) {
+                discardDiv.removeChild(discardDiv.firstChild);
+            }
+
+            const tileCode = rawDiscards[i];
             const isDora = Utils.isDora(tileCode, doraTiles);
             const dTile = Utils.createTileElement(tileCode, true, isDora);
             
-            if (dIdx === discards.length - 1 && discards.length > prevCount) {
-                dTile.classList.add('new-discard'); dTile.dataset.pid = pid;
+            if (i === rawDiscards.length - 1 && rawDiscards.length > prevCount) {
+                dTile.classList.add('new-discard'); 
+                dTile.dataset.pid = pid;
             }
             discardDiv.appendChild(dTile);
-        });
+            
+            dTile.style.position = "";
+            dTile.style.left = "";
+            dTile.style.top = "";
+            dTile.style.transform = "";
+        }
 
-        if (discards.length > prevCount) {
+        if (rawDiscards.length > prevCount) {
             state.effects.push({ type: 'TRIGGER_DISCARD_ANIMATION', game: game });
         }
     },
@@ -672,8 +684,6 @@ const Renderer = {
         newDiscards.forEach(el => {
             el.classList.remove('new-discard');
             
-            el.classList.add('animating');
-            
             const targetRect = el.getBoundingClientRect();
             const pid = el.dataset.pid;
             let startX = targetRect.left, startY = targetRect.top;
@@ -694,26 +704,30 @@ const Renderer = {
                 }
             }
             
-            const deltaX = startX - targetRect.left;
-            const deltaY = startY - targetRect.top;
+            el.style.opacity = '0';
             
-            el.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(1.5)`;
-            el.style.transition = 'none';
-            void el.offsetWidth; 
+            const clone = el.cloneNode(true);
+            document.body.appendChild(clone);
+            clone.style.position = 'fixed';
+            clone.style.left = startX + 'px';
+            clone.style.top = startY + 'px';
+            clone.style.transform = 'scale(1.5)';
+            clone.style.transition = 'none';
+            clone.style.zIndex = '9999';
+            clone.style.opacity = '1';
+            
+            void clone.offsetWidth; 
 
             requestAnimationFrame(() => {
-                // ★修正: 0.25sに変更し、transformを0に戻す
-                el.style.transition = 'transform 0.25s ease-out';
-                el.style.transform = 'translate(0, 0) scale(1)';
+                clone.style.transition = 'all 0.25s ease-out';
+                clone.style.left = targetRect.left + 'px';
+                clone.style.top = targetRect.top + 'px';
+                clone.style.transform = 'scale(1)';
             });
 
-            // ★修正: 250msでスタイルを削除
             setTimeout(() => {
-                el.classList.remove('animating');
-                el.style.transform = '';
-                el.style.transition = '';
-                el.style.left = '';
-                el.style.top = '';
+                clone.remove();
+                el.style.opacity = ''; 
             }, 250); 
         });
     }
