@@ -30,10 +30,17 @@ const state = {
     effects: []
 };
 
-// ★追加: リロード等での復帰用IDを取得
+// 復帰処理のアナウンスとフラグ管理
 let savedId = localStorage.getItem('mahjong_playerId');
+let isRejoining = false;
 if (savedId) {
-    state.playerId = savedId;
+    if (confirm('前回のゲームに復帰しますか？')) {
+        state.playerId = savedId;
+        isRejoining = true;
+    } else {
+        localStorage.removeItem('mahjong_playerId');
+        savedId = null;
+    }
 }
 
 let prevState = null; 
@@ -55,8 +62,21 @@ function dispatch(action) {
     try {
         switch (action.type) {
             case 'CONNECTED':
-                state.playerId = action.payload.playerId;
-                localStorage.setItem('mahjong_playerId', state.playerId); // ★追加: 取得したIDを保存
+                // 復帰処理のID上書きバグを防止
+                if (isRejoining) {
+                    if (action.payload.isRejoin) {
+                        state.playerId = action.payload.playerId;
+                        localStorage.setItem('mahjong_playerId', state.playerId);
+                    } else if (action.payload.isRejoin === false) {
+                        isRejoining = false;
+                        state.playerId = action.payload.playerId;
+                        localStorage.setItem('mahjong_playerId', state.playerId);
+                        alert('復帰できる部屋が見つかりませんでした。新しいプレイヤーとして参加します。');
+                    }
+                } else {
+                    state.playerId = action.payload.playerId;
+                    localStorage.setItem('mahjong_playerId', state.playerId);
+                }
                 break;
             case 'SET_ROOM_LIST':
                 state.roomList = action.payload;
@@ -320,8 +340,7 @@ const Network = {
         this.ws = new WebSocket(`${protocol}//${window.location.host}`);
         
         this.ws.onopen = () => {
-            // ★追加: 接続時に復帰処理用のIDがあれば送信
-            if (state.playerId) {
+            if (isRejoining && state.playerId) {
                 this.sendAction('REJOIN', { playerId: state.playerId });
             }
         };
@@ -587,7 +606,6 @@ const Renderer = {
         });
     },
 
-    /* ★修正: ポン、チー、カンの時に誰から鳴いたかわかるよう横向きにする */
     renderMelds(pid, pos, game) {
         const melds = game.melds?.[pid] || [];
         const kitaCount = game.kitaPlayers?.[pid] || 0;
@@ -611,19 +629,18 @@ const Renderer = {
 
         melds.forEach(m => {
             const count = m.type === 'kantsu' ? 4 : 3;
-            let fromWho = m.fromWho || 0; // 0:暗槓, 1:下家(右), 2:対面(上), 3:上家(左)
+            let fromWho = m.fromWho || 0; 
             let horizontalIndex = -1;
 
             if (m.isOpen && fromWho > 0) {
-                if (fromWho === 1) horizontalIndex = count - 1; // 右端を横に
-                else if (fromWho === 2) horizontalIndex = 1;    // 中央を横に
-                else if (fromWho === 3) horizontalIndex = 0;    // 左端を横に
+                if (fromWho === 1) horizontalIndex = count - 1; 
+                else if (fromWho === 2) horizontalIndex = 1;    
+                else if (fromWho === 3) horizontalIndex = 0;    
             }
 
             let tilesToRender = [];
             if (m.type === 'shuntsu') {
                 if (m.calledTile) {
-                    // チーは必ず上家からなので、鳴いた牌を左端(横向き)にする
                     let rest = m.tiles.filter(t => t !== m.calledTile);
                     tilesToRender = [m.calledTile, ...rest];
                 } else {

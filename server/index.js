@@ -13,12 +13,11 @@ app.use(express.static(path.join(__dirname, '../client')));
 
 const roomManager = new RoomManager();
 
-// 【修正】存在しないメソッド（MahjongGame.testYaku()）の呼び出しを削除し、サーバークラッシュを防止
-
 wss.on('connection', (ws) => {
     let playerId = Math.random().toString(36).substr(2, 9);
     let currentRoomId = null;
 
+    // 初回接続時にランダムなIDを付与
     ws.send(JSON.stringify({ type: 'CONNECTED', payload: { playerId } }));
 
     ws.on('message', (message) => {
@@ -26,21 +25,22 @@ wss.on('connection', (ws) => {
         
         switch (data.type) {
             case 'REJOIN':
-                // 【追加】再接続処理: 通信切断やリロードからの復帰に対応
                 const oldPlayerId = data.payload.playerId;
                 let foundRoom = false;
                 for (const room of roomManager.rooms.values()) {
                     if (room.players.has(oldPlayerId)) {
                         playerId = oldPlayerId; // 以前のIDを引き継ぐ
                         currentRoomId = room.id;
-                        room.join(playerId, ws); // 古いセッションを上書きし、AI状態を解除
+                        room.join(playerId, ws);
                         foundRoom = true;
+                        // 復帰成功をクライアントに通知し、古いIDを再適用させる
+                        ws.send(JSON.stringify({ type: 'CONNECTED', payload: { playerId: oldPlayerId, isRejoin: true } }));
                         break;
                     }
                 }
-                // 部屋が見つからなかった場合は新しいIDとして再接続させる
                 if (!foundRoom) {
-                    ws.send(JSON.stringify({ type: 'CONNECTED', payload: { playerId } }));
+                    // 部屋が見つからなかった場合は復帰失敗を通知
+                    ws.send(JSON.stringify({ type: 'CONNECTED', payload: { playerId, isRejoin: false } }));
                 }
                 break;
             case 'CREATE_ROOM':
@@ -82,5 +82,5 @@ wss.on('connection', (ws) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
+    console.log(`Server is running on port ${PORT}`);
 });

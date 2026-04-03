@@ -787,9 +787,13 @@ class MahjongGame {
                 }
             }
             
+            // ★追加: 誰から鳴いたか(fromWho)を記録
+            let activeIdx = this.playerIds.indexOf(activeId);
+            let fromWho = (discardIdx - activeIdx + this.playerIds.length) % this.playerIds.length;
+
             if (ponPlayer) {
                 player.forbiddenDiscards = [normT];
-                player.melds.push({ type: 'koutsu', tile: t, isOpen: true });
+                player.melds.push({ type: 'koutsu', tile: t, isOpen: true, fromWho: fromWho }); // ★修正
                 this.checkPao(activeId, normT, this.lastDiscardPlayer); 
                 
                 this.currentTurn = this.playerIds.indexOf(activeId);
@@ -799,7 +803,7 @@ class MahjongGame {
                 this.triggerAILogic(activeId); 
                 this.resetTimer();
             } else if (minkanPlayer) {
-                player.melds.push({ type: 'kantsu', tile: t, isOpen: true });
+                player.melds.push({ type: 'kantsu', tile: t, isOpen: true, fromWho: fromWho }); // ★修正
                 this.checkPao(activeId, normT, this.lastDiscardPlayer); 
                 
                 this.currentTurn = this.playerIds.indexOf(activeId);
@@ -844,7 +848,10 @@ class MahjongGame {
             player.forbiddenDiscards = forbidden;
 
             let meldTiles = [t, ...chiTiles].sort();
-            player.melds.push({ type: 'shuntsu', tiles: meldTiles, isOpen: true });
+            // ★追加: 誰から鳴いたか(上家=3)と、鳴いた牌(calledTile)を記録
+            let activeIdx = this.playerIds.indexOf(activeId);
+            let fromWho = (discardIdx - activeIdx + this.playerIds.length) % this.playerIds.length;
+            player.melds.push({ type: 'shuntsu', tiles: meldTiles, isOpen: true, fromWho: fromWho, calledTile: t }); // ★修正
             
             this.currentTurn = this.playerIds.indexOf(activeId);
             this.actionResponses = {}; this.waitingFor = [];
@@ -933,7 +940,7 @@ class MahjongGame {
                             player.hand.splice(i, 1); c++; 
                         }
                     }
-                    player.melds.push({ type: 'kantsu', tile: targetTile, isOpen: false });
+                    player.melds.push({ type: 'kantsu', tile: targetTile, isOpen: false, fromWho: 0 }); // ★修正
                     
                     if (this.handManager.drawRinshan(playerId)) {
                         this.rinshan = true;
