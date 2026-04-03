@@ -141,8 +141,8 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 .player-area { position: absolute; display: flex; align-items: flex-end; z-index: 10; }
 .player-area.bottom { bottom: 2%; left: 50%; transform: translateX(-50%); }
 .player-area.top    { top: 2%; left: 50%; transform: translateX(-50%) rotate(180deg); }
-.player-area.left   { left: 2%; top: 50%; transform: translateY(-50%) rotate(90deg); }
-.player-area.right  { right: 2%; top: 50%; transform: translateY(-50%) rotate(-90deg); }
+.player-area.left   { left: -10%; top: 50%; transform: translateY(-50%) rotate(90deg); }
+.player-area.right  { right: -10%; top: 50%; transform: translateY(-50%) rotate(-90deg); }
 
 .player-name-label {
     position: absolute;
