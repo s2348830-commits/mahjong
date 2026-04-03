@@ -30,6 +30,12 @@ const state = {
     effects: []
 };
 
+// ★追加: リロード等での復帰用IDを取得
+let savedId = localStorage.getItem('mahjong_playerId');
+if (savedId) {
+    state.playerId = savedId;
+}
+
 let prevState = null; 
 
 function log(...args) {
@@ -50,6 +56,7 @@ function dispatch(action) {
         switch (action.type) {
             case 'CONNECTED':
                 state.playerId = action.payload.playerId;
+                localStorage.setItem('mahjong_playerId', state.playerId); // ★追加: 取得したIDを保存
                 break;
             case 'SET_ROOM_LIST':
                 state.roomList = action.payload;
@@ -88,7 +95,7 @@ function dispatch(action) {
                     Renderer.stopTimer();
                 }
                 else if (serverState.status === 'PLAYING') {
-                    if (state.phase === PHASE.LOBBY) {
+                    if (state.phase === PHASE.LOBBY || state.phase === PHASE.WAITING) {
                         state.dealAnimationStep = 4;
                         state.effects.push({ type: 'START_DEAL_ANIMATION' });
                     }
@@ -313,6 +320,7 @@ const Network = {
         this.ws = new WebSocket(`${protocol}//${window.location.host}`);
         
         this.ws.onopen = () => {
+            // ★追加: 接続時に復帰処理用のIDがあれば送信
             if (state.playerId) {
                 this.sendAction('REJOIN', { playerId: state.playerId });
             }
@@ -497,7 +505,6 @@ const Renderer = {
             let relIdx = (idx - myIndex + numPlayers) % numPlayers;
             let pos = posMap[relIdx];
             
-            // ★修正: flexを削除してCSSのGridを有効にする
             document.getElementById(`area-${pos}`).style.display = 'flex';
             document.getElementById(`discard-${pos}`).style.display = 'grid'; 
             
@@ -522,7 +529,6 @@ const Renderer = {
         const pts = game.players?.find(p => p.id === pid)?.points || 0;
         const dispName = pid === state.playerId ? 'You' : pid;
         
-        // 名前の表示 (手配の上)
         if (nameEl) {
             nameEl.style.display = 'block';
             nameEl.innerHTML = `${isRiichi ? '<span style="color:#e74c3c; background:#fff; padding:0 4px; border-radius:3px;">立直</span> ' : ''}${dispName} ${isTurn ? '👈' : ''}${kitaHtml}`;
@@ -530,7 +536,6 @@ const Renderer = {
             nameEl.style.boxShadow = isTurn ? '0 0 10px rgba(241,196,15,0.5)' : 'none';
         }
         
-        // 点数の表示 (河の横)
         if (scoreEl) {
             scoreEl.style.display = 'block';
             scoreEl.innerHTML = `${pts}`;
@@ -582,6 +587,7 @@ const Renderer = {
         });
     },
 
+    /* ★修正: ポン、チー、カンの時に誰から鳴いたかわかるよう横向きにする */
     renderMelds(pid, pos, game) {
         const melds = game.melds?.[pid] || [];
         const kitaCount = game.kitaPlayers?.[pid] || 0;
@@ -605,14 +611,43 @@ const Renderer = {
 
         melds.forEach(m => {
             const count = m.type === 'kantsu' ? 4 : 3;
-            for(let i=0; i<count; i++) {
-                let t = m.tile;
-                if (!m.isOpen && (i === 0 || i === count - 1)) t = 'back';
-                if (m.type === 'shuntsu' && m.tiles) t = m.tiles[i];
-                
-                const isDora = Utils.isDora(t, doraTiles);
-                meldDiv.appendChild(Utils.createTileElement(t, pos !== 'bottom', isDora));
+            let fromWho = m.fromWho || 0; // 0:暗槓, 1:下家(右), 2:対面(上), 3:上家(左)
+            let horizontalIndex = -1;
+
+            if (m.isOpen && fromWho > 0) {
+                if (fromWho === 1) horizontalIndex = count - 1; // 右端を横に
+                else if (fromWho === 2) horizontalIndex = 1;    // 中央を横に
+                else if (fromWho === 3) horizontalIndex = 0;    // 左端を横に
             }
+
+            let tilesToRender = [];
+            if (m.type === 'shuntsu') {
+                if (m.calledTile) {
+                    // チーは必ず上家からなので、鳴いた牌を左端(横向き)にする
+                    let rest = m.tiles.filter(t => t !== m.calledTile);
+                    tilesToRender = [m.calledTile, ...rest];
+                } else {
+                    tilesToRender = m.tiles;
+                }
+                horizontalIndex = 0; 
+            } else {
+                for(let i=0; i<count; i++) {
+                    let t = m.tile;
+                    if (!m.isOpen && (i === 0 || i === count - 1)) t = 'back';
+                    tilesToRender.push(t);
+                }
+            }
+
+            tilesToRender.forEach((t, i) => {
+                const isDora = Utils.isDora(t, doraTiles);
+                let tileEl = Utils.createTileElement(t, pos !== 'bottom', isDora);
+                
+                if (i === horizontalIndex) {
+                    tileEl.classList.add('horizontal');
+                }
+                
+                meldDiv.appendChild(tileEl);
+            });
             const space = document.createElement('div'); space.style.width = '5px';
             meldDiv.appendChild(space);
         });
@@ -629,13 +664,12 @@ const Renderer = {
         const discardDiv = document.getElementById(`discard-${pos}`);
         const doraTiles = Utils.getDoraTiles(game.doraIndicators);
 
-        // サーバー側のデータが減った場合(次局など)はクリア
         if (rawDiscards.length < discardDiv.children.length || rawDiscards.length === 0) {
             discardDiv.innerHTML = '';
         }
 
         for (let i = discardDiv.children.length; i < rawDiscards.length; i++) {
-            if (discardDiv.children.length === 20) {
+            if (discardDiv.children.length >= 15) {
                 discardDiv.removeChild(discardDiv.firstChild);
             }
 
