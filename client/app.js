@@ -621,7 +621,8 @@ const Renderer = {
         if (kitaCount > 0) {
             for(let i = 0; i < kitaCount; i++) {
                 const isDora = Utils.isDora('4z', doraTiles);
-                meldDiv.appendChild(Utils.createTileElement('4z', pos !== 'bottom', isDora));
+                // ★修正: 第2引数を常に true にして1/2サイズ(小)に固定
+                meldDiv.appendChild(Utils.createTileElement('4z', true, isDora));
             }
             const space = document.createElement('div'); space.style.width = '5px';
             meldDiv.appendChild(space);
@@ -657,7 +658,8 @@ const Renderer = {
 
             tilesToRender.forEach((t, i) => {
                 const isDora = Utils.isDora(t, doraTiles);
-                let tileEl = Utils.createTileElement(t, pos !== 'bottom', isDora);
+                // ★修正: 第2引数を常に true にして1/2サイズ(小)に固定
+                let tileEl = Utils.createTileElement(t, true, isDora);
                 
                 if (i === horizontalIndex) {
                     tileEl.classList.add('horizontal');
@@ -686,7 +688,7 @@ const Renderer = {
         }
 
         for (let i = discardDiv.children.length; i < rawDiscards.length; i++) {
-            if (discardDiv.children.length >= 15) {
+            if (discardDiv.children.length >= 20) {
                 discardDiv.removeChild(discardDiv.firstChild);
             }
 
