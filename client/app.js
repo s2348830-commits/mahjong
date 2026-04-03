@@ -635,7 +635,7 @@ const Renderer = {
         }
 
         for (let i = discardDiv.children.length; i < rawDiscards.length; i++) {
-            if (discardDiv.children.length >= 15) {
+            if (discardDiv.children.length === 25) {
                 discardDiv.removeChild(discardDiv.firstChild);
             }
 

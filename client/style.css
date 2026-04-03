@@ -54,7 +54,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     background-color: rgba(0, 0, 0, 0.15); border-radius: 10px;
 }
 
-/* 局等の情報 (右端基準にして見切れを防止) */
+/* 局等の情報 */
 #round-info {
     position: absolute;
     top: 15px; 
@@ -70,7 +70,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     white-space: nowrap;
 }
 
-/* ドラ表示牌の場所 (中央基準レイアウトに統一) */
+/* ドラ表示牌の場所 */
 #dora-area {
     position: absolute;
     top: 32%;
@@ -93,25 +93,29 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     transform-origin: center;
 }
 
-/* 河のコンテナを3段分(15枚)の絶対サイズで固定し、レイアウト崩れと重なりを完全に防ぐ */
+/* ★修正: 5×3の固定グリッドを維持 */
 .discard-area {
     position: absolute;
     display: grid;
     grid-template-columns: repeat(5, 23px);
-    grid-template-rows: repeat(3, 32px); /* 3段に固定 */
+    grid-template-rows: repeat(5, 32px);
     column-gap: 2px;
     row-gap: 2px;
-    width: 123px;
-    height: 100px; /* 32px * 3 + 2px * 2 */
-    justify-content: center; /* 中央揃えに変更 */
-    align-content: center;   /* 中央揃えに変更 */
+    width: auto;
+    height: auto;
+    justify-content: center;
+    align-content: center;
     top: 50%;
     left: 50%;
     transform-origin: center center;
-    overflow: hidden; /* 枠外にはみ出たものを隠す */
+    overflow: hidden;
 }
 
-/* テーブル中心(-50%,-50%)から回転させ、手前方向(Y)へ87pxスライドさせる対称配置 */
+.discard-area.left,
+.discard-area.right {
+    transform-origin: center;
+}
+
 .discard-area.bottom { transform: translate(-50%, -50%) rotate(0deg) translateY(87px); }
 .discard-area.top    { transform: translate(-50%, -50%) rotate(180deg) translateY(87px); }
 .discard-area.left   { transform: translate(-50%, -50%) rotate(90deg) translateY(87px); }
@@ -122,12 +126,13 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     width: 23px !important;
     height: 32px !important;
     margin: 0 !important;
-    position: relative !important; /* JSによる absolute を上書き */
-    left: auto !important;         /* JSによる left 指定を無効化 */
-    top: auto !important;          /* JSによる top 指定を無効化 */
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+    box-shadow: none !important; /* はみ出し防止 */
 }
 
-/* アニメーション中以外は JSによる transform 指定を無効化し、グリッドの定位置を強制する */
+/* アニメーション中以外は JSによる transform 指定を無効化 */
 .discard-area .tile:not(.animating) {
     transform: none !important;
 }
@@ -139,7 +144,6 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 .player-area.left   { left: 2%; top: 50%; transform: translateY(-50%) rotate(90deg); }
 .player-area.right  { right: 2%; top: 50%; transform: translateY(-50%) rotate(-90deg); }
 
-/* プレイヤーの名前表示 (各プレイヤーの手牌の真上中央) */
 .player-name-label {
     position: absolute;
     bottom: 100%; 
@@ -156,7 +160,6 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     z-index: 55;
 }
 
-/* 点数表示 (河のすぐ外側に配置) */
 .player-score {
     position: absolute;
     background: rgba(0,0,0,0.8); 
@@ -169,34 +172,10 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     text-align: center;
     white-space: nowrap;
 }
-#score-bottom { 
-    top: 560px; 
-    left: 50%; 
-    bottom: auto; 
-    right: auto; 
-    transform: translateX(-50%); 
-}
-#score-top { 
-    top: 200px; 
-    left: 50%; 
-    bottom: auto; 
-    right: auto; 
-    transform: translateX(-50%); 
-}
-#score-left { 
-    left: 200px; 
-    top: 50%; 
-    bottom: auto; 
-    right: auto; 
-    transform: translateY(-50%) rotate(90deg); 
-}
-#score-right { 
-    right: 200px; 
-    top: 50%; 
-    bottom: auto; 
-    left: auto; 
-    transform: translateY(-50%) rotate(-90deg); 
-}
+#score-bottom { top: 560px; left: 50%; bottom: auto; right: auto; transform: translateX(-50%); }
+#score-top { top: 200px; left: 50%; bottom: auto; right: auto; transform: translateX(-50%); }
+#score-left { left: 200px; top: 50%; bottom: auto; right: auto; transform: translateY(-50%) rotate(90deg); }
+#score-right { right: 200px; top: 50%; bottom: auto; left: auto; transform: translateY(-50%) rotate(-90deg); }
 
 .hand { display: flex; gap: 1px; justify-content: center; }
 
@@ -233,7 +212,6 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     cursor: not-allowed !important;
 }
 
-/* タイマーを分離してアクションボタンの右側に固定配置 */
 #action-timer-display {
     position: absolute;
     top: 545px; 
@@ -242,12 +220,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     font-size: 3.5rem;
     font-weight: 900;
     color: #ff9800; 
-    text-shadow: 
-        -2px -2px 0 #fff,  
-         2px -2px 0 #fff,
-        -2px  2px 0 #fff,
-         2px  2px 0 #fff,
-         0px  0px 10px rgba(0,0,0,0.8);
+    text-shadow: -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff, 0px 0px 10px rgba(0,0,0,0.8);
     font-family: 'Courier New', Courier, monospace;
     display: none;
     min-width: 60px;
@@ -255,7 +228,6 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     z-index: 200;
 }
 
-/* ポンなどのアクションエリア */
 #action-ui-area {
     position: absolute; 
     top: 545px; 
@@ -274,7 +246,6 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     gap: 10px;
 }
 
-/* ボタン画像設定 */
 .action-btn {
     width: 106px; 
     height: 41px; 
@@ -302,7 +273,6 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     box-shadow: 0 4px 10px rgba(0,0,0,0.5);
 }
 
-/* ボタン背景位置 */
 .btn-ron   { background-position: 0% 0%; }        
 .btn-tsumo { background-position: 50% 0%; }       
 .btn-kita  { background-position: 100% 0%; }      
@@ -335,23 +305,22 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     .tile.small { width: 4.8vh; height: 6.6vh; }
     
     .discard-area { 
-        width: calc(4.8vh * 5 + 1px * 4);
-        height: calc(6.6vh * 3 + 1px * 2); /* 3段に固定 */
+        width: auto;
+        height: auto; 
         column-gap: 1px;
         row-gap: 1px;
         grid-template-columns: repeat(5, 4.8vh); 
-        grid-template-rows: repeat(3, 6.6vh); /* 3段に固定 */
+        grid-template-rows: repeat(3, 6.6vh);
     }
-    /* スマホ版でも discard-area 内の tile サイズを強制上書き */
     .discard-area .tile {
         width: 4.8vh !important; 
         height: 6.6vh !important; 
+        box-shadow: none !important;
     }
 
     .player-area.left { left: 3%; }
     .player-area.right { right: 3%; }
 
-    /* スマホ版も同じ放射状ロジックで対称配置 */
     .discard-area.bottom { transform: translate(-50%, -50%) rotate(0deg) translateY(16vh); }
     .discard-area.top    { transform: translate(-50%, -50%) rotate(180deg) translateY(16vh); }
     .discard-area.left   { transform: translate(-50%, -50%) rotate(90deg) translateY(16vh); }
@@ -359,13 +328,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 
     #round-info { top: 5px; left: auto; right: 15px; }
 
-    /* スマホ用メディアクエリのドラ表示牌の位置 */
-    #dora-area { 
-        top: 18%; 
-        left: 50%; 
-        transform: translate(-50%, -50%); 
-        padding: 4px 8px; 
-    }
+    #dora-area { top: 18%; left: 50%; transform: translate(-50%, -50%); padding: 4px 8px; }
     #dora-indicators .tile { transform: scale(0.7); }
 
     #score-bottom { top: auto; bottom: 15px; left: 15px; transform: none; } 
@@ -373,36 +336,11 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     #score-top    { top: 15px; bottom: auto; right: 15px; transform: none; }
     #score-left   { top: 90px; bottom: auto; left: 15px; transform: none; }
 
-    #action-timer-display {
-        top: auto; 
-        left: auto;
-        bottom: 22vh;
-        right: 2vw;
-        font-size: 7vh; 
-    }
-
-    #action-ui-area {
-        top: auto; 
-        left: auto;
-        bottom: 14vh;
-        right: 2vw;
-        gap: 10px;
-    }
-    .action-btn {
-        width: 16vh;
-        height: 6.2vh; 
-    }
+    #action-timer-display { top: auto; left: auto; bottom: 22vh; right: 2vw; font-size: 7vh; }
+    #action-ui-area { top: auto; left: auto; bottom: 14vh; right: 2vw; gap: 10px; }
+    .action-btn { width: 16vh; height: 6.2vh; }
 }
 
-.reachable-tile {
-    cursor: pointer; 
-    box-shadow: 0 0 10px #f1c40f; 
-    border-radius: 4px;
-}
-.reachable-tile:hover {
-    transform: translateY(-10px);
-}
-.disabled-tile {
-    opacity: 0.4; 
-    cursor: not-allowed;
-}
+.reachable-tile { cursor: pointer; box-shadow: 0 0 10px #f1c40f; border-radius: 4px; }
+.reachable-tile:hover { transform: translateY(-10px); }
+.disabled-tile { opacity: 0.4; cursor: not-allowed; }
