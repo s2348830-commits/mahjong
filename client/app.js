@@ -618,7 +618,6 @@ const Renderer = {
 
     renderDiscards(pid, pos, game) {
         const rawDiscards = game.discards?.[pid] || [];
-        // ★修正: 15枚目までで切り捨てる（16枚目以降は追加されない）
         const discards = rawDiscards.slice(0, 15);
         
         const discardCacheKey = Utils.generateCacheKey(discards);
@@ -632,6 +631,9 @@ const Renderer = {
         const doraTiles = Utils.getDoraTiles(game.doraIndicators);
 
         discards.forEach((tileCode, dIdx) => {
+            // ★追加: DOM追加前に確実な15枚制限
+            if (discardDiv.children.length >= 15) return; 
+
             const isDora = Utils.isDora(tileCode, doraTiles);
             const dTile = Utils.createTileElement(tileCode, true, isDora);
             
@@ -670,6 +672,8 @@ const Renderer = {
         newDiscards.forEach(el => {
             el.classList.remove('new-discard');
             
+            el.classList.add('animating');
+            
             const targetRect = el.getBoundingClientRect();
             const pid = el.dataset.pid;
             let startX = targetRect.left, startY = targetRect.top;
@@ -698,9 +702,19 @@ const Renderer = {
             void el.offsetWidth; 
 
             requestAnimationFrame(() => {
+                // ★修正: 0.25sに変更し、transformを0に戻す
+                el.style.transition = 'transform 0.25s ease-out';
                 el.style.transform = 'translate(0, 0) scale(1)';
-                el.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)';
             });
+
+            // ★修正: 250msでスタイルを削除
+            setTimeout(() => {
+                el.classList.remove('animating');
+                el.style.transform = '';
+                el.style.transition = '';
+                el.style.left = '';
+                el.style.top = '';
+            }, 250); 
         });
     }
 };

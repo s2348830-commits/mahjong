@@ -98,13 +98,13 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     position: absolute;
     display: grid;
     grid-template-columns: repeat(5, 23px);
-    grid-template-rows: repeat(3, 32px); /* 3段に修正 */
+    grid-template-rows: repeat(3, 32px); /* 3段に固定 */
     column-gap: 2px;
     row-gap: 2px;
     width: 123px;
     height: 100px; /* 32px * 3 + 2px * 2 */
-    justify-content: start;
-    align-content: start;
+    justify-content: center; /* 中央揃えに変更 */
+    align-content: center;   /* 中央揃えに変更 */
     top: 50%;
     left: 50%;
     transform-origin: center center;
@@ -117,7 +117,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 .discard-area.left   { transform: translate(-50%, -50%) rotate(90deg) translateY(87px); }
 .discard-area.right  { transform: translate(-50%, -50%) rotate(-90deg) translateY(87px); }
 
-/* JS側のインラインスタイル (absolute, left/top, transform) を強制的に無効化し、純粋なDOM順でGrid配置させる */
+/* JS側のインラインスタイル (absolute, left/top) を強制的に無効化し、純粋なDOM順でGrid配置させる */
 .discard-area .tile {
     width: 23px !important;
     height: 32px !important;
@@ -125,7 +125,11 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     position: relative !important; /* JSによる absolute を上書き */
     left: auto !important;         /* JSによる left 指定を無効化 */
     top: auto !important;          /* JSによる top 指定を無効化 */
-    transform: none !important;    /* JSによる transform 指定を無効化 */
+}
+
+/* アニメーション中以外は JSによる transform 指定を無効化し、グリッドの定位置を強制する */
+.discard-area .tile:not(.animating) {
+    transform: none !important;
 }
 
 /* 手牌・プレイヤーエリア */
@@ -332,11 +336,11 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     
     .discard-area { 
         width: calc(4.8vh * 5 + 1px * 4);
-        height: calc(6.6vh * 3 + 1px * 2); /* 3段に修正 */
+        height: calc(6.6vh * 3 + 1px * 2); /* 3段に固定 */
         column-gap: 1px;
         row-gap: 1px;
         grid-template-columns: repeat(5, 4.8vh); 
-        grid-template-rows: repeat(3, 6.6vh); /* 3段に修正 */
+        grid-template-rows: repeat(3, 6.6vh); /* 3段に固定 */
     }
     /* スマホ版でも discard-area 内の tile サイズを強制上書き */
     .discard-area .tile {
