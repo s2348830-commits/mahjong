@@ -97,8 +97,8 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 .discard-area {
     position: absolute;
     display: grid;
-    grid-template-columns: repeat(5, 23px);
-    grid-template-rows: repeat(5, 32px);
+    grid-template-columns: repeat(6, 23px);
+    grid-template-rows: repeat(4, 32px);
     column-gap: 2px;
     row-gap: 2px;
     width: auto;
@@ -116,10 +116,10 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     transform-origin: center;
 }
 
-.discard-area.bottom { transform: translate(-50%, -50%) rotate(0deg) translateY(87px); }
-.discard-area.top    { transform: translate(-50%, -50%) rotate(180deg) translateY(87px); }
-.discard-area.left   { transform: translate(-50%, -50%) rotate(90deg) translateY(87px); }
-.discard-area.right  { transform: translate(-50%, -50%) rotate(-90deg) translateY(87px); }
+.discard-area.bottom { transform: translate(-50%, -50%) rotate(0deg) translateY(119px); }
+.discard-area.top    { transform: translate(-50%, -50%) rotate(180deg) translateY(119px); }
+.discard-area.left   { transform: translate(-50%, -50%) rotate(90deg) translateY(119px); }
+.discard-area.right  { transform: translate(-50%, -50%) rotate(-90deg) translateY(119px); }
 
 /* JS側のインラインスタイル (absolute, left/top) を強制的に無効化し、純粋なDOM順でGrid配置させる */
 .discard-area .tile {
@@ -321,10 +321,10 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     .player-area.left { left: 3%; }
     .player-area.right { right: 3%; }
 
-    .discard-area.bottom { transform: translate(-50%, -50%) rotate(0deg) translateY(16vh); }
-    .discard-area.top    { transform: translate(-50%, -50%) rotate(180deg) translateY(16vh); }
-    .discard-area.left   { transform: translate(-50%, -50%) rotate(90deg) translateY(16vh); }
-    .discard-area.right  { transform: translate(-50%, -50%) rotate(-90deg) translateY(16vh); }
+    .discard-area.bottom { transform: translate(-50%, -50%) rotate(0deg) translateY(22.6vh); }
+    .discard-area.top    { transform: translate(-50%, -50%) rotate(180deg) translateY(22.6vh); }
+    .discard-area.left   { transform: translate(-50%, -50%) rotate(90deg) translateY(22.6vh); }
+    .discard-area.right  { transform: translate(-50%, -50%) rotate(-90deg) translateY(22.6vh); }
 
     #round-info { top: 5px; left: auto; right: 15px; }
 
