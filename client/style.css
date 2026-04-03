@@ -97,10 +97,10 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     transform-origin: center center; overflow: hidden;
 }
 .discard-area.left, .discard-area.right { transform-origin: center; }
-.discard-area.bottom { transform: translate(-50%, -50%) rotate(0deg) translateY(87px); }
-.discard-area.top    { transform: translate(-50%, -50%) rotate(180deg) translateY(87px); }
-.discard-area.left   { transform: translate(-50%, -50%) rotate(90deg) translateY(87px); }
-.discard-area.right  { transform: translate(-50%, -50%) rotate(-90deg) translateY(87px); }
+.discard-area.bottom { transform: translate(-50%, -50%) rotate(0deg) translateY(151px); }
+.discard-area.top    { transform: translate(-50%, -50%) rotate(180deg) translateY(151px); }
+.discard-area.left   { transform: translate(-50%, -50%) rotate(90deg) translateY(151px); }
+.discard-area.right  { transform: translate(-50%, -50%) rotate(-90deg) translateY(151px); }
 
 .discard-area .tile {
     width: 23px !important; height: 32px !important; margin: 0 !important;
