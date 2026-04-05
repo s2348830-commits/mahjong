@@ -88,8 +88,8 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 
 .discard-area {
     position: absolute; display: grid;
-    grid-template-columns: repeat(6, 23px);
-    grid-template-rows: repeat(4, 32px);
+    grid-template-columns: repeat(5, 23px);
+    grid-template-rows: repeat(3, 32px);
     column-gap: 2px; row-gap: 2px;
     width: auto; height: auto;
     justify-content: center; align-content: center;
@@ -97,10 +97,10 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     transform-origin: center center; overflow: hidden;
 }
 .discard-area.left, .discard-area.right { transform-origin: center; }
-.discard-area.bottom { transform: translate(-50%, -50%) rotate(0deg) translateY(151px); }
-.discard-area.top    { transform: translate(-50%, -50%) rotate(180deg) translateY(151px); }
-.discard-area.left   { transform: translate(-50%, -50%) rotate(90deg) translateY(151px); }
-.discard-area.right  { transform: translate(-50%, -50%) rotate(-90deg) translateY(151px); }
+.discard-area.bottom { transform: translate(-50%, -50%) rotate(0deg) translateY(87px); }
+.discard-area.top    { transform: translate(-50%, -50%) rotate(180deg) translateY(87px); }
+.discard-area.left   { transform: translate(-50%, -50%) rotate(90deg) translateY(87px); }
+.discard-area.right  { transform: translate(-50%, -50%) rotate(-90deg) translateY(87px); }
 
 .discard-area .tile {
     width: 23px !important; height: 32px !important; margin: 0 !important;
@@ -155,24 +155,30 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 
 .forbidden-tile { filter: brightness(0.4) grayscale(0.8) !important; pointer-events: none !important; cursor: not-allowed !important; }
 
-/* タイマー */
+/* ★修正: PC版のタイマーを右下(手牌の右上)へ配置 */
 #action-timer-display {
-    position: absolute; top: 545px; right: 30px; left: auto;
+    position: absolute; 
+    bottom: 150px; right: 30px; 
+    top: auto; left: auto;
     font-size: 2.5rem;
     font-weight: 900; color: #ff9800; 
     text-shadow: -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff, 0px 0px 10px rgba(0,0,0,0.8);
     font-family: 'Courier New', Courier, monospace; display: none; min-width: 60px; text-align: center; z-index: 10000;
 }
 
-/* ★PC版でも絶対に隠れないよう z-index: 10000 を指定 */
-#action-ui-area { position: absolute; top: 545px; left: 480px; bottom: auto; right: auto; display: flex; flex-direction: row; align-items: center; gap: 15px; z-index: 10000; }
+/* ★修正: PC版のアクションボタンを右下(タイマーの下)へスッキリ配置 */
+#action-ui-area { 
+    position: absolute; 
+    bottom: 90px; right: 30px; 
+    top: auto; left: auto; 
+    display: flex; flex-direction: row; align-items: center; justify-content: flex-end; gap: 15px; z-index: 10000; 
+}
 #action-buttons { display: flex; gap: 10px; }
 
-/* ボタンサイズと画像マップの追加 */
+/* ボタンサイズと画像マップ */
 .action-btn {
     width: 106px; height: 41px; 
-    /* ★注意: サーバーにある画像が .png の場合は拡張子を .png に戻してください */
-    background-image: url('game_buttonUI.png'); 
+    background-image: url('game_buttonUI.jpg'); 
     background-size: 300% 300%; 
     background-color: transparent; background-repeat: no-repeat; border: none; box-shadow: none; cursor: pointer;
     transition: transform 0.1s, filter 0.1s; border-radius: 8px; padding: 0;
@@ -196,7 +202,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
    スマホ横画面用 UIレスポンシブ最適化
 ========================================= */
 @media screen and (orientation: landscape) and (max-width: 900px), (max-height: 500px) {
-    /* 1. 卓サイズ固定を削除し viewport に合わせる */
+    /* 卓サイズ固定を削除し viewport に合わせる */
     #mahjong-table { 
         width: 100vw; 
         height: 100dvh; 
@@ -209,13 +215,21 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
         transform-origin: center center;
     }
 
-    #center-discards { display: none; } /* スマホでは不要な枠を隠す */
+    /* ★修正: 中央の枠を透明にしつつ、座標基準点として生かすことで河の左上への飛び出しを防ぐ */
+    #center-discards { 
+        display: block !important; 
+        background: transparent !important; 
+        width: 0 !important; 
+        height: 0 !important; 
+        box-shadow: none !important;
+        border: none !important;
+    }
     
-    /* 5. 手牌サイズ自動調整 (vh/vwでレスポンシブ化、画面外にはみ出さない) */
+    /* 手牌サイズ自動調整 (vh/vwでレスポンシブ化、画面外にはみ出さない) */
     .tile { width: 6vh; height: 8.2vh; }
     .tile.small { width: 3.5vh; height: 4.8vh; }
     
-    /* 鳴き牌（横向き）の調整 (スマホ用比率) */
+    /* 鳴き牌（横向き）の調整 */
     .tile.horizontal {
         transform: rotate(-90deg) translate(0.5vh, -1.5vh) !important;
         margin-left: 0 !important;
@@ -235,20 +249,19 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
         box-shadow: none !important; 
     }
 
-    /* 4. 左右プレイヤーの位置修正 (画面外に出ないよう調整) */
+    /* 左右プレイヤーの位置修正 (画面外に出ないよう調整) */
     .player-area.bottom { bottom: 2vh; left: 50%; transform: translateX(-50%); }
     .player-area.top    { top: 2vh; left: 50%; transform: translateX(-50%) rotate(180deg); }
-    /* left/right: 6vh に置くことで、回転後も画面端にぴったり収まるようにする */
     .player-area.left   { left: 6vh; top: 50%; transform: translate(-50%, -50%) rotate(90deg); transform-origin: center center; }
     .player-area.right  { right: 6vh; top: 50%; transform: translate(50%, -50%) rotate(-90deg); transform-origin: center center; }
 
-    /* 河の位置調整 (卓全体に合わせて配置) */
-    .discard-area.bottom { transform: translate(-50%, -50%) rotate(0deg) translateY(29.2vh); }
-    .discard-area.top    { transform: translate(-50%, -50%) rotate(180deg) translateY(29.2vh); }
-    .discard-area.left   { transform: translate(-50%, -50%) rotate(90deg) translateY(29.2vh); }
-    .discard-area.right  { transform: translate(-50%, -50%) rotate(-90deg) translateY(29.2vh); }
+    /* 河の位置調整 (中央の基準点から卓全体に合わせて四方に展開) */
+    .discard-area.bottom { transform: translate(-50%, -50%) rotate(0deg) translateY(20vh); }
+    .discard-area.top    { transform: translate(-50%, -50%) rotate(180deg) translateY(20vh); }
+    .discard-area.left   { transform: translate(-50%, -50%) rotate(90deg) translateY(20vh); }
+    .discard-area.right  { transform: translate(-50%, -50%) rotate(-90deg) translateY(20vh); }
 
-    /* 中央情報エリア (局情報・ドラを右上に配置) */
+    /* 局情報・ドラを右上に配置 */
     #round-info { 
         top: 5px; left: auto; right: 10px; transform: none; 
         font-size: 0.75rem; padding: 4px 8px; background: rgba(0,0,0,0.5); border-radius: 4px;
@@ -270,14 +283,17 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     #score-left   { top: 50%; bottom: auto; left: 12.5vh; transform: translateY(-50%) rotate(90deg); }
     #score-right  { top: 50%; bottom: auto; right: 12.5vh; transform: translateY(-50%) rotate(-90deg); }
 
-    /* タイマー */
-    #action-timer-display { top: auto; left: auto; bottom: 25vh; right: 2vw; font-size: 6vh; z-index: 10000; }
+    /* タイマーとアクションボタン */
+    #action-timer-display { top: auto; left: auto; bottom: 25vh; right: 2vw; font-size: 6vh; }
     
-    /* 3. アクションボタン大型化 (最低44px、推奨48px以上で指で押しやすく) */
-    #action-ui-area { top: auto; left: auto; bottom: 14vh; right: 2vw; gap: 10px; z-index: 10000; }
+    #action-ui-area { top: auto; left: auto; bottom: 14vh; right: 2vw; gap: 10px; justify-content: flex-end; }
     .action-btn { 
-        width: 124px; /* タップしやすい幅 */
+        width: 124px; /* タップしやすい幅 (比率維持) */
         height: 48px; /* 高さ最低48px以上を確保 */
         border-radius: 6px; 
     }
 }
+
+.reachable-tile { cursor: pointer; box-shadow: 0 0 10px #f1c40f; border-radius: 4px; }
+.reachable-tile:hover { transform: translateY(-10px); }
+.disabled-tile { opacity: 0.4; cursor: not-allowed; }
