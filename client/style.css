@@ -190,7 +190,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 /* ボタンサイズと画像マップ */
 .action-btn {
     width: 106px; height: 41px; 
-    background-image: url('game_buttonUI.jpg'); 
+    background-image: url('game_buttonUI.png'); 
     background-size: 300% 300%; 
     background-color: transparent; background-repeat: no-repeat; border: none; box-shadow: none; cursor: pointer;
     transition: transform 0.1s, filter 0.1s; border-radius: 8px; padding: 0;
