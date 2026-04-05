@@ -362,6 +362,7 @@ class MahjongGame {
         this.startRound();
     }
 
+    /* ★修正: 荒牌平局時に聴牌者のみ手牌を公開し、罰符のやり取りを行う */
     handleRyuukyoku(reason = '荒牌平局') {
         clearTimeout(this.turnTimer);
         log(`Ryuukyoku: ${reason}`);
@@ -416,9 +417,9 @@ class MahjongGame {
                         this.points[pId] += totalGet + (this.kyoutaku * CONSTANTS.COST.RIICHI);
                     }
                     if (idx === 0) this.kyoutaku = 0;
+                    this.players[pId].openHand = true; 
                 });
                 
-                this.playerIds.forEach(id => this.players[id].openHand = true);
                 this.room.broadcastState();
                 setTimeout(() => this.nextRound(isDealerWin, true), 7000);
                 return;
@@ -438,8 +439,11 @@ class MahjongGame {
                 if (this.isTenpai(id)) {
                     tenpaiPlayers.push(id);
                     if (this.playerIds.indexOf(id) === this.dealerIndex) isDealerTenpai = true;
-                } else notenPlayers.push(id);
-                this.players[id].openHand = true; 
+                    this.players[id].openHand = true; // ★修正: 聴牌者のみ手牌公開
+                } else {
+                    notenPlayers.push(id);
+                    this.players[id].openHand = false; // ノーテンは非公開のまま
+                }
             });
 
             if (tenpaiPlayers.length === 0) resultMsg.push("全員ノーテン");
@@ -677,6 +681,7 @@ class MahjongGame {
         this.resetTimer();
     }
 
+    /* ★修正: ロン和了したプレイヤーの手牌を公開 */
     resolveActions() {
         if (this.actionResolved) return; 
 
@@ -750,7 +755,8 @@ class MahjongGame {
                 if (this.playerIds.indexOf(pId) === this.dealerIndex) isDealerWin = true;
             });
 
-            this.playerIds.forEach(id => this.players[id].openHand = true);
+            // ★修正: 勝者のみ手牌を公開
+            ronPlayers.forEach(id => this.players[id].openHand = true);
             this.room.broadcastState();
             setTimeout(() => this.nextRound(isDealerWin, true), 7000);
 
@@ -787,13 +793,12 @@ class MahjongGame {
                 }
             }
             
-            // ★追加: 誰から鳴いたか(fromWho)を記録
             let activeIdx = this.playerIds.indexOf(activeId);
             let fromWho = (discardIdx - activeIdx + this.playerIds.length) % this.playerIds.length;
 
             if (ponPlayer) {
                 player.forbiddenDiscards = [normT];
-                player.melds.push({ type: 'koutsu', tile: t, isOpen: true, fromWho: fromWho }); // ★修正
+                player.melds.push({ type: 'koutsu', tile: t, isOpen: true, fromWho: fromWho }); 
                 this.checkPao(activeId, normT, this.lastDiscardPlayer); 
                 
                 this.currentTurn = this.playerIds.indexOf(activeId);
@@ -803,7 +808,7 @@ class MahjongGame {
                 this.triggerAILogic(activeId); 
                 this.resetTimer();
             } else if (minkanPlayer) {
-                player.melds.push({ type: 'kantsu', tile: t, isOpen: true, fromWho: fromWho }); // ★修正
+                player.melds.push({ type: 'kantsu', tile: t, isOpen: true, fromWho: fromWho }); 
                 this.checkPao(activeId, normT, this.lastDiscardPlayer); 
                 
                 this.currentTurn = this.playerIds.indexOf(activeId);
@@ -848,10 +853,9 @@ class MahjongGame {
             player.forbiddenDiscards = forbidden;
 
             let meldTiles = [t, ...chiTiles].sort();
-            // ★追加: 誰から鳴いたか(上家=3)と、鳴いた牌(calledTile)を記録
             let activeIdx = this.playerIds.indexOf(activeId);
             let fromWho = (discardIdx - activeIdx + this.playerIds.length) % this.playerIds.length;
-            player.melds.push({ type: 'shuntsu', tiles: meldTiles, isOpen: true, fromWho: fromWho, calledTile: t }); // ★修正
+            player.melds.push({ type: 'shuntsu', tiles: meldTiles, isOpen: true, fromWho: fromWho, calledTile: t }); 
             
             this.currentTurn = this.playerIds.indexOf(activeId);
             this.actionResponses = {}; this.waitingFor = [];
@@ -940,7 +944,7 @@ class MahjongGame {
                             player.hand.splice(i, 1); c++; 
                         }
                     }
-                    player.melds.push({ type: 'kantsu', tile: targetTile, isOpen: false, fromWho: 0 }); // ★修正
+                    player.melds.push({ type: 'kantsu', tile: targetTile, isOpen: false, fromWho: 0 }); 
                     
                     if (this.handManager.drawRinshan(playerId)) {
                         this.rinshan = true;
@@ -1036,7 +1040,8 @@ class MahjongGame {
                     }
                     this.kyoutaku = 0;
 
-                    this.playerIds.forEach(id => this.players[id].openHand = true);
+                    // ★修正: ツモ和了した勝者のみ手牌を公開
+                    this.players[playerId].openHand = true;
                     this.room.broadcastState();
                     setTimeout(() => this.nextRound(isDealerWin, true), 7000); 
                 }
@@ -1067,6 +1072,7 @@ class MahjongGame {
         }
     }
 
+    /* ★修正: 人間の手動ツモ対応、およびリーチ時のツモ・ロン以外オート対応 */
     triggerAILogic(playerId) {
         if (playerId) {
             let player = this.players[playerId];
@@ -1082,18 +1088,24 @@ class MahjongGame {
                         return;
                     }
 
-                    let canWin = this.checkWin(playerId, null, true);
-                    if (canWin) {
-                        this.handlePlayerAction(playerId, { type: 'TSUMO' });
-                    } else {
-                        if (player.riichi) {
-                            this.handlePlayerAction(playerId, { type: 'DISCARD', payload: { tileIndex: player.hand.length - 1 }});
-                            return;
-                        }
-                        if (isBot) {
+                    if (isBot) {
+                        let canWin = this.checkWin(playerId, null, true);
+                        if (canWin) {
+                            this.handlePlayerAction(playerId, { type: 'TSUMO' });
+                        } else {
+                            if (player.riichi) {
+                                this.handlePlayerAction(playerId, { type: 'DISCARD', payload: { tileIndex: player.hand.length - 1 }});
+                                return;
+                            }
                             let level = this.settings.cpuLevel || 'normal';
                             let bestAction = this.ai.chooseDiscard(playerId, level);
                             this.handlePlayerAction(playerId, bestAction);
+                        }
+                    } else {
+                        // 人間のプレイヤーがリーチしている場合、ツモれないなら自動ツモ切り
+                        let canWin = this.checkWin(playerId, null, true);
+                        if (player.riichi && !canWin) {
+                            this.handlePlayerAction(playerId, { type: 'DISCARD', payload: { tileIndex: player.hand.length - 1 }});
                         }
                     }
                 }, 1000);
@@ -1168,10 +1180,12 @@ class MahjongGame {
             
             if (p.firstTurn && p.melds.length === 0 && p.hand.length % 3 === 2) {
                 let yaochuCount = new Set(p.hand.map(t => YakuHelper.safeNormalize(t)).filter(t => t && t.match(/[19z]/))).size;
+                // ★追加: 九種九牌(KYUUSHU)をアクションとして追加
                 if (yaochuCount >= 9) allowedActions.push('KYUUSHU');
             }
 
             if (p.hand.length % 3 === 2 && !p.riichi) {
+                // ★追加: 人間もツモボタンでツモ可能に
                 if (this.checkWin(targetPlayerId, null, true)) allowedActions.push('TSUMO');
                 if (this.points[targetPlayerId] >= 1000 && this.isTenpai(targetPlayerId)) allowedActions.push('RIICHI');
                 

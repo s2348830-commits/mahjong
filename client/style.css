@@ -88,8 +88,8 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 
 .discard-area {
     position: absolute; display: grid;
-    grid-template-columns: repeat(6, 23px);
-    grid-template-rows: repeat(4, 32px);
+    grid-template-columns: repeat(5, 23px);
+    grid-template-rows: repeat(3, 32px);
     column-gap: 2px; row-gap: 2px;
     width: auto; height: auto;
     justify-content: center; align-content: center;
@@ -97,10 +97,10 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     transform-origin: center center; overflow: hidden;
 }
 .discard-area.left, .discard-area.right { transform-origin: center; }
-.discard-area.bottom { transform: translate(-50%, -50%) rotate(0deg) translateY(151px); }
-.discard-area.top    { transform: translate(-50%, -50%) rotate(180deg) translateY(151px); }
-.discard-area.left   { transform: translate(-50%, -50%) rotate(90deg) translateY(151px); }
-.discard-area.right  { transform: translate(-50%, -50%) rotate(-90deg) translateY(151px); }
+.discard-area.bottom { transform: translate(-50%, -50%) rotate(0deg) translateY(87px); }
+.discard-area.top    { transform: translate(-50%, -50%) rotate(180deg) translateY(87px); }
+.discard-area.left   { transform: translate(-50%, -50%) rotate(90deg) translateY(87px); }
+.discard-area.right  { transform: translate(-50%, -50%) rotate(-90deg) translateY(87px); }
 
 .discard-area .tile {
     width: 23px !important; height: 32px !important; margin: 0 !important;
@@ -139,11 +139,11 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 .tile.small { width: 23px; height: 32px; border-radius: 2px; }
 .tile.selected-tile { transform: translateY(-15px) !important; box-shadow: 0 0 0 3px #f1c40f !important; }
 
-/* 鳴き牌を横向きにするためのクラス */
+/* ★修正: 横向き牌を「高さ10px、左側に20px」ずらす */
 .tile.horizontal {
-    transform: rotate(-90deg) translateY(8px);
-    margin-left: 8px !important;
-    margin-right: 8px !important;
+    transform: rotate(-90deg) translate(10px, -20px) !important;
+    margin-left: 0px !important;
+    margin-right: 0px !important;
 }
 
 .dora-glow { box-shadow: 0 0 10px #f1c40f, inset 0 0 5px rgba(241, 196, 15, 0.5) !important; border: 1px solid #f39c12; }
@@ -155,6 +155,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 
 .forbidden-tile { filter: brightness(0.4) grayscale(0.8) !important; pointer-events: none !important; cursor: not-allowed !important; }
 
+/* タイマーを小さめに修正 */
 #action-timer-display {
     position: absolute; top: 545px; right: 30px; left: auto;
     font-size: 2.5rem;
@@ -166,6 +167,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 #action-ui-area { position: absolute; top: 545px; left: 480px; bottom: auto; right: auto; display: flex; flex-direction: row; align-items: center; gap: 15px; z-index: 200; }
 #action-buttons { display: flex; gap: 10px; }
 
+/* ボタンサイズと画像マップの追加 */
 .action-btn {
     width: 106px; height: 41px; background-image: url('game_buttonUI.png'); background-size: 300% 300%; 
     background-color: transparent; background-repeat: no-repeat; border: none; box-shadow: none; cursor: pointer;
@@ -178,22 +180,27 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 
 .btn-ron { background-position: 0% 0%; } .btn-tsumo { background-position: 50% 0%; } .btn-kita { background-position: 100% 0%; }
 .btn-kan { background-position: 0% 50%; } .btn-pon { background-position: 50% 50%; } .btn-chi { background-position: 100% 50%; }
-.btn-pass { background-position: 0% 100%; }      
+.btn-pass { background-position: 0% 100%; }
+/* 新規追加ボタンの座標マッピング */
+.btn-riichi { background-position: 50% 100%; } 
+.btn-ryuukyoku { background-position: 100% 100%; }
 
 #result-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 200; display: flex; align-items: center; justify-content: center; text-align: center; }
 #result-text { font-size: 4rem; color: #f1c40f; text-shadow: 0 0 20px #e67e22; animation: pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 @keyframes pop { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 
+/* ★修正: スマホ用のUIサイズ大幅縮小 (高さ360px横800pxを意識) */
 @media (max-height: 500px), screen and (orientation: landscape) and (max-width: 900px) {
     #mahjong-table { width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; border: none; border-radius: 0; }
     #center-discards { width: 55vh; height: 55vh; }
     .tile { width: 9vh; height: 12.3vh; }
     .tile.small { width: 4.8vh; height: 6.6vh; }
     
+    /* 横向き牌 (スマホでも同様にずらす) */
     .tile.horizontal {
-        transform: rotate(-90deg) translateY(1.5vh);
-        margin-left: 1.5vh !important;
-        margin-right: 1.5vh !important;
+        transform: rotate(-90deg) translate(10px, -20px) !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
     }
     
     .discard-area { width: auto; height: auto; column-gap: 1px; row-gap: 1px; grid-template-columns: repeat(5, 4.8vh); grid-template-rows: repeat(3, 6.6vh); }
@@ -207,22 +214,23 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     .discard-area.left   { transform: translate(-50%, -50%) rotate(90deg) translateY(29.2vh); }
     .discard-area.right  { transform: translate(-50%, -50%) rotate(-90deg) translateY(29.2vh); }
 
-    #round-info { top: 5px; left: auto; right: 15px; }
+    /* ★修正: スマホでは情報テキストやスコアを大幅に小さく */
+    #round-info { font-size: 0.65rem; padding: 2px 6px; top: 2px; right: 5px; }
 
-    /* ドラエリアを確実にround-infoの下に */
-    #dora-area { top: calc(5px + 2.5rem); right: 15px; left: auto; transform: none; padding: 2px 6px; }
-    #dora-area > div:first-child { font-size: 0.7rem; }
-    #dora-indicators .tile { transform: scale(0.65); }
+    #dora-area { top: 25px; right: 5px; left: auto; transform: none; padding: 2px 4px; gap: 2px; }
+    #dora-area > div:first-child { font-size: 0.6rem; }
+    #dora-indicators .tile { transform: scale(0.5); }
 
-    .player-score { padding: 4px 8px; font-size: 0.85rem; border-radius: 4px; }
-    #score-bottom { top: auto; bottom: 15px; left: 15px; transform: none; } 
-    #score-right  { top: auto; bottom: 15px; right: 15px; transform: none; }
-    #score-top    { top: 15px; bottom: auto; right: 15px; transform: none; }
-    #score-left   { top: 90px; bottom: auto; left: 15px; transform: none; }
+    .player-score { padding: 2px 4px; font-size: 0.65rem; border-radius: 4px; }
+    .player-name-label { padding: 2px 4px; font-size: 0.65rem; margin-bottom: 4px; }
+    #score-bottom { top: auto; bottom: 10px; left: 10px; transform: none; } 
+    #score-right  { top: auto; bottom: 10px; right: 10px; transform: none; }
+    #score-top    { top: 10px; bottom: auto; right: 10px; transform: none; }
+    #score-left   { top: 90px; bottom: auto; left: 10px; transform: none; }
 
-    #action-timer-display { top: auto; left: auto; bottom: 25vh; right: 2vw; font-size: 5vh; }
+    #action-timer-display { top: auto; left: auto; bottom: 25vh; right: 2vw; font-size: 3vh; }
     #action-ui-area { top: auto; left: auto; bottom: 14vh; right: 2vw; gap: 10px; }
-    .action-btn { width: 16vh; height: 6.2vh; }
+    .action-btn { width: 10vh; height: 3.8vh; border-radius: 4px; }
 }
 
 .reachable-tile { cursor: pointer; box-shadow: 0 0 10px #f1c40f; border-radius: 4px; }

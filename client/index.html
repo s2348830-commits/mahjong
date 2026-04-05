@@ -29,179 +29,159 @@
         <div id="room-screen" class="screen" style="display:none;">
             <h2>部屋待機室: <span id="room-name-display"></span></h2>
             <div id="room-settings" class="settings-panel">
-                <h3>ゲーム設定 <span id="guest-badge" style="display:none; color:#f39c12; font-size:0.9rem;">(ゲスト: 確認のみ)</span></h3>
+                <h3>ゲーム設定 <span id="guest-badge" style="display:none; color:#f1c40f; font-size:0.9rem;">(ゲスト)</span></h3>
                 <fieldset id="settings-fieldset" style="border:none; padding:0; margin:0;">
-                    <form id="settings-form" onchange="syncSettings()">
-                        <div class="setting-group">
-                            <label class="setting-label">モード</label>
-                            <div class="setting-button-group">
-                                <button type="button" class="hex-button selected" onclick="selectSettingBtn(this); changeSettingRadio('mode', 4)">四人麻雀</button>
-                                <button type="button" class="hex-button" onclick="selectSettingBtn(this); changeSettingRadio('mode', 3)">三人麻雀</button>
-                                <input type="hidden" name="mode" value="4">
-                            </div>
+                    
+                    <div style="margin-bottom: 10px;" class="setting-button-group">
+                        <span class="setting-label">人数:</span>
+                        <button type="button" class="hex-button selected" onclick="changeSettingRadio('mode', 4)">4人</button>
+                        <button type="button" class="hex-button" onclick="changeSettingRadio('mode', 3)">3人</button>
+                        <input type="hidden" name="mode" value="4">
+                    </div>
+
+                    <div style="margin-bottom: 10px;" class="setting-button-group">
+                        <span class="setting-label">長さ:</span>
+                        <button type="button" class="hex-button selected" onclick="changeSettingRadio('length', 'east')">東風戦</button>
+                        <button type="button" class="hex-button" onclick="changeSettingRadio('length', 'south')">半荘戦</button>
+                        <input type="hidden" name="length" value="east">
+                    </div>
+
+                    <div style="margin-bottom: 10px;" class="setting-button-group">
+                        <span class="setting-label">持ち時間:</span>
+                        <button type="button" class="hex-button" onclick="changeSettingRadio('thinkTime', '3+5')">早い (3+5秒)</button>
+                        <button type="button" class="hex-button selected" onclick="changeSettingRadio('thinkTime', '5+10')">普通 (5+10秒)</button>
+                        <button type="button" class="hex-button" onclick="changeSettingRadio('thinkTime', '60')">ゆっくり (60秒)</button>
+                        <input type="hidden" name="thinkTime" value="5+10">
+                    </div>
+
+                    <div style="margin-bottom: 10px;" class="setting-button-group">
+                        <span class="setting-label">CPUレベル:</span>
+                        <button type="button" class="hex-button" onclick="changeSettingRadio('cpuLevel', 'easy')">弱い</button>
+                        <button type="button" class="hex-button selected" onclick="changeSettingRadio('cpuLevel', 'normal')">普通</button>
+                        <button type="button" class="hex-button" onclick="changeSettingRadio('cpuLevel', 'hard')">強い</button>
+                        <input type="hidden" name="cpuLevel" value="normal">
+                    </div>
+
+                    <div style="margin-bottom: 10px;" class="setting-button-group">
+                        <span class="setting-label">詳細設定:</span>
+                        <button type="button" class="hex-button" onclick="changeSettingRadio('advanced', true)">開く</button>
+                        <button type="button" class="hex-button selected" onclick="changeSettingRadio('advanced', false)">閉じる</button>
+                        <input type="hidden" name="advanced" value="false">
+                    </div>
+
+                    <div id="advanced-settings" style="display:none; background:rgba(255,255,255,0.1); padding:10px; border-radius:5px; margin-top:10px;">
+                        <div style="margin-bottom: 10px;">
+                            <span class="setting-label">開始点数:</span>
+                            <input type="number" id="startPoints" value="25000" step="1000" style="width:80px; padding:5px;" onchange="syncSettings()">
                         </div>
-                        <div class="setting-group">
-                            <label class="setting-label">局数</label>
-                            <div class="setting-button-group">
-                                <button type="button" class="hex-button" onclick="selectSettingBtn(this); changeSettingRadio('length', 'one')">一局戦</button>
-                                <button type="button" class="hex-button selected" onclick="selectSettingBtn(this); changeSettingRadio('length', 'east')">東風戦</button>
-                                <button type="button" class="hex-button" onclick="selectSettingBtn(this); changeSettingRadio('length', 'south')">半荘戦</button>
-                                <button type="button" class="hex-button" onclick="selectSettingBtn(this); changeSettingRadio('length', 'cpu')">CPU戦</button>
-                                <input type="hidden" name="length" value="east">
-                            </div>
+                        <div style="margin-bottom: 10px;">
+                            <span class="setting-label">返し点数:</span>
+                            <input type="number" id="targetPoints" value="30000" step="1000" style="width:80px; padding:5px;" onchange="syncSettings()">
                         </div>
-                        <div class="setting-group">
-                            <label class="setting-label">思考時間</label>
-                            <div class="setting-button-group">
-                                <button type="button" class="hex-button" onclick="selectSettingBtn(this); changeSettingRadio('thinkTime', '3+5')">3+5秒</button>
-                                <button type="button" class="hex-button selected" onclick="selectSettingBtn(this); changeSettingRadio('thinkTime', '5+10')">5+10秒</button>
-                                <button type="button" class="hex-button" onclick="selectSettingBtn(this); changeSettingRadio('thinkTime', '5+20')">5+20秒</button>
-                                <input type="hidden" name="thinkTime" value="5+10">
-                            </div>
+                        <div style="margin-bottom: 10px;" class="setting-button-group">
+                            <span class="setting-label">トビ終了:</span>
+                            <button type="button" class="hex-button selected" onclick="changeSettingRadio('tobi', true)">あり</button>
+                            <button type="button" class="hex-button" onclick="changeSettingRadio('tobi', false)">なし</button>
+                            <input type="hidden" name="tobi" value="true">
                         </div>
-                        <div class="setting-group">
-                            <label class="setting-label">詳細設定</label>
-                            <div class="setting-button-group">
-                                <button type="button" class="hex-button selected" onclick="selectSettingBtn(this); changeSettingRadio('advanced', false)">無効</button>
-                                <button type="button" class="hex-button" onclick="selectSettingBtn(this); changeSettingRadio('advanced', true)">有効</button>
-                                <input type="hidden" name="advanced" value="false">
-                            </div>
+                        <div style="margin-bottom: 10px;" class="setting-button-group">
+                            <span class="setting-label">喰いタン:</span>
+                            <button type="button" class="hex-button selected" onclick="changeSettingRadio('kuitan', true)">あり</button>
+                            <button type="button" class="hex-button" onclick="changeSettingRadio('kuitan', false)">なし</button>
+                            <input type="hidden" name="kuitan" value="true">
                         </div>
-                        <div id="advanced-settings" style="display: none;">
-                            <hr class="settings-divider">
-                            <div class="setting-group"><label class="setting-label">配給原点</label><input type="number" id="startPoints" value="25000" class="num-input"></div>
-                            <div class="setting-group"><label class="setting-label">1位必要点数</label><input type="number" id="targetPoints" value="30000" class="num-input"></div>
-                            <div class="setting-group">
-                                <label class="setting-label">飛び</label>
-                                <div class="setting-button-group">
-                                    <button type="button" class="hex-button" onclick="selectSettingBtn(this); changeSettingRadio('tobi', false)">無効</button>
-                                    <button type="button" class="hex-button selected" onclick="selectSettingBtn(this); changeSettingRadio('tobi', true)">有効</button>
-                                    <input type="hidden" name="tobi" value="true">
-                                </div>
-                            </div>
-                            <div class="setting-group">
-                                <label class="setting-label">ローカル役</label>
-                                <div class="setting-button-group">
-                                    <button type="button" class="hex-button selected" onclick="selectSettingBtn(this); changeSettingRadio('localYaku', false)">無効</button>
-                                    <button type="button" class="hex-button" onclick="selectSettingBtn(this); changeSettingRadio('localYaku', true)">有効</button>
-                                    <input type="hidden" name="localYaku" value="false">
-                                </div>
-                            </div>
-                            <div class="setting-group">
-                                <label class="setting-label">赤ドラ</label>
-                                <div class="setting-button-group">
-                                    <button type="button" class="hex-button" onclick="selectSettingBtn(this); changeSettingRadio('akaDora', 0)">赤無し</button>
-                                    <button type="button" class="hex-button selected" onclick="selectSettingBtn(this); changeSettingRadio('akaDora', 3)">赤ドラ3</button>
-                                    <button type="button" class="hex-button" onclick="selectSettingBtn(this); changeSettingRadio('akaDora', 4)">赤ドラ4</button>
-                                    <input type="hidden" name="akaDora" value="3">
-                                </div>
-                            </div>
-                            <div class="setting-group">
-                                <label class="setting-label">食い断</label>
-                                <div class="setting-button-group">
-                                    <button type="button" class="hex-button" onclick="selectSettingBtn(this); changeSettingRadio('kuitan', false)">無効</button>
-                                    <button type="button" class="hex-button selected" onclick="selectSettingBtn(this); changeSettingRadio('kuitan', true)">有効</button>
-                                    <input type="hidden" name="kuitan" value="true">
-                                </div>
-                            </div>
-                            <div class="setting-group">
-                                <label class="setting-label">CPU</label>
-                                <div class="setting-button-group">
-                                    <button type="button" class="hex-button" onclick="selectSettingBtn(this); changeSettingRadio('cpuLevel', 'easy')">簡単</button>
-                                    <button type="button" class="hex-button selected" onclick="selectSettingBtn(this); changeSettingRadio('cpuLevel', 'normal')">普通</button>
-                                    <button type="button" class="hex-button" onclick="selectSettingBtn(this); changeSettingRadio('cpuLevel', 'hard')">強い</button>
-                                    <input type="hidden" name="cpuLevel" value="normal">
-                                </div>
-                            </div>
-                            <div class="setting-group">
-                                <label class="setting-label">手牌表示</label>
-                                <div class="setting-button-group">
-                                    <button type="button" class="hex-button selected" onclick="selectSettingBtn(this); changeSettingRadio('openHands', false)">無効</button>
-                                    <button type="button" class="hex-button" onclick="selectSettingBtn(this); changeSettingRadio('openHands', true)">有効</button>
-                                    <input type="hidden" name="openHands" value="false">
-                                </div>
-                            </div>
+                        <div style="margin-bottom: 10px;" class="setting-button-group">
+                            <span class="setting-label">赤ドラ:</span>
+                            <button type="button" class="hex-button" onclick="changeSettingRadio('akaDora', 0)">0枚</button>
+                            <button type="button" class="hex-button selected" onclick="changeSettingRadio('akaDora', 3)">3枚</button>
+                            <button type="button" class="hex-button" onclick="changeSettingRadio('akaDora', 4)">4枚</button>
+                            <input type="hidden" name="akaDora" value="3">
                         </div>
-                    </form>
+                        <div style="margin-bottom: 10px;" class="setting-button-group">
+                            <span class="setting-label">ローカル役:</span>
+                            <button type="button" class="hex-button" onclick="changeSettingRadio('localYaku', true)">あり</button>
+                            <button type="button" class="hex-button selected" onclick="changeSettingRadio('localYaku', false)">なし</button>
+                            <input type="hidden" name="localYaku" value="false">
+                        </div>
+                        <div style="margin-bottom: 10px;" class="setting-button-group">
+                            <span class="setting-label">手牌公開:</span>
+                            <button type="button" class="hex-button" onclick="changeSettingRadio('openHands', true)">全員公開</button>
+                            <button type="button" class="hex-button selected" onclick="changeSettingRadio('openHands', false)">通常</button>
+                            <input type="hidden" name="openHands" value="false">
+                        </div>
+                    </div>
                 </fieldset>
-                <div id="host-only-buttons" style="margin-top: 15px;">
-                    <button id="add-bot-btn" onclick="addBot()" style="background: #27ae60;">+ Botを追加</button>
-                </div>
             </div>
+            
             <ul id="player-list"></ul>
-            <button onclick="toggleReady()" style="font-size: 1.2rem; background: #e67e22; padding: 12px 30px;">準備完了 / 取消</button>
+            <div id="host-only-buttons" style="display:none; margin-top: 15px;">
+                <button onclick="addBot()" style="background:#3498db;">Botを追加</button>
+            </div>
+            <button onclick="toggleReady()" style="margin-top: 15px; font-size: 1.2rem; padding: 10px 30px;">準備完了 / 開始</button>
         </div>
 
         <div id="game-screen" class="screen" style="display:none; padding: 0;">
+            <div id="action-timer-display"></div>
             
-            <div id="winning-tiles-container" style="display:none; position:absolute; top:20px; left:20px; background:rgba(0,0,0,0.7); padding:10px 15px; border-radius:8px; border:1px solid #f1c40f; z-index:150;">
-                <div style="font-size:0.9rem; font-weight:bold; margin-bottom:8px; color:#f1c40f; text-align:center;">待ち牌</div>
-                <div id="winning-tiles-list" class="hand" style="gap:2px;"></div>
-            </div>
-
-            <div id="reach-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:300; justify-content:center; align-items:center;">
-                <div style="background:#1e4b30; padding:20px; border-radius:10px; border:2px solid #f1c40f; text-align:center;">
-                    <h3 style="color:#fff; margin-top:0;">リーチする牌を選んでください</h3>
-                    <div id="reach-hand" class="hand" style="margin-bottom: 20px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px;"></div>
-                    <button onclick="document.getElementById('reach-modal').style.display='none';" style="background:#e74c3c;">キャンセル</button>
+            <div id="action-ui-area">
+                <div id="action-buttons">
+                    <button id="btn-ron" class="action-btn btn-ron" style="display:none;" onclick="sendGameAction('RON')"></button>
+                    <button id="btn-tsumo" class="action-btn btn-tsumo" style="display:none;" onclick="sendGameAction('TSUMO')"></button>
+                    <button id="btn-pon" class="action-btn btn-pon" style="display:none;" onclick="sendGameAction('PON')"></button>
+                    <button id="btn-chi" class="action-btn btn-chi" style="display:none;" onclick="sendGameAction('CHI')"></button>
+                    <button id="btn-kan" class="action-btn btn-kan" style="display:none;" onclick="sendGameAction('KAN')"></button>
+                    <button id="btn-riichi" class="action-btn btn-riichi" style="display:none;" onclick="sendGameAction('RIICHI')"></button>
+                    <button id="btn-kita" class="action-btn btn-kita" style="display:none;" onclick="sendGameAction('KITA')"></button>
+                    <button id="btn-pass" class="action-btn btn-pass" style="display:none;" onclick="sendGameAction('PASS')"></button>
+                    <button id="btn-kyuushu" class="action-btn btn-ryuukyoku" style="display:none;" onclick="sendGameAction('KYUUSHU')"></button>
                 </div>
             </div>
 
-            <div id="chi-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:300; justify-content:center; align-items:center;">
-                <div style="background:#1e4b30; padding:20px; border-radius:10px; border:2px solid #27ae60; text-align:center;">
-                    <h3 style="color:#fff; margin-top:0;">チーする組み合わせを選んでください</h3>
-                    <div id="chi-options" style="display: flex; gap: 15px; margin-bottom: 20px; justify-content: center; flex-wrap: wrap;"></div>
-                    <button onclick="document.getElementById('chi-modal').style.display='none';" style="background:#e74c3c;">キャンセル</button>
-                </div>
+            <div id="reach-modal" style="display:none; position:absolute; top:40%; left:50%; transform:translate(-50%, -50%); background:rgba(0,0,0,0.9); padding:20px; border-radius:10px; z-index:300; flex-direction:column; align-items:center;">
+                <h2 style="color:#f1c40f; margin-top:0;">捨てる牌を選んでください</h2>
+                <div id="reach-hand" class="hand"></div>
+                <button onclick="sendGameAction('CANCEL_REACH')" style="margin-top:15px; background:#e74c3c;">キャンセル</button>
             </div>
 
-            <div id="kan-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:300; justify-content:center; align-items:center;">
-                <div style="background:#1e4b30; padding:20px; border-radius:10px; border:2px solid #8e44ad; text-align:center;">
-                    <h3 style="color:#fff; margin-top:0;">カンする牌を選んでください</h3>
-                    <div id="kan-options" style="display: flex; gap: 15px; margin-bottom: 20px; justify-content: center; flex-wrap: wrap;"></div>
-                    <button onclick="document.getElementById('kan-modal').style.display='none';" style="background:#e74c3c;">キャンセル</button>
-                </div>
+            <div id="chi-modal" style="display:none; position:absolute; top:40%; left:50%; transform:translate(-50%, -50%); background:rgba(0,0,0,0.9); padding:20px; border-radius:10px; z-index:300; flex-direction:column; align-items:center;">
+                <h2 style="color:#f1c40f; margin-top:0;">チーする組み合わせを選んでください</h2>
+                <div id="chi-options" style="display:flex; gap:15px;"></div>
+                <button onclick="document.getElementById('chi-modal').style.display='none'" style="margin-top:15px; background:#e74c3c;">キャンセル</button>
+            </div>
+
+            <div id="kan-modal" style="display:none; position:absolute; top:40%; left:50%; transform:translate(-50%, -50%); background:rgba(0,0,0,0.9); padding:20px; border-radius:10px; z-index:300; flex-direction:column; align-items:center;">
+                <h2 style="color:#f1c40f; margin-top:0;">カンする牌を選んでください</h2>
+                <div id="kan-options" style="display:flex; gap:15px;"></div>
+                <button onclick="document.getElementById('kan-modal').style.display='none'" style="margin-top:15px; background:#e74c3c;">キャンセル</button>
+            </div>
+
+            <div id="winning-tiles-container" style="display:none; position:absolute; top:65%; left:50%; transform:translate(-50%, 0); background:rgba(0,0,0,0.8); padding:10px 20px; border-radius:8px; z-index:40; text-align:center;">
+                <div style="color:#f1c40f; font-weight:bold; margin-bottom:5px;">待ち牌</div>
+                <div id="winning-tiles-list" style="display:flex; gap:5px; justify-content:center;"></div>
             </div>
 
             <div id="result-overlay" style="display:none;">
-                <h2 id="result-text"></h2>
+                <div id="result-text"></div>
             </div>
-
-            <div id="final-result-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:400; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
-                <h1 id="final-result-reason" style="color:#e74c3c; font-size:3rem; margin-bottom:10px; text-shadow: 0 0 15px #c0392b;"></h1>
-                <div id="final-result-ranking" style="background:rgba(255,255,255,0.1); padding:30px; border-radius:10px; border:2px solid #f1c40f; min-width: 300px;"></div>
-                <p style="color:#bdc3c7; margin-top:30px; font-size:1.2rem;">まもなくロビーに戻ります...</p>
+            
+            <div id="final-result-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:500; align-items:center; justify-content:center; flex-direction:column;">
+                <h1 style="color:#f1c40f; font-size:3rem; margin-bottom:10px;">ゲーム終了</h1>
+                <h2 id="final-result-reason" style="color:#fff; margin-bottom:30px;"></h2>
+                <div id="final-result-ranking" style="background:rgba(255,255,255,0.1); padding:20px; border-radius:10px; width:300px;"></div>
+                <button onclick="window.location.reload()" style="margin-top:30px; font-size:1.2rem;">ロビーへ戻る</button>
             </div>
 
             <div id="mahjong-table">
-                
-                <div id="round-info" style="display:none;">11局 0本場 | 残り山: 45 | 供託: 0 | ツモ・打牌</div>
-
-                <div id="dora-area" style="display:none;">
-                    <div style="color:#f1c40f; font-size:0.8rem; font-weight:bold; margin-right:5px; display:flex; align-items:center; white-space:nowrap;">ドラ表示牌:</div>
-                    <div id="dora-indicators" class="hand"></div>
+                <div id="round-info"></div>
+                <div id="dora-area">
+                    <div style="color:#f1c40f; font-weight:bold;">ドラ</div>
+                    <div id="dora-indicators"></div>
                 </div>
 
-                <div id="score-bottom" class="player-score" style="display:none;"></div>
-                <div id="score-right" class="player-score" style="display:none;"></div>
                 <div id="score-top" class="player-score" style="display:none;"></div>
                 <div id="score-left" class="player-score" style="display:none;"></div>
-
-                <div id="action-timer-display" style="display:none;">15</div>
-
-                <div id="action-ui-area">
-                    <div id="action-buttons" style="display:none;">
-                        <button id="btn-ron" class="action-btn btn-ron" onclick="sendGameAction('RON')" style="display:none;"></button>
-                        <button id="btn-tsumo" class="action-btn btn-tsumo" onclick="sendGameAction('TSUMO')" style="display:none;"></button>
-                        <button id="btn-kita" class="action-btn btn-kita" onclick="sendGameAction('KITA')" style="display:none;"></button>
-                        <button id="btn-kan" class="action-btn btn-kan" onclick="sendGameAction('KAN')" style="display:none;"></button>
-                        <button id="btn-pon" class="action-btn btn-pon" onclick="sendGameAction('PON')" style="display:none;"></button>
-                        <button id="btn-chi" class="action-btn btn-chi" onclick="sendGameAction('CHI')" style="display:none;"></button>
-                        <button id="btn-pass" class="action-btn btn-pass" onclick="sendGameAction('PASS')" style="display:none;"></button>
-                        <button id="btn-riichi" class="action-btn text-btn btn-riichi" onclick="sendGameAction('RIICHI')" style="display:none;">リーチ</button>
-                        <button id="btn-kyuushu" class="action-btn text-btn btn-kyuushu" onclick="sendGameAction('KYUUSHU')" style="display:none;">九種</button>
-                    </div>
-                </div>
+                <div id="score-right" class="player-score" style="display:none;"></div>
+                <div id="score-bottom" class="player-score" style="display:none;"></div>
 
                 <div id="area-top" class="player-area top" style="display:none;">
                     <div id="name-top" class="player-name-label" style="display:none;"></div>

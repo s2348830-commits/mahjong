@@ -30,7 +30,6 @@ const state = {
     effects: []
 };
 
-// 復帰処理のアナウンスとフラグ管理
 let savedId = localStorage.getItem('mahjong_playerId');
 let isRejoining = false;
 if (savedId) {
@@ -62,7 +61,6 @@ function dispatch(action) {
     try {
         switch (action.type) {
             case 'CONNECTED':
-                // 復帰処理のID上書きバグを防止
                 if (isRejoining) {
                     if (action.payload.isRejoin) {
                         state.playerId = action.payload.playerId;
@@ -443,13 +441,15 @@ const Renderer = {
         }
     },
 
+    /* ★修正: リーチ・九種九牌(流局)ボタンの表示対応 */
     renderActionButtons(game) {
         const actionArea = document.getElementById('action-buttons');
         if (state.phase !== PHASE.RESULT && state.phase !== PHASE.FINAL_RESULT && game.allowedActions?.length > 0 && state.dealAnimationStep === -1) {
             actionArea.style.display = 'flex';
             
             ['TSUMO', 'RON', 'PON', 'CHI', 'RIICHI', 'PASS', 'KYUUSHU', 'KITA'].forEach(action => {
-                const btn = document.getElementById(`btn-${action.toLowerCase()}`);
+                const btnId = action === 'KYUUSHU' ? 'btn-kyuushu' : `btn-${action.toLowerCase()}`;
+                const btn = document.getElementById(btnId);
                 if (btn) btn.style.display = game.allowedActions.includes(action) ? 'block' : 'none';
             });
             
@@ -621,7 +621,6 @@ const Renderer = {
         if (kitaCount > 0) {
             for(let i = 0; i < kitaCount; i++) {
                 const isDora = Utils.isDora('4z', doraTiles);
-                // ★修正: 第2引数を常に true にして1/2サイズ(小)に固定
                 meldDiv.appendChild(Utils.createTileElement('4z', true, isDora));
             }
             const space = document.createElement('div'); space.style.width = '5px';
@@ -658,7 +657,6 @@ const Renderer = {
 
             tilesToRender.forEach((t, i) => {
                 const isDora = Utils.isDora(t, doraTiles);
-                // ★修正: 第2引数を常に true にして1/2サイズ(小)に固定
                 let tileEl = Utils.createTileElement(t, true, isDora);
                 
                 if (i === horizontalIndex) {
@@ -688,7 +686,7 @@ const Renderer = {
         }
 
         for (let i = discardDiv.children.length; i < rawDiscards.length; i++) {
-            if (discardDiv.children.length >= 20) {
+            if (discardDiv.children.length >= 15) {
                 discardDiv.removeChild(discardDiv.firstChild);
             }
 
