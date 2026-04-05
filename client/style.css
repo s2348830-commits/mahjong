@@ -155,30 +155,33 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 
 .forbidden-tile { filter: brightness(0.4) grayscale(0.8) !important; pointer-events: none !important; cursor: not-allowed !important; }
 
-/* ★修正: PC版のタイマーを右下(手牌の右上)へ配置 */
+/* ★修正: PC版のタイマーを fixed にして画面中央から計算・常に隠れないようにする */
 #action-timer-display {
-    position: absolute; 
-    bottom: 150px; right: 30px; 
-    top: auto; left: auto;
+    position: fixed; 
+    top: 560px; 
+    left: 50%;
+    transform: translateX(-150px);
     font-size: 2.5rem;
     font-weight: 900; color: #ff9800; 
     text-shadow: -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff, 0px 0px 10px rgba(0,0,0,0.8);
     font-family: 'Courier New', Courier, monospace; display: none; min-width: 60px; text-align: center; z-index: 10000;
 }
 
-/* ★修正: PC版のアクションボタンを右下(タイマーの下)へスッキリ配置 */
+/* ★修正: PC版のアクションボタンも fixed にして自分の手牌の右上に完全固定 */
 #action-ui-area { 
-    position: absolute; 
-    bottom: 90px; right: 30px; 
-    top: auto; left: auto; 
+    position: fixed; 
+    top: 560px; 
+    left: 50%;
+    transform: translateX(20px);
     display: flex; flex-direction: row; align-items: center; justify-content: flex-end; gap: 15px; z-index: 10000; 
 }
 #action-buttons { display: flex; gap: 10px; }
 
-/* ボタンサイズと画像マップ */
+/* ボタンサイズと画像マップの追加 */
 .action-btn {
     width: 106px; height: 41px; 
-    background-image: url('game_buttonUI.jpg'); 
+    /* ★修正: 画像ファイルを png に戻しました！これによりボタンが透明にならずに表示されます */
+    background-image: url('game_buttonUI.png'); 
     background-size: 300% 300%; 
     background-color: transparent; background-repeat: no-repeat; border: none; box-shadow: none; cursor: pointer;
     transition: transform 0.1s, filter 0.1s; border-radius: 8px; padding: 0;
@@ -191,6 +194,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 .btn-ron { background-position: 0% 0%; } .btn-tsumo { background-position: 50% 0%; } .btn-kita { background-position: 100% 0%; }
 .btn-kan { background-position: 0% 50%; } .btn-pon { background-position: 50% 50%; } .btn-chi { background-position: 100% 50%; }
 .btn-pass { background-position: 0% 100%; }
+/* 新規追加ボタンの座標マッピング */
 .btn-riichi { background-position: 50% 100%; } 
 .btn-ryuukyoku { background-position: 100% 100%; }
 
@@ -215,7 +219,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
         transform-origin: center center;
     }
 
-    /* ★修正: 中央の枠を透明にしつつ、座標基準点として生かすことで河の左上への飛び出しを防ぐ */
+    /* 中央の枠を透明にしつつ、座標基準点として生かすことで河の左上への飛び出しを防ぐ */
     #center-discards { 
         display: block !important; 
         background: transparent !important; 
@@ -283,17 +287,19 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     #score-left   { top: 50%; bottom: auto; left: 12.5vh; transform: translateY(-50%) rotate(90deg); }
     #score-right  { top: 50%; bottom: auto; right: 12.5vh; transform: translateY(-50%) rotate(-90deg); }
 
-    /* タイマーとアクションボタン */
-    #action-timer-display { top: auto; left: auto; bottom: 25vh; right: 2vw; font-size: 6vh; }
+    /* ★修正: タイマーとアクションボタンを fixed で右下に完全固定 (見切れないように) */
+    #action-timer-display { 
+        position: fixed; top: auto; left: auto; bottom: 25vh; right: 4vw; 
+        transform: none; font-size: 6vh; z-index: 10000; 
+    }
     
-    #action-ui-area { top: auto; left: auto; bottom: 14vh; right: 2vw; gap: 10px; justify-content: flex-end; }
+    #action-ui-area { 
+        position: fixed; top: auto; left: auto; bottom: 12vh; right: 4vw; 
+        transform: none; gap: 10px; justify-content: flex-end; z-index: 10000; 
+    }
     .action-btn { 
         width: 124px; /* タップしやすい幅 (比率維持) */
         height: 48px; /* 高さ最低48px以上を確保 */
         border-radius: 6px; 
     }
 }
-
-.reachable-tile { cursor: pointer; box-shadow: 0 0 10px #f1c40f; border-radius: 4px; }
-.reachable-tile:hover { transform: translateY(-10px); }
-.disabled-tile { opacity: 0.4; cursor: not-allowed; }
