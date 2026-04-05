@@ -86,6 +86,13 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 #dora-indicators { display: flex; gap: 2px; }
 #dora-indicators .tile { transform: scale(0.8); transform-origin: center; }
 
+/* ★追加: 待ち牌を左上に固定表示 */
+#winning-tiles-container { 
+    position: fixed; top: 20px; left: 20px; transform: none; 
+    background: rgba(0,0,0,0.8); padding: 10px 20px; border-radius: 8px; 
+    z-index: 10000; text-align: center; 
+}
+
 .discard-area {
     position: absolute; display: grid;
     grid-template-columns: repeat(5, 23px);
@@ -108,6 +115,9 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     box-shadow: none !important;
 }
 .discard-area .tile:not(.animating) { transform: none !important; }
+
+/* ★追加: 河の中のリーチ宣言牌を横向きにする */
+.discard-area .tile.riichi-tile { transform: rotate(-90deg) !important; }
 
 .player-area { position: absolute; display: flex; align-items: flex-end; z-index: 10; }
 .player-area.bottom { bottom: 2%; left: 50%; transform: translateX(-50%); }
@@ -155,7 +165,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 
 .forbidden-tile { filter: brightness(0.4) grayscale(0.8) !important; pointer-events: none !important; cursor: not-allowed !important; }
 
-/* ★修正: PC版のタイマーを fixed にして画面中央から計算・常に隠れないようにする */
+/* PC版のタイマーを fixed にして画面中央下部から計算・常に隠れないようにする */
 #action-timer-display {
     position: fixed; 
     top: 560px; 
@@ -167,7 +177,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     font-family: 'Courier New', Courier, monospace; display: none; min-width: 60px; text-align: center; z-index: 10000;
 }
 
-/* ★修正: PC版のアクションボタンも fixed にして自分の手牌の右上に完全固定 */
+/* PC版のアクションボタンも fixed にして自分の手牌の右上に完全固定 */
 #action-ui-area { 
     position: fixed; 
     top: 560px; 
@@ -177,11 +187,10 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 }
 #action-buttons { display: flex; gap: 10px; }
 
-/* ボタンサイズと画像マップの追加 */
+/* ボタンサイズと画像マップ */
 .action-btn {
     width: 106px; height: 41px; 
-    /* ★修正: 画像ファイルを png に戻しました！これによりボタンが透明にならずに表示されます */
-    background-image: url('game_buttonUI.png'); 
+    background-image: url('game_buttonUI.jpg'); 
     background-size: 300% 300%; 
     background-color: transparent; background-repeat: no-repeat; border: none; box-shadow: none; cursor: pointer;
     transition: transform 0.1s, filter 0.1s; border-radius: 8px; padding: 0;
@@ -194,7 +203,6 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 .btn-ron { background-position: 0% 0%; } .btn-tsumo { background-position: 50% 0%; } .btn-kita { background-position: 100% 0%; }
 .btn-kan { background-position: 0% 50%; } .btn-pon { background-position: 50% 50%; } .btn-chi { background-position: 100% 50%; }
 .btn-pass { background-position: 0% 100%; }
-/* 新規追加ボタンの座標マッピング */
 .btn-riichi { background-position: 50% 100%; } 
 .btn-ryuukyoku { background-position: 100% 100%; }
 
@@ -233,7 +241,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     .tile { width: 6vh; height: 8.2vh; }
     .tile.small { width: 3.5vh; height: 4.8vh; }
     
-    /* 鳴き牌（横向き）の調整 */
+    /* スマホ版 横向き牌の調整 */
     .tile.horizontal {
         transform: rotate(-90deg) translate(0.5vh, -1.5vh) !important;
         margin-left: 0 !important;
@@ -252,6 +260,10 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
         height: 4.8vh !important; 
         box-shadow: none !important; 
     }
+    
+    /* ★追加: スマホ版 待ち牌表示の調整 */
+    #winning-tiles-container { top: 10px; left: 10px; padding: 5px 10px; }
+    #winning-tiles-container .tile { transform: scale(0.7); margin: -10px; }
 
     /* 左右プレイヤーの位置修正 (画面外に出ないよう調整) */
     .player-area.bottom { bottom: 2vh; left: 50%; transform: translateX(-50%); }
@@ -287,7 +299,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     #score-left   { top: 50%; bottom: auto; left: 12.5vh; transform: translateY(-50%) rotate(90deg); }
     #score-right  { top: 50%; bottom: auto; right: 12.5vh; transform: translateY(-50%) rotate(-90deg); }
 
-    /* ★修正: タイマーとアクションボタンを fixed で右下に完全固定 (見切れないように) */
+    /* タイマーとアクションボタンを fixed で右下に完全固定 (見切れないように) */
     #action-timer-display { 
         position: fixed; top: auto; left: auto; bottom: 25vh; right: 4vw; 
         transform: none; font-size: 6vh; z-index: 10000; 
@@ -298,7 +310,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
         transform: none; gap: 10px; justify-content: flex-end; z-index: 10000; 
     }
     .action-btn { 
-        width: 124px; /* タップしやすい幅 (比率維持) */
+        width: 124px; /* タップしやすい幅 */
         height: 48px; /* 高さ最低48px以上を確保 */
         border-radius: 6px; 
     }

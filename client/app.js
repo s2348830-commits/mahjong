@@ -30,6 +30,7 @@ const state = {
     effects: []
 };
 
+// ★復帰処理のアナウンスとフラグ管理
 let savedId = localStorage.getItem('mahjong_playerId');
 let isRejoining = false;
 if (savedId) {
@@ -44,9 +45,7 @@ if (savedId) {
 
 let prevState = null; 
 
-function log(...args) {
-    console.log('[Mahjong]', ...args);
-}
+function log(...args) { console.log('[Mahjong]', ...args); }
 
 function mapPhase(serverPhase) {
     switch (serverPhase) {
@@ -76,40 +75,26 @@ function dispatch(action) {
                     localStorage.setItem('mahjong_playerId', state.playerId);
                 }
                 break;
-            case 'SET_ROOM_LIST':
-                state.roomList = action.payload;
-                break;
+            case 'SET_ROOM_LIST': state.roomList = action.payload; break;
             case 'UPDATE_ROOM_STATE':
                 const serverState = action.payload;
-                state.room = {
-                    roomName: serverState.roomName,
-                    hostId: serverState.hostId,
-                    players: serverState.players,
-                    settings: serverState.settings
-                };
+                state.room = { roomName: serverState.roomName, hostId: serverState.hostId, players: serverState.players, settings: serverState.settings };
                 
                 if (serverState.status === 'LOBBY') {
-                    state.phase = PHASE.LOBBY;
-                    state.game = null;
-                    state.dealAnimationStep = -1;
-                    state.reachOptions = [];
-                    state.currentWinningTiles = [];
-                    state.hasDrawnThisTurn = true;
+                    state.phase = PHASE.LOBBY; state.game = null; state.dealAnimationStep = -1;
+                    state.reachOptions = []; state.currentWinningTiles = []; state.hasDrawnThisTurn = true;
                     state.resetCache();
                     document.getElementById('final-result-overlay').style.display = 'none';
-                    
                     const roundInfoEl = document.getElementById('round-info');
                     if (roundInfoEl) roundInfoEl.style.display = 'none';
                     ['bottom', 'right', 'top', 'left'].forEach(pos => {
                         const scoreEl = document.getElementById(`score-${pos}`);
                         if (scoreEl) scoreEl.style.display = 'none';
                     });
-                    
                     Renderer.stopTimer();
                 } 
                 else if (serverState.status === 'FINISHED_GAME') {
-                    state.phase = PHASE.FINAL_RESULT;
-                    state.game = serverState.game;
+                    state.phase = PHASE.FINAL_RESULT; state.game = serverState.game;
                     Renderer.stopTimer();
                 }
                 else if (serverState.status === 'PLAYING') {
@@ -119,20 +104,12 @@ function dispatch(action) {
                     }
                     if (serverState.game) {
                         const newGame = Utils.deepFreeze(structuredClone(serverState.game));
-                        
                         if (state.game) {
-                            if (newGame.turnPlayerId !== state.game.turnPlayerId) {
-                                state.hasDrawnThisTurn = false;
-                            }
-                            if (newGame.wallCount < state.game.wallCount) {
-                                state.hasDrawnThisTurn = true;
-                            }
-
+                            if (newGame.turnPlayerId !== state.game.turnPlayerId) state.hasDrawnThisTurn = false;
+                            if (newGame.wallCount < state.game.wallCount) state.hasDrawnThisTurn = true;
                             if (newGame.phase === 'DRAW' || newGame.phase === 'ACTION_WAIT') {
                                 newGame.players.forEach(p => {
-                                    if (!state.game.riichiPlayers[p.id] && newGame.riichiPlayers[p.id]) {
-                                        state.effects.push({ type: 'CUTIN', text: 'リーチ！', color: '#e74c3c' });
-                                    }
+                                    if (!state.game.riichiPlayers[p.id] && newGame.riichiPlayers[p.id]) state.effects.push({ type: 'CUTIN', text: 'リーチ！', color: '#e74c3c' });
                                 });
                             }
                             if (newGame.phase === 'FINISHED' && state.game.phase !== 'FINISHED') {
@@ -141,30 +118,17 @@ function dispatch(action) {
                                 else state.effects.push({ type: 'CUTIN', text: 'ロン！', color: '#f1c40f' });
                             }
                         }
-                        
                         state.game = newGame;
                         state.phase = mapPhase(state.game.phase);
                     }
                 }
                 break;
-            case 'SHOW_REACH_OPTIONS':
-                state.reachOptions = action.payload.discards;
-                break;
-            case 'UPDATE_TENPAI_INFO':
-                state.currentWinningTiles = action.payload.winningTiles;
-                break;
-            case 'SET_SELECTED_TILE':
-                state.selectedTileIndex = action.payload;
-                break;
-            case 'SET_DEAL_ANIMATION':
-                state.dealAnimationStep = action.payload;
-                break;
-            case 'SET_DISCARD_ORIGIN':
-                state.lastDiscardOrigin = action.payload;
-                break;
-            case 'CLEAR_REACH_OPTIONS':
-                state.reachOptions = [];
-                break;
+            case 'SHOW_REACH_OPTIONS': state.reachOptions = action.payload.discards; break;
+            case 'UPDATE_TENPAI_INFO': state.currentWinningTiles = action.payload.winningTiles; break;
+            case 'SET_SELECTED_TILE': state.selectedTileIndex = action.payload; break;
+            case 'SET_DEAL_ANIMATION': state.dealAnimationStep = action.payload; break;
+            case 'SET_DISCARD_ORIGIN': state.lastDiscardOrigin = action.payload; break;
+            case 'CLEAR_REACH_OPTIONS': state.reachOptions = []; break;
             case 'KICKED':
                 state.phase = PHASE.WAITING;
                 state.effects.push({ type: 'ALERT', message: 'キックされました。' });
@@ -172,9 +136,7 @@ function dispatch(action) {
                 break;
         }
         render(); 
-    } catch (e) {
-        log('Error in dispatch:', e);
-    }
+    } catch (e) { log('Error in dispatch:', e); }
 }
 
 function render() {
@@ -190,10 +152,7 @@ function render() {
     } 
     else if (state.phase === PHASE.FINAL_RESULT) {
         if (phaseChanged) UI.showScreen('game-screen');
-        if (state.game) {
-            Renderer.renderFinalResult(state.game);
-            Renderer.stopTimer();
-        }
+        if (state.game) { Renderer.renderFinalResult(state.game); Renderer.stopTimer(); }
     }
     else { 
         if (phaseChanged) UI.showScreen('game-screen');
@@ -205,7 +164,9 @@ function render() {
             Renderer.updateLocalSelection();
             
             UI.renderReachModal(state.reachOptions);
-            UI.updateWinningTilesDisplay(state.currentWinningTiles);
+            
+            // ★待ち牌表示 (左上) の更新
+            UI.updateWinningTilesDisplay(state.game.winningTiles || state.currentWinningTiles || []);
 
             const prevGame = prevState ? prevState.game : null;
             const isMyTurn = (state.game.phase === 'DRAW' && state.game.turnPlayerId === state.playerId);
@@ -214,9 +175,7 @@ function render() {
             if (isMyTurn || hasAction) {
                 const turnChanged = !prevGame || prevGame.turnPlayerId !== state.game.turnPlayerId || prevGame.phase !== state.game.phase || prevGame.lastDiscard?.tile !== state.game.lastDiscard?.tile;
                 if (turnChanged || (state.dealAnimationStep === -1 && !Renderer.timerInterval)) {
-                    if (state.dealAnimationStep === -1) {
-                        Renderer.startTimer(state.room.settings.thinkTime);
-                    }
+                    if (state.dealAnimationStep === -1) Renderer.startTimer(state.room.settings.thinkTime);
                 }
             } else {
                 Renderer.stopTimer();
@@ -232,21 +191,11 @@ function processEffects() {
     while (state.effects.length > 0) {
         const effect = state.effects.shift();
         switch (effect.type) {
-            case 'START_DEAL_ANIMATION':
-                UI.startDealAnimation();
-                break;
-            case 'ALERT':
-                alert(effect.message);
-                break;
-            case 'SEARCH_ROOMS':
-                Network.sendAction('SEARCH_ROOMS');
-                break;
-            case 'CUTIN':
-                UI.showCutin(effect.text, effect.color);
-                break;
-            case 'TRIGGER_DISCARD_ANIMATION':
-                Renderer.triggerDiscardAnimation(effect.game);
-                break;
+            case 'START_DEAL_ANIMATION': UI.startDealAnimation(); break;
+            case 'ALERT': alert(effect.message); break;
+            case 'SEARCH_ROOMS': Network.sendAction('SEARCH_ROOMS'); break;
+            case 'CUTIN': UI.showCutin(effect.text, effect.color); break;
+            case 'TRIGGER_DISCARD_ANIMATION': Renderer.triggerDiscardAnimation(effect.game); break;
         }
     }
 }
@@ -269,18 +218,14 @@ const Utils = {
         const propNames = Object.getOwnPropertyNames(obj);
         for (const name of propNames) {
             const value = obj[name];
-            if (value && typeof value === "object") {
-                Utils.deepFreeze(value);
-            }
+            if (value && typeof value === "object") Utils.deepFreeze(value);
         }
         return Object.freeze(obj);
     },
 
     generateCacheKey(arr) {
         if (!arr || !Array.isArray(arr) || arr.length === 0) return '';
-        if (typeof arr[0] === 'object') {
-            return arr.map(obj => Object.values(obj).join(':')).join(',');
-        }
+        if (typeof arr[0] === 'object') return arr.map(obj => Object.values(obj).join(':')).join(',');
         return arr.join(',');
     },
 
@@ -308,7 +253,6 @@ const Utils = {
     createTileElement(tileCode, isSmall = false, isDora = false, isForbidden = false) {
         const tileDiv = document.createElement('div');
         tileDiv.className = `tile ${isSmall ? 'small' : ''}`;
-        
         if (isDora) tileDiv.classList.add('dora-glow');
         if (isForbidden) tileDiv.classList.add('forbidden-tile');
 
@@ -338,18 +282,14 @@ const Network = {
         this.ws = new WebSocket(`${protocol}//${window.location.host}`);
         
         this.ws.onopen = () => {
-            if (isRejoining && state.playerId) {
-                this.sendAction('REJOIN', { playerId: state.playerId });
-            }
+            if (isRejoining && state.playerId) this.sendAction('REJOIN', { playerId: state.playerId });
         };
 
         this.ws.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
                 this.handleMessage(data);
-            } catch (e) {
-                log('Invalid message', e);
-            }
+            } catch (e) { log('Invalid message', e); }
         };
         
         this.ws.onclose = () => {
@@ -358,9 +298,7 @@ const Network = {
         };
     },
     sendAction(type, payload = {}) {
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify({ type, payload }));
-        }
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ type, payload }));
     },
     handleMessage(data) {
         switch (data.type) {
@@ -399,68 +337,51 @@ const Renderer = {
             if (totalSeconds < 0) totalSeconds = 0;
             display.innerText = totalSeconds;
             
-            if (totalSeconds <= 5) {
-                display.style.color = '#e74c3c'; 
-            }
-            if (totalSeconds <= 0) {
-                this.stopTimer();
-            }
+            if (totalSeconds <= 5) display.style.color = '#e74c3c'; 
+            if (totalSeconds <= 0) this.stopTimer();
         }, 1000);
     },
 
     stopTimer() {
-        if (this.timerInterval) {
-            clearInterval(this.timerInterval);
-            this.timerInterval = null;
-        }
+        if (this.timerInterval) { clearInterval(this.timerInterval); this.timerInterval = null; }
         const display = document.getElementById('action-timer-display');
         if (display) display.style.display = 'none';
     },
 
     renderGameInfo(game) {
         const phaseText = game.phase === 'DRAW' ? 'ツモ・打牌' : (game.phase === 'ACTION_WAIT' ? 'アクション待機中...' : '終局');
-        
         const roundInfoEl = document.getElementById('round-info');
         if (roundInfoEl) {
             roundInfoEl.style.display = 'block';
             roundInfoEl.innerHTML = `${game.roundInfo || ''} | 残り山: ${game.wallCount || 0} | 供託: ${(game.kyoutaku || 0) * 1000} | ${phaseText}`;
         }
-
         const doraArea = document.getElementById('dora-area');
         const doraIndicatorsEl = document.getElementById('dora-indicators');
         if (doraArea && doraIndicatorsEl) {
             if (game.doraIndicators?.length > 0) {
                 doraArea.style.display = 'flex';
                 doraIndicatorsEl.innerHTML = '';
-                game.doraIndicators.forEach(tile => { 
-                    doraIndicatorsEl.appendChild(Utils.createTileElement(tile, true)); 
-                });
-            } else {
-                doraArea.style.display = 'none';
-            }
+                game.doraIndicators.forEach(tile => { doraIndicatorsEl.appendChild(Utils.createTileElement(tile, true)); });
+            } else doraArea.style.display = 'none';
         }
     },
 
-    /* ★修正: リーチ・九種九牌(流局)ボタンの表示対応 */
     renderActionButtons(game) {
         const actionArea = document.getElementById('action-buttons');
         if (state.phase !== PHASE.RESULT && state.phase !== PHASE.FINAL_RESULT && game.allowedActions?.length > 0 && state.dealAnimationStep === -1) {
             actionArea.style.display = 'flex';
-            
+            // ★リーチボタン等を含む全アクションボタンの表示制御
             ['TSUMO', 'RON', 'PON', 'CHI', 'RIICHI', 'PASS', 'KYUUSHU', 'KITA'].forEach(action => {
                 const btnId = action === 'KYUUSHU' ? 'btn-kyuushu' : `btn-${action.toLowerCase()}`;
                 const btn = document.getElementById(btnId);
                 if (btn) btn.style.display = game.allowedActions.includes(action) ? 'block' : 'none';
             });
-            
             const kanBtn = document.getElementById('btn-kan');
             if (kanBtn) {
                 const canKan = game.allowedActions.includes('ANKAN') || game.allowedActions.includes('KAKAN') || game.allowedActions.includes('MINKAN');
                 kanBtn.style.display = canKan ? 'block' : 'none';
             }
-        } else {
-            actionArea.style.display = 'none';
-        }
+        } else actionArea.style.display = 'none';
     },
 
     renderResult(game) {
@@ -477,9 +398,7 @@ const Renderer = {
                 resultHtml = `${game.winner[0]}<br>${winText}${Utils.formatPointDisplay(game.winningYaku?.[0])}`;
             }
             document.getElementById('result-text').innerHTML = resultHtml;
-        } else {
-            resultOverlay.style.display = 'none';
-        }
+        } else resultOverlay.style.display = 'none';
     },
 
     renderFinalResult(game) {
@@ -487,9 +406,7 @@ const Renderer = {
         if (state.phase === PHASE.FINAL_RESULT) {
             overlay.style.display = 'flex';
             document.getElementById('result-overlay').style.display = 'none'; 
-            
             document.getElementById('final-result-reason').innerText = game.endReason || 'ゲーム終了';
-            
             if (game.finalResults) {
                 const rankHtml = game.finalResults.map(r => `
                     <div style="font-size: 1.5rem; margin: 15px 0; color: #fff; display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 5px;">
@@ -500,9 +417,7 @@ const Renderer = {
                 `).join('');
                 document.getElementById('final-result-ranking').innerHTML = rankHtml;
             }
-        } else {
-            overlay.style.display = 'none';
-        }
+        } else overlay.style.display = 'none';
     },
 
     renderPlayers(game) {
@@ -513,7 +428,8 @@ const Renderer = {
 
         ['bottom', 'right', 'top', 'left'].forEach(pos => {
             document.getElementById(`area-${pos}`).style.display = 'none';
-            document.getElementById(`discard-${pos}`).style.display = 'none';
+            // ★CSS Gridを壊さないように display: '' にする
+            document.getElementById(`discard-${pos}`).style.display = '';
             const nameEl = document.getElementById(`name-${pos}`);
             if (nameEl) nameEl.style.display = 'none';
             const scoreEl = document.getElementById(`score-${pos}`);
@@ -525,7 +441,6 @@ const Renderer = {
             let pos = posMap[relIdx];
             
             document.getElementById(`area-${pos}`).style.display = 'flex';
-            document.getElementById(`discard-${pos}`).style.display = 'grid'; 
             
             this.renderPlayerInfo(pid, pos, game);
             this.renderHand(pid, pos, game);
@@ -554,7 +469,6 @@ const Renderer = {
             nameEl.style.color = isTurn ? '#f1c40f' : '#fff';
             nameEl.style.boxShadow = isTurn ? '0 0 10px rgba(241,196,15,0.5)' : 'none';
         }
-        
         if (scoreEl) {
             scoreEl.style.display = 'block';
             scoreEl.innerHTML = `${pts}`;
@@ -573,7 +487,10 @@ const Renderer = {
         handDiv.innerHTML = '';
         let displayHand = rawHand.map((t, i) => ({ tileCode: t, originalIndex: i, isTsumo: false }));
 
-        if (pid === state.playerId || game.phase === 'FINISHED' || game.phase === 'FINAL_RESULT' || (state.room && state.room.settings && state.room.settings.openHands)) {
+        // サーバーから伏せ牌（back）以外が送られてきた場合（＝勝者、聴牌者、または自分）のみソートして表示
+        const isMasked = rawHand.every(t => t === 'back');
+
+        if (!isMasked && (pid === state.playerId || game.phase === 'FINISHED' || game.phase === 'FINAL_RESULT' || (state.room && state.room.settings && state.room.settings.openHands))) {
             let tsumoTile = null;
             if (isMyTurn && displayHand.length % 3 === 2 && state.dealAnimationStep === -1 && state.hasDrawnThisTurn) {
                 tsumoTile = displayHand.pop();
@@ -658,11 +575,7 @@ const Renderer = {
             tilesToRender.forEach((t, i) => {
                 const isDora = Utils.isDora(t, doraTiles);
                 let tileEl = Utils.createTileElement(t, true, isDora);
-                
-                if (i === horizontalIndex) {
-                    tileEl.classList.add('horizontal');
-                }
-                
+                if (i === horizontalIndex) tileEl.classList.add('horizontal');
                 meldDiv.appendChild(tileEl);
             });
             const space = document.createElement('div'); space.style.width = '5px';
@@ -672,7 +585,7 @@ const Renderer = {
 
     renderDiscards(pid, pos, game) {
         const rawDiscards = game.discards?.[pid] || [];
-        const discardCacheKey = Utils.generateCacheKey(rawDiscards);
+        const discardCacheKey = Utils.generateCacheKey(rawDiscards) + '-' + game.riichiIndex?.[pid];
         if (state.cache.discards[pid] === discardCacheKey) return;
         
         const prevCount = state.cache.discards[pid] ? state.cache.discards[pid].split(',').length : 0;
@@ -685,8 +598,9 @@ const Renderer = {
             discardDiv.innerHTML = '';
         }
 
+        // appendChild を使用して再描画し、CSS Grid を壊さない
         for (let i = discardDiv.children.length; i < rawDiscards.length; i++) {
-            if (discardDiv.children.length >= 20) {
+            if (discardDiv.children.length >= 15) {
                 discardDiv.removeChild(discardDiv.firstChild);
             }
 
@@ -698,6 +612,12 @@ const Renderer = {
                 dTile.classList.add('new-discard'); 
                 dTile.dataset.pid = pid;
             }
+
+            // ★リーチ宣言牌を横向きにする
+            if (i === game.riichiIndex?.[pid]) {
+                dTile.classList.add('riichi-tile');
+            }
+
             discardDiv.appendChild(dTile);
             
             dTile.style.position = "";
@@ -757,6 +677,7 @@ const Renderer = {
             
             el.style.opacity = '0';
             
+            // クローンを作成してアニメーションを実行（元のGridを壊さない）
             const clone = el.cloneNode(true);
             document.body.appendChild(clone);
             clone.style.position = 'fixed';
@@ -845,7 +766,6 @@ const UI = {
         modal.style.display = 'flex';
         const container = document.getElementById('chi-options');
         container.innerHTML = '';
-        
         const doraTiles = Utils.getDoraTiles(state.game.doraIndicators);
 
         options.forEach((opt, idx) => {
@@ -867,7 +787,6 @@ const UI = {
         modal.style.display = 'flex';
         const container = document.getElementById('kan-options');
         container.innerHTML = '';
-        
         const doraTiles = Utils.getDoraTiles(state.game.doraIndicators);
 
         const createOpt = (tile, typeName) => {
@@ -930,43 +849,24 @@ const UI = {
             const updateRadioUI = (name, value) => {
                 const hiddenInput = document.querySelector(`input[name="${name}"]`);
                 if (hiddenInput) hiddenInput.value = value;
-                
                 const group = hiddenInput ? hiddenInput.closest('.setting-button-group') : null;
                 if (group) {
                     group.querySelectorAll('.hex-button').forEach(btn => {
                         const onclickStr = btn.getAttribute('onclick') || '';
                         let isMatch = false;
-                        if (typeof value === 'string') {
-                            isMatch = onclickStr.includes(`'${value}'`) || onclickStr.includes(`"${value}"`);
-                        } else {
-                            isMatch = onclickStr.includes(`, ${value})`) || onclickStr.includes(`,${value})`);
-                        }
-                        
-                        if (isMatch) {
-                            btn.classList.add('selected');
-                        } else {
-                            btn.classList.remove('selected');
-                        }
+                        if (typeof value === 'string') isMatch = onclickStr.includes(`'${value}'`) || onclickStr.includes(`"${value}"`);
+                        else isMatch = onclickStr.includes(`, ${value})`) || onclickStr.includes(`,${value})`);
+                        if (isMatch) btn.classList.add('selected'); else btn.classList.remove('selected');
                     });
                 }
             };
-
-            updateRadioUI('mode', settings.mode);
-            updateRadioUI('length', settings.length);
-            updateRadioUI('thinkTime', settings.thinkTime);
-            updateRadioUI('advanced', settings.advanced);
-            updateRadioUI('tobi', settings.tobi);
-            updateRadioUI('localYaku', settings.localYaku);
-            updateRadioUI('akaDora', settings.akaDora);
-            updateRadioUI('kuitan', settings.kuitan);
-            updateRadioUI('cpuLevel', settings.cpuLevel);
+            updateRadioUI('mode', settings.mode); updateRadioUI('length', settings.length); updateRadioUI('thinkTime', settings.thinkTime);
+            updateRadioUI('advanced', settings.advanced); updateRadioUI('tobi', settings.tobi); updateRadioUI('localYaku', settings.localYaku);
+            updateRadioUI('akaDora', settings.akaDora); updateRadioUI('kuitan', settings.kuitan); updateRadioUI('cpuLevel', settings.cpuLevel);
             updateRadioUI('openHands', settings.openHands);
-
-            const startPointsInput = document.getElementById('startPoints');
-            if (startPointsInput) startPointsInput.value = settings.startPoints;
-            const targetPointsInput = document.getElementById('targetPoints');
-            if (targetPointsInput) targetPointsInput.value = settings.targetPoints;
-
+            
+            const startPointsInput = document.getElementById('startPoints'); if (startPointsInput) startPointsInput.value = settings.startPoints;
+            const targetPointsInput = document.getElementById('targetPoints'); if (targetPointsInput) targetPointsInput.value = settings.targetPoints;
             document.getElementById('advanced-settings').style.display = settings.advanced ? 'block' : 'none';
         }
 
@@ -987,12 +887,8 @@ const UI = {
         let stepIndex = 0;
         const interval = setInterval(() => {
             stepIndex++;
-            if (stepIndex >= sequence.length) {
-                clearInterval(interval);
-                dispatch({ type: 'SET_DEAL_ANIMATION', payload: -1 });
-            } else {
-                dispatch({ type: 'SET_DEAL_ANIMATION', payload: sequence[stepIndex] });
-            }
+            if (stepIndex >= sequence.length) { clearInterval(interval); dispatch({ type: 'SET_DEAL_ANIMATION', payload: -1 }); } 
+            else dispatch({ type: 'SET_DEAL_ANIMATION', payload: sequence[stepIndex] });
         }, 400);
     },
 
@@ -1003,15 +899,10 @@ const UI = {
 
     showCutin(text, color) {
         const cutin = document.createElement('div');
-        cutin.style.position = 'fixed';
-        cutin.style.top = '50%'; cutin.style.left = '50%';
-        cutin.style.transform = 'translate(-50%, -50%) scale(0)';
-        cutin.style.fontSize = '4rem'; cutin.style.fontWeight = 'bold';
-        cutin.style.color = color;
-        cutin.style.textShadow = '0 0 10px #000, 0 0 20px #000';
-        cutin.style.zIndex = '9999'; cutin.style.pointerEvents = 'none';
-        cutin.innerText = text;
-        cutin.style.transition = 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease-in-out';
+        cutin.style.position = 'fixed'; cutin.style.top = '50%'; cutin.style.left = '50%'; cutin.style.transform = 'translate(-50%, -50%) scale(0)';
+        cutin.style.fontSize = '4rem'; cutin.style.fontWeight = 'bold'; cutin.style.color = color;
+        cutin.style.textShadow = '0 0 10px #000, 0 0 20px #000'; cutin.style.zIndex = '9999'; cutin.style.pointerEvents = 'none';
+        cutin.innerText = text; cutin.style.transition = 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease-in-out';
         document.body.appendChild(cutin);
 
         requestAnimationFrame(() => {
@@ -1034,11 +925,8 @@ const UI = {
         
         if (type === 'CHI') {
             const opts = state.game.chiOptions;
-            if (opts && opts.length === 1) {
-                Network.sendAction('CHI', { tiles: opts[0] });
-            } else if (opts && opts.length > 1) {
-                this.showChiModal(opts);
-            }
+            if (opts && opts.length === 1) Network.sendAction('CHI', { tiles: opts[0] });
+            else if (opts && opts.length > 1) this.showChiModal(opts);
             return;
         }
 
@@ -1049,12 +937,8 @@ const UI = {
                 if (totalOpts === 1) {
                     if (opts.ankan && opts.ankan.length === 1) Network.sendAction('ANKAN', { tile: opts.ankan[0] });
                     else if (opts.kakan && opts.kakan.length === 1) Network.sendAction('KAKAN', { tile: opts.kakan[0] });
-                } else if (totalOpts > 1) {
-                    this.showKanModal(opts);
-                }
-            } else if (state.game.phase === 'ACTION_WAIT') {
-                Network.sendAction('MINKAN');
-            }
+                } else if (totalOpts > 1) this.showKanModal(opts);
+            } else if (state.game.phase === 'ACTION_WAIT') Network.sendAction('MINKAN');
             return;
         }
 
@@ -1066,10 +950,7 @@ const UI = {
     
     changeSettingRadio(name, value) {
         const el = document.querySelector(`input[name="${name}"]`);
-        if (el) { 
-            el.value = value; 
-            this.syncSettings(); 
-        }
+        if (el) { el.value = value; this.syncSettings(); }
     },
     
     syncSettings() {
