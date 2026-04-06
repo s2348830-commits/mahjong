@@ -115,6 +115,7 @@ class MahjongGame {
                 if (self.wall.length === 0) return false;
                 self.players[playerId].hand.push(self.wall.pop());
                 self.players[playerId].tempFuriten = false;
+                self.players[playerId].isCalledTurn = false;
                 return true;
             },
             drawRinshan: (playerId) => {
@@ -129,6 +130,7 @@ class MahjongGame {
                 if (self.kanCount === 4 && self.kanPlayers.size > 1) {
                     self.suukansanraPending = true;
                 }
+                self.players[playerId].isCalledTurn = false;
                 return true;
             },
             discard: (playerId, tileIndex) => {
@@ -344,6 +346,23 @@ class MahjongGame {
                 id, rank: index + 1, points: this.points[id]
             }));
             this.room.handleGameEnd(finalResults, endReason);
+            setTimeout(() => {
+                if (this.room && this.room.players) {
+                    let updated = false;
+                    // players が Map の場合と Array の場合両方に対応
+                    this.room.players.forEach(p => {
+                        if (p.isAI && !p.isReady) {
+                            p.isReady = true;
+                            updated = true;
+                        }
+                    });
+                    // 更新したらロビー画面に反映させる
+                    if (updated && typeof this.room.broadcastState === 'function') {
+                        this.room.broadcastState();
+                    }
+                }
+            }, 500);
+            
             return true;
         }
         return false;
@@ -810,7 +829,8 @@ class MahjongGame {
             if (ponPlayer) {
                 player.forbiddenDiscards = [normT];
                 player.melds.push({ type: 'koutsu', tile: t, isOpen: true, fromWho: fromWho }); 
-                this.checkPao(activeId, normT, this.lastDiscardPlayer); 
+                this.checkPao(activeId, normT, this.lastDiscardPlayer);
+                player.isCalledTurn = true; 
                 
                 this.currentTurn = this.playerIds.indexOf(activeId);
                 this.actionResponses = {}; this.waitingFor = [];
@@ -867,7 +887,8 @@ class MahjongGame {
             let activeIdx = this.playerIds.indexOf(activeId);
             let fromWho = (discardIdx - activeIdx + this.playerIds.length) % this.playerIds.length;
             player.melds.push({ type: 'shuntsu', tiles: meldTiles, isOpen: true, fromWho: fromWho, calledTile: t }); 
-            
+            player.isCalledTurn = true;
+
             this.currentTurn = this.playerIds.indexOf(activeId);
             this.actionResponses = {}; this.waitingFor = [];
             this.phase = 'DRAW'; 
@@ -1216,30 +1237,39 @@ class MahjongGame {
             }
 
             if (pTarget.hand.length % 3 === 2 && !pTarget.riichi) {
-    if (this.checkWin(targetPlayerId, null, true)) allowedActions.push('TSUMO');
+    if (!pTarget.isCalledTurn && this.checkWin(targetPlayerId, null, true)) allowedActions.push('TSUMO');
     
-    // ▼ここから修正▼
-    if (this.points[targetPlayerId] >= 1000 && isMenzenTarget) {
-        let canRiichi = false;
-        for (let i = 0; i < pTarget.hand.length; i++) {
-            let testHand = [...pTarget.hand];
-            testHand.splice(i, 1);
-            // ★ポイント: 以前お伝えした通り、getWinningTilesの引数を「3つ」にします
-            if (this.getWinningTiles(targetPlayerId, testHand, true).length > 0) {
-                canRiichi = true;
-                break;
-            }
-        }
-        if (canRiichi) allowedActions.push('RIICHI');
-    }
+    if (pTarget.hand.length % 3 === 2 && !pTarget.riichi) {
                 
-                kanOptions = this.getKanOptions(targetPlayerId);
-                if (kanOptions.ankan.length > 0) allowedActions.push('ANKAN');
-                if (kanOptions.kakan.length > 0) allowedActions.push('KAKAN');
+                // ★追加：鳴き直後(!pTarget.isCalledTurn)でない場合のみツモ可能
+                if (!pTarget.isCalledTurn && this.checkWin(targetPlayerId, null, true)) allowedActions.push('TSUMO');
+                
+                // ★追加：鳴き直後でない場合のみ立直可能
+                if (this.points[targetPlayerId] >= 1000 && isMenzenTarget && !pTarget.isCalledTurn) {
+                    let canRiichi = false;
+                    for (let i = 0; i < pTarget.hand.length; i++) {
+                        let testHand = [...pTarget.hand];
+                        testHand.splice(i, 1);
+                        // ★前回の修正（引数3つ）を維持
+                        if (this.getWinningTiles(targetPlayerId, testHand, true).length > 0) {
+                            canRiichi = true;
+                            break;
+                        }
+                    }
+                    if (canRiichi) allowedActions.push('RIICHI');
+                }
+                
+                // ★追加：鳴き直後でない場合のみカン可能（これでポン出しカンができなくなります）
+                if (!pTarget.isCalledTurn) {
+                    kanOptions = this.getKanOptions(targetPlayerId);
+                    if (kanOptions.ankan.length > 0) allowedActions.push('ANKAN');
+                    if (kanOptions.kakan.length > 0) allowedActions.push('KAKAN');
+                }
                 
                 if (this.settings.mode === 3 && pTarget.hand.some(t => YakuHelper.safeNormalize(t) === '4z')) {
                     allowedActions.push('KITA');
                 }
+            }
             } else if (pTarget.hand.length % 3 === 2 && pTarget.riichi) {
                 if (this.checkWin(targetPlayerId, null, true)) allowedActions.push('TSUMO');
             }
