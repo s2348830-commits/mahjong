@@ -55,6 +55,12 @@ class MahjongGame {
         this.startRound();
     }
 
+    emitGameState() {
+        if (this.room && typeof this.room.broadcastState === 'function') {
+            this.room.broadcastState();
+        }
+    }
+
     parseThinkTime(str) {
         if (!str) return 15;
         let parts = str.split('+');
@@ -297,7 +303,7 @@ class MahjongGame {
         });
         
         this.handManager.draw(this.turnManager.getCurrent());
-        this.room.broadcastState();
+        this.emitGameState();
         this.triggerAILogic(this.turnManager.getCurrent());
         
         this.resetTimer();
@@ -420,7 +426,7 @@ class MahjongGame {
                     this.players[pId].openHand = true; 
                 });
                 
-                this.room.broadcastState();
+                this.emitGameState();
                 setTimeout(() => this.nextRound(isDealerWin, true), 7000);
                 return;
             }
@@ -462,7 +468,7 @@ class MahjongGame {
         }
 
         this.winningYaku = [{ han: 0, fu: 0, point: { total: 0, isTsumo: false }, yaku: resultMsg }];
-        this.room.broadcastState();
+        this.emitGameState();
         setTimeout(() => this.nextRound(false, isDealerTenpai), 7000);
     }
 
@@ -640,7 +646,7 @@ class MahjongGame {
 
         if (this.waitingFor.length > 0) {
             this.phase = 'ACTION_WAIT';
-            this.room.broadcastState();
+            this.emitGameState();
             this.triggerAILogic(null); 
             this.resetTimer();
         } else {
@@ -681,7 +687,7 @@ class MahjongGame {
             return;
         }
         this.isIppatsuValid = false; 
-        this.room.broadcastState();
+        this.emitGameState();
         this.triggerAILogic(nextId);
         this.resetTimer();
     }
@@ -760,7 +766,7 @@ class MahjongGame {
             });
 
             ronPlayers.forEach(id => this.players[id].openHand = true);
-            this.room.broadcastState();
+            this.emitGameState();
             setTimeout(() => this.nextRound(isDealerWin, true), 7000);
 
         } else if (this.chankanTile !== null) {
@@ -769,7 +775,7 @@ class MahjongGame {
             if (this.handManager.drawRinshan(kakanPlayer)) {
                 this.phase = 'DRAW';
                 this.rinshan = true;
-                this.room.broadcastState();
+                this.emitGameState();
                 this.triggerAILogic(kakanPlayer);
                 this.resetTimer();
             } else {
@@ -807,7 +813,7 @@ class MahjongGame {
                 this.currentTurn = this.playerIds.indexOf(activeId);
                 this.actionResponses = {}; this.waitingFor = [];
                 this.phase = 'DRAW'; 
-                this.room.broadcastState();
+                this.emitGameState();
                 this.triggerAILogic(activeId); 
                 this.resetTimer();
             } else if (minkanPlayer) {
@@ -819,7 +825,7 @@ class MahjongGame {
                 if (this.handManager.drawRinshan(activeId)) {
                     this.phase = 'DRAW';
                     this.rinshan = true;
-                    this.room.broadcastState();
+                    this.emitGameState();
                     this.triggerAILogic(activeId);
                     this.resetTimer();
                 } else {
@@ -863,7 +869,7 @@ class MahjongGame {
             this.currentTurn = this.playerIds.indexOf(activeId);
             this.actionResponses = {}; this.waitingFor = [];
             this.phase = 'DRAW'; 
-            this.room.broadcastState();
+            this.emitGameState();
             this.triggerAILogic(activeId); 
             this.resetTimer();
 
@@ -890,7 +896,7 @@ class MahjongGame {
                     player.kita++;
                     if (this.handManager.draw(playerId)) {
                         this.rinshan = true;
-                        this.room.broadcastState();
+                        this.emitGameState();
                         this.triggerAILogic(playerId);
                         this.resetTimer();
                     } else {
@@ -936,6 +942,10 @@ class MahjongGame {
                 this.kyoutaku++;
                 this.isIppatsuValid = true; 
                 this.rinshan = false; 
+                
+                // ① DO_RIICHI 実行後に必ず state を再送信する
+                this.emitGameState();
+                
                 this.handlePlayerDiscard(playerId, action.payload.tileIndex);
                 return;
             }
@@ -955,7 +965,7 @@ class MahjongGame {
                     
                     if (this.handManager.drawRinshan(playerId)) {
                         this.rinshan = true;
-                        this.room.broadcastState();
+                        this.emitGameState();
                         this.triggerAILogic(playerId);
                         this.resetTimer();
                     } else {
@@ -982,14 +992,14 @@ class MahjongGame {
 
                         if (this.waitingFor.length > 0) {
                             this.phase = 'ACTION_WAIT';
-                            this.room.broadcastState();
+                            this.emitGameState();
                             this.triggerAILogic(null);
                             this.resetTimer();
                         } else {
                             this.chankanTile = null;
                             if (this.handManager.drawRinshan(playerId)) {
                                 this.rinshan = true;
-                                this.room.broadcastState();
+                                this.emitGameState();
                                 this.triggerAILogic(playerId);
                                 this.resetTimer();
                             } else {
@@ -1048,7 +1058,7 @@ class MahjongGame {
                     this.kyoutaku = 0;
 
                     this.players[playerId].openHand = true;
-                    this.room.broadcastState();
+                    this.emitGameState();
                     setTimeout(() => this.nextRound(isDealerWin, true), 7000); 
                 }
             }
@@ -1178,9 +1188,22 @@ class MahjongGame {
         let kanOptions = { ankan: [], kakan: [] };
         let forbiddenDiscards = [];
         
+        // ② viewerId ごとに winningTiles を計算して state に含める
         let winningTiles = [];
         let pTarget = this.players[targetPlayerId];
         let isMenzenTarget = pTarget.melds.filter(m => m.isOpen).length === 0;
+
+        if (this.isTenpai(targetPlayerId)) {
+            if (pTarget.hand.length % 3 === 2) {
+                // ツモ番中(14枚)の場合は、引いた牌を除外して計算
+                let baseHandForWinning = [...pTarget.hand];
+                baseHandForWinning.pop();
+                winningTiles = this.getWinningTiles(targetPlayerId, baseHandForWinning, isMenzenTarget);
+            } else {
+                // 順番待ちなど(13枚)の場合はそのまま計算
+                winningTiles = this.getWinningTiles(targetPlayerId, pTarget.hand, isMenzenTarget);
+            }
+        }
 
         if (this.phase === 'DRAW' && this.turnManager.isCurrentPlayer(targetPlayerId)) {
             forbiddenDiscards = pTarget.forbiddenDiscards || [];
@@ -1193,12 +1216,7 @@ class MahjongGame {
             if (pTarget.hand.length % 3 === 2 && !pTarget.riichi) {
                 if (this.checkWin(targetPlayerId, null, true)) allowedActions.push('TSUMO');
                 
-                // ★修正: リーチ判定前にツモ牌を除外する (13枚で判定)
-                let baseHandForRiichi = [...pTarget.hand];
-                baseHandForRiichi.pop(); // 14枚目(ツモ牌)を除外
-                let canRiichi = this.getWinningTiles(targetPlayerId, baseHandForRiichi, isMenzenTarget).length > 0;
-                
-                if (this.points[targetPlayerId] >= 1000 && canRiichi && isMenzenTarget) {
+                if (this.points[targetPlayerId] >= 1000 && this.isTenpai(targetPlayerId) && isMenzenTarget) {
                     allowedActions.push('RIICHI');
                 }
                 
@@ -1212,14 +1230,6 @@ class MahjongGame {
             } else if (pTarget.hand.length % 3 === 2 && pTarget.riichi) {
                 if (this.checkWin(targetPlayerId, null, true)) allowedActions.push('TSUMO');
             }
-            
-            // ★修正: 待ち牌計算時もツモ牌(14枚目)を除外して、常に13枚でテンパイしているかを判定
-            if (pTarget.hand.length % 3 === 2) {
-                let baseHandForWinning = [...pTarget.hand];
-                baseHandForWinning.pop();
-                winningTiles = this.getWinningTiles(targetPlayerId, baseHandForWinning, isMenzenTarget);
-            }
-
         } else if (this.phase === 'ACTION_WAIT' && this.waitingFor.includes(targetPlayerId)) {
             if (!this.actionResponses[targetPlayerId]) {
                 let actualTargetTile = this.chankanTile !== null ? this.chankanTile : this.lastDiscardTile;
@@ -1240,15 +1250,6 @@ class MahjongGame {
                 }
                 allowedActions.push('PASS'); 
             }
-            
-            if (pTarget.hand.length % 3 === 1 && this.isTenpai(targetPlayerId)) {
-                winningTiles = this.getWinningTiles(targetPlayerId, pTarget.hand, isMenzenTarget);
-            }
-        } else {
-            // 他のフェーズ（順番待ちなど13枚時）の待ち牌計算
-            if (pTarget.hand.length % 3 === 1 && this.isTenpai(targetPlayerId)) {
-                winningTiles = this.getWinningTiles(targetPlayerId, pTarget.hand, isMenzenTarget);
-            }
         }
 
         let roundName = CONSTANTS.WINDS[['1z','2z','3z','4z'].indexOf(this.roundWind)].replace('z', '') + this.kyoku + '局';
@@ -1259,11 +1260,12 @@ class MahjongGame {
             chiOptions: chiOptions, kanOptions: kanOptions, forbiddenDiscards: forbiddenDiscards,
             lastDiscard: { playerId: this.lastDiscardPlayer, tile: this.chankanTile !== null ? this.chankanTile : this.lastDiscardTile },
             winner: this.winner, winningType: this.winningType, winningYaku: this.winningYaku, 
-            riichiPlayers: mappedRiichi, kitaPlayers: mappedKita, riichiIndex: mappedRiichiIndex, doraIndicators: this.doraIndicators,
+            riichiPlayers: mappedRiichi, // ③ riichiPlayers を確実に送信
+            kitaPlayers: mappedKita, riichiIndex: mappedRiichiIndex, doraIndicators: this.doraIndicators,
             players: mappedPlayers, kyoutaku: this.kyoutaku,
             roundInfo: `${roundName} ${this.honba}本場`,
             finalResults: this.finalResults, endReason: this.endReason,
-            winningTiles: winningTiles
+            winningTiles: winningTiles // 追加: 待ち牌情報
         };
     }
 }
