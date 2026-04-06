@@ -439,10 +439,10 @@ class MahjongGame {
                 if (this.isTenpai(id)) {
                     tenpaiPlayers.push(id);
                     if (this.playerIds.indexOf(id) === this.dealerIndex) isDealerTenpai = true;
-                    this.players[id].openHand = true; // 聴牌者のみ手牌公開
+                    this.players[id].openHand = true; 
                 } else {
                     notenPlayers.push(id);
-                    this.players[id].openHand = false; // ノーテンは非公開
+                    this.players[id].openHand = false; 
                 }
             });
 
@@ -503,7 +503,6 @@ class MahjongGame {
         }
     }
 
-    // ★修正: リーチ前(役なし状態)でも待ち牌を計算できるよう assumeRiichi フラグを追加
     getWinningTiles(playerId, testHand = null, assumeRiichi = false) {
         let p = this.players[playerId];
         let hand = testHand || p.hand;
@@ -532,7 +531,6 @@ class MahjongGame {
         return winning;
     }
 
-    // ★修正: 門前ならリーチを仮定してテンパイチェックを行う
     isTenpai(playerId) {
         let p = this.players[playerId];
         let hLen = p.hand.length;
@@ -1195,8 +1193,14 @@ class MahjongGame {
             if (pTarget.hand.length % 3 === 2 && !pTarget.riichi) {
                 if (this.checkWin(targetPlayerId, null, true)) allowedActions.push('TSUMO');
                 
-                // ★修正: 門前であれば立直ボタンを出す
-                if (this.points[targetPlayerId] >= 1000 && this.isTenpai(targetPlayerId) && isMenzenTarget) allowedActions.push('RIICHI');
+                // ★修正: リーチ判定前にツモ牌を除外する (13枚で判定)
+                let baseHandForRiichi = [...pTarget.hand];
+                baseHandForRiichi.pop(); // 14枚目(ツモ牌)を除外
+                let canRiichi = this.getWinningTiles(targetPlayerId, baseHandForRiichi, isMenzenTarget).length > 0;
+                
+                if (this.points[targetPlayerId] >= 1000 && canRiichi && isMenzenTarget) {
+                    allowedActions.push('RIICHI');
+                }
                 
                 kanOptions = this.getKanOptions(targetPlayerId);
                 if (kanOptions.ankan.length > 0) allowedActions.push('ANKAN');
@@ -1209,12 +1213,11 @@ class MahjongGame {
                 if (this.checkWin(targetPlayerId, null, true)) allowedActions.push('TSUMO');
             }
             
-            // ツモ番中の待ち牌計算（引いた牌を除く13枚ベース）
+            // ★修正: 待ち牌計算時もツモ牌(14枚目)を除外して、常に13枚でテンパイしているかを判定
             if (pTarget.hand.length % 3 === 2) {
-                let baseHand = [...pTarget.hand];
-                baseHand.pop();
-                let wTiles = this.getWinningTiles(targetPlayerId, baseHand, isMenzenTarget);
-                if (wTiles.length > 0) winningTiles = wTiles;
+                let baseHandForWinning = [...pTarget.hand];
+                baseHandForWinning.pop();
+                winningTiles = this.getWinningTiles(targetPlayerId, baseHandForWinning, isMenzenTarget);
             }
 
         } else if (this.phase === 'ACTION_WAIT' && this.waitingFor.includes(targetPlayerId)) {
@@ -1238,12 +1241,11 @@ class MahjongGame {
                 allowedActions.push('PASS'); 
             }
             
-            // 他家の捨牌アクション中の待ち牌計算
             if (pTarget.hand.length % 3 === 1 && this.isTenpai(targetPlayerId)) {
                 winningTiles = this.getWinningTiles(targetPlayerId, pTarget.hand, isMenzenTarget);
             }
         } else {
-            // その他のフェーズでの待ち牌計算
+            // 他のフェーズ（順番待ちなど13枚時）の待ち牌計算
             if (pTarget.hand.length % 3 === 1 && this.isTenpai(targetPlayerId)) {
                 winningTiles = this.getWinningTiles(targetPlayerId, pTarget.hand, isMenzenTarget);
             }
@@ -1261,7 +1263,7 @@ class MahjongGame {
             players: mappedPlayers, kyoutaku: this.kyoutaku,
             roundInfo: `${roundName} ${this.honba}本場`,
             finalResults: this.finalResults, endReason: this.endReason,
-            winningTiles: winningTiles // ★待ち牌情報を常に送信
+            winningTiles: winningTiles
         };
     }
 }
