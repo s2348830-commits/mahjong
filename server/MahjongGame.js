@@ -1223,7 +1223,7 @@ class MahjongGame {
                     for (let i = 0; i < pTarget.hand.length; i++) {
                         let testHand = [...pTarget.hand];
                         testHand.splice(i, 1);
-                        if (this.getWinningTiles(targetPlayerId, testHand, true, true).length > 0) {
+                        if (this.getWinningTiles(targetPlayerId, testHand, true,).length > 0) {
                             canRiichi = true;
                             break;
                         }
