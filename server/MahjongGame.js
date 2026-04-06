@@ -2,7 +2,6 @@ const { CONSTANTS, YakuHelper, ScoreCalculator, YakuEvaluator } = require('./Yak
 
 function log(...args) {
     console.log('[MahjongGame]', ...args);
-    console.log(`Riichi Check: Points=${this.points[targetPlayerId]}, Menzen=${isMenzenTarget}`);
 }
 
 class MahjongGame {
