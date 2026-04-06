@@ -1255,18 +1255,43 @@ class MahjongGame {
         let roundName = CONSTANTS.WINDS[['1z','2z','3z','4z'].indexOf(this.roundWind)].replace('z', '') + this.kyoku + '局';
 
         return {
-            phase: this.phase, turnPlayerId: this.turnManager.getCurrent(), wallCount: this.wall.length,
-            hands: maskedHands, melds: mappedMelds, discards: mappedDiscards, allowedActions: allowedActions,
-            chiOptions: chiOptions, kanOptions: kanOptions, forbiddenDiscards: forbiddenDiscards,
-            lastDiscard: { playerId: this.lastDiscardPlayer, tile: this.chankanTile !== null ? this.chankanTile : this.lastDiscardTile },
-            winner: this.winner, winningType: this.winningType, winningYaku: this.winningYaku, 
-            riichiPlayers: mappedRiichi, // ③ riichiPlayers を確実に送信
-            kitaPlayers: mappedKita, riichiIndex: mappedRiichiIndex, doraIndicators: this.doraIndicators,
-            players: mappedPlayers, kyoutaku: this.kyoutaku,
-            roundInfo: `${roundName} ${this.honba}本場`,
-            finalResults: this.finalResults, endReason: this.endReason,
-            winningTiles: winningTiles, winningTiles: winningTiles // 追加: 待ち牌情報
-        };
+    phase: this.phase,
+    turnPlayerId: this.turnManager.getCurrent(),
+    wallCount: this.wall.length,
+
+    hands: maskedHands,
+    melds: mappedMelds,
+    discards: mappedDiscards,
+
+    allowedActions: allowedActions,
+    chiOptions: chiOptions,
+    kanOptions: kanOptions,
+    forbiddenDiscards: forbiddenDiscards,
+
+    lastDiscard: {
+        playerId: this.lastDiscardPlayer,
+        tile: this.chankanTile !== null ? this.chankanTile : this.lastDiscardTile
+    },
+
+    winner: this.winner,
+    winningType: this.winningType,
+    winningYaku: this.winningYaku,
+
+    riichiPlayers: mappedRiichi,
+    riichiIndex: mappedRiichiIndex,
+    kita: mappedKita,
+    players: mappedPlayers,
+
+    roundWind: this.roundWind,
+    kyoku: this.kyoku,
+    honba: this.honba,
+    kyoutaku: this.kyoutaku,
+
+    doraIndicators: this.doraIndicators,
+
+    // ←これが待ち牌表示用
+    winningTiles: winningTiles
+};
     }
 }
 
