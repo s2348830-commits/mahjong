@@ -1216,9 +1216,13 @@ class MahjongGame {
             }
 
             if (pTarget.hand.length % 3 === 2 && !pTarget.riichi) {
-                if (this.checkWin(targetPlayerId, null, true)) allowedActions.push('TSUMO');
-                
-                if (this.points[targetPlayerId] >= 1000 && isMenzenTarget) {
+    
+    // ★★★テスト用：条件を無視して強制的に「RIICHI」を許可する★★★
+    allowedActions.push('RIICHI');
+
+    if (this.checkWin(targetPlayerId, null, true)) allowedActions.push('TSUMO');
+    
+    if (this.points[targetPlayerId] >= 1000 && isMenzenTarget) {
                     let canRiichi = false;
                     for (let i = 0; i < pTarget.hand.length; i++) {
                         let testHand = [...pTarget.hand];
