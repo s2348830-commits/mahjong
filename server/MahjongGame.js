@@ -2,6 +2,7 @@ const { CONSTANTS, YakuHelper, ScoreCalculator, YakuEvaluator } = require('./Yak
 
 function log(...args) {
     console.log('[MahjongGame]', ...args);
+    console.log(`Riichi Check: Points=${this.points[targetPlayerId]}, Menzen=${isMenzenTarget}`);
 }
 
 class MahjongGame {
@@ -914,10 +915,10 @@ class MahjongGame {
             }
 
             if (action.type === 'RIICHI') {
-                if (this.points[playerId] < CONSTANTS.COST.RIICHI) return; 
-                let discards = [];
-                let p = this.players[playerId];
-                let isMenzen = p.melds.filter(m => m.isOpen).length === 0;
+                  if (this.points[playerId] < CONSTANTS.COST.RIICHI) return; 
+                  let discards = [];
+                  let p = this.players[playerId];
+                  let isMenzen = p.melds.every(m => !m.isOpen);
 
                 for (let i = 0; i < p.hand.length; i++) {
                     let testHand = [...p.hand]; 
@@ -1195,7 +1196,7 @@ class MahjongGame {
         
         let winningTiles = [];
         let pTarget = this.players[targetPlayerId];
-        let isMenzenTarget = pTarget.melds.every(m => !m.isOpen);
+        let isMenzenTarget = pTarget.melds.filter(m => m.type !== 'kita').every(m => !m.isOpen);
 
         if (this.isTenpai(targetPlayerId)) {
             if (pTarget.hand.length % 3 === 2) {
@@ -1223,7 +1224,7 @@ class MahjongGame {
                     for (let i = 0; i < pTarget.hand.length; i++) {
                         let testHand = [...pTarget.hand];
                         testHand.splice(i, 1);
-                        if (this.getWinningTiles(targetPlayerId, testHand, true).length > 0) {
+                        if (this.getWinningTiles(targetPlayerId, testHand, true, true).length > 0) {
                             canRiichi = true;
                             break;
                         }
