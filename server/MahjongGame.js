@@ -531,10 +531,10 @@ class MahjongGame {
                 kanCount: this.kanCount, isDealer: playerIndex === this.dealerIndex 
             };
             try {
-                if (YakuEvaluator.evaluate([...hand, winTile], p.melds, state)) {
-                    winning.push(winTile);
-                }
-            } catch(e) {}
+              if (YakuEvaluator.evaluate(hand, p.melds, state)) {
+                  winning.push(winTile);
+                   }
+                } catch(e) {}
         }
         return winning;
     }
