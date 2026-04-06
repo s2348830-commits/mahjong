@@ -157,15 +157,20 @@ class MahjongGame {
                 }
 
                 if (reachable.length > 0) {
-                    reachable.sort((a, b) => b.winningTiles.length - a.winningTiles.length);
-                    for (let r of reachable) {
-                        let norm = YakuHelper.safeNormalize(r.tile);
-                        if (!p.forbiddenDiscards.includes(norm)) {
-                            if (r.winningTiles.length >= 4 || self.points[playerId] >= 1000) return { type: 'RIICHI' }; 
-                            return { type: 'DISCARD', payload: { tileIndex: r.index } };
-                        }
-                    }
-                }
+    reachable.sort((a, b) => b.winningTiles.length - a.winningTiles.length);
+    for (let r of reachable) {
+        let norm = YakuHelper.safeNormalize(r.tile);
+        if (!p.forbiddenDiscards.includes(norm)) {
+            if (r.winningTiles.length >= 4 || self.points[playerId] >= 1000) {
+                return { 
+                    type: 'DO_RIICHI',
+                    payload: { tileIndex: r.index }
+                };
+            }
+            return { type: 'DISCARD', payload: { tileIndex: r.index } };
+        }
+    }
+}
 
                 let hand = p.hand;
                 let tileCounts = YakuHelper.countTiles(hand);
@@ -1127,7 +1132,13 @@ class MahjongGame {
                             }
                             let level = this.settings.cpuLevel || 'normal';
                             let bestAction = this.ai.chooseDiscard(playerId, level);
-                            this.handlePlayerAction(playerId, bestAction);
+
+                            if (bestAction.type === 'DO_RIICHI') {
+                                  this.handlePlayerAction(playerId, bestAction);
+                                                  return;
+                                }
+
+                                this.handlePlayerAction(playerId, bestAction);
                         }
                     } else {
                         let canWin = this.checkWin(playerId, null, true);
@@ -1229,9 +1240,18 @@ class MahjongGame {
             if (pTarget.hand.length % 3 === 2 && !pTarget.riichi) {
                 if (this.checkWin(targetPlayerId, null, true)) allowedActions.push('TSUMO');
                 
-                if (this.points[targetPlayerId] >= 1000 && this.isTenpai(targetPlayerId) && isMenzenTarget) {
-                    allowedActions.push('RIICHI');
-                }
+                if (this.points[targetPlayerId] >= 1000 && !pTarget.riichi && isMenzenTarget) {
+    let canRiichi = false;
+    for (let i = 0; i < pTarget.hand.length; i++) {
+        let testHand = [...pTarget.hand];
+        testHand.splice(i, 1);
+        if (this.getWinningTiles(targetPlayerId, testHand, true).length > 0) {
+            canRiichi = true;
+            break;
+        }
+    }
+    if (canRiichi) allowedActions.push('RIICHI');
+}
                 
                 kanOptions = this.getKanOptions(targetPlayerId);
                 if (kanOptions.ankan.length > 0) allowedActions.push('ANKAN');
