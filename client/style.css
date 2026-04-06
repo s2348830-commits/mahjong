@@ -252,8 +252,8 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     .discard-area { 
         width: auto; height: auto; 
         column-gap: 1px; row-gap: 1px; 
-        grid-template-columns: repeat(5, 3.5vh); 
-        grid-template-rows: repeat(3, 4.8vh); 
+        grid-template-columns: repeat(6, 3.5vh); 
+        grid-template-rows: repeat(4, 4.8vh); 
     }
     .discard-area .tile { 
         width: 3.5vh !important; 
