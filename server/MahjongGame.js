@@ -1195,7 +1195,7 @@ class MahjongGame {
         
         let winningTiles = [];
         let pTarget = this.players[targetPlayerId];
-        let isMenzenTarget = pTarget.melds.filter(m => m.isOpen).length === 0;
+        let isMenzenTarget = pTarget.melds.every(m => !m.isOpen);
 
         if (this.isTenpai(targetPlayerId)) {
             if (pTarget.hand.length % 3 === 2) {
