@@ -912,27 +912,40 @@ class MahjongGame {
             }
 
             if (action.type === 'RIICHI') {
-                if (this.points[playerId] < CONSTANTS.COST.RIICHI) return; 
-                let discards = [];
-                let p = this.players[playerId];
-                let isMenzen = p.melds.filter(m => m.isOpen).length === 0;
+    if (this.points[playerId] < CONSTANTS.COST.RIICHI) return; 
 
-                for (let i = 0; i < p.hand.length; i++) {
-                    let testHand = [...p.hand]; testHand.splice(i, 1);
-                    let winning = this.getWinningTiles(playerId, testHand, isMenzen);
-                    if (winning.length > 0) discards.push({ index: i, tile: p.hand[i], winningTiles: winning });
-                }
+    let discards = [];
+    let p = this.players[playerId];
+    let isMenzen = p.melds.filter(m => m.isOpen).length === 0;
 
-                if (discards.length > 0) {
-                    const playerInfo = this.room.players.get(playerId);
-                    if (playerInfo && playerInfo.isAI) {
-                        this.handlePlayerAction(playerId, { type: 'DO_RIICHI', payload: { tileIndex: discards[0].index } });
-                    } else if (playerInfo && playerInfo.ws) {
-                        playerInfo.ws.send(JSON.stringify({ type: 'REACH_OPTIONS', payload: { discards } }));
-                    }
-                }
-                return;
-            }
+    for (let i = 0; i < p.hand.length; i++) {
+        let testHand = [...p.hand]; 
+        testHand.splice(i, 1);
+        let winning = this.getWinningTiles(playerId, testHand, isMenzen);
+        if (winning.length > 0) {
+            discards.push({ index: i, tile: p.hand[i], winningTiles: winning });
+        }
+    }
+
+    if (discards.length > 0) {
+        const playerInfo = this.room.players.get(playerId);
+        if (playerInfo && playerInfo.isAI) {
+            this.handlePlayerAction(playerId, { 
+                type: 'DO_RIICHI', 
+                payload: { tileIndex: discards[0].index } 
+            });
+        } else if (playerInfo && playerInfo.ws) {
+            playerInfo.ws.send(JSON.stringify({ 
+                type: 'REACH_OPTIONS', 
+                payload: { discards } 
+            }));
+
+            // ★これ追加
+            this.emitGameState();
+        }
+    }
+    return;
+}
 
             if (action.type === 'DO_RIICHI') {
                 this.players[playerId].riichi = true;
