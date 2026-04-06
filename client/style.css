@@ -95,8 +95,8 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 
 .discard-area {
     position: absolute; display: grid;
-    grid-template-columns: repeat(5, 23px);
-    grid-template-rows: repeat(3, 32px);
+    grid-template-columns: repeat(6, 23px);
+    grid-template-rows: repeat(4, 32px);
     column-gap: 2px; row-gap: 2px;
     width: auto; height: auto;
     justify-content: center; align-content: center;
@@ -104,10 +104,10 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     transform-origin: center center; overflow: hidden;
 }
 .discard-area.left, .discard-area.right { transform-origin: center; }
-.discard-area.bottom { transform: translate(-50%, -50%) rotate(0deg) translateY(87px); }
-.discard-area.top    { transform: translate(-50%, -50%) rotate(180deg) translateY(87px); }
-.discard-area.left   { transform: translate(-50%, -50%) rotate(90deg) translateY(87px); }
-.discard-area.right  { transform: translate(-50%, -50%) rotate(-90deg) translateY(87px); }
+.discard-area.bottom { transform: translate(-50%, -50%) rotate(0deg) translateY(151px); }
+.discard-area.top    { transform: translate(-50%, -50%) rotate(180deg) translateY(151px); }
+.discard-area.left   { transform: translate(-50%, -50%) rotate(90deg) translateY(151px); }
+.discard-area.right  { transform: translate(-50%, -50%) rotate(-90deg) translateY(151px); }
 
 .discard-area .tile {
     width: 23px !important; height: 32px !important; margin: 0 !important;
@@ -272,10 +272,10 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     .player-area.right  { right: 6vh; top: 50%; transform: translate(50%, -50%) rotate(-90deg); transform-origin: center center; }
 
     /* 河の位置調整 (中央の基準点から卓全体に合わせて四方に展開) */
-    .discard-area.bottom { transform: translate(-50%, -50%) rotate(0deg) translateY(20vh); }
-    .discard-area.top    { transform: translate(-50%, -50%) rotate(180deg) translateY(20vh); }
-    .discard-area.left   { transform: translate(-50%, -50%) rotate(90deg) translateY(20vh); }
-    .discard-area.right  { transform: translate(-50%, -50%) rotate(-90deg) translateY(20vh); }
+    .discard-area.bottom { transform: translate(-50%, -50%) rotate(0deg) translateY(29.2vh); }
+    .discard-area.top    { transform: translate(-50%, -50%) rotate(180deg) translateY(29.2vh); }
+    .discard-area.left   { transform: translate(-50%, -50%) rotate(90deg) translateY(29.2vh); }
+    .discard-area.right  { transform: translate(-50%, -50%) rotate(-90deg) translateY(29.2vh); }
 
     /* 局情報・ドラを右上に配置 */
     #round-info { 
