@@ -152,25 +152,22 @@ class MahjongGame {
                 let reachable = [];
                 for (let i = 0; i < p.hand.length; i++) {
                     let testHand = [...p.hand]; testHand.splice(i, 1);
-                    let winning = self.getWinningTiles(playerId, testHand);
+                    let winning = self.getWinningTiles(playerId, testHand, true);
                     if (winning.length > 0) reachable.push({ index: i, tile: p.hand[i], winningTiles: winning });
                 }
 
                 if (reachable.length > 0) {
-    reachable.sort((a, b) => b.winningTiles.length - a.winningTiles.length);
-    for (let r of reachable) {
-        let norm = YakuHelper.safeNormalize(r.tile);
-        if (!p.forbiddenDiscards.includes(norm)) {
-            if (r.winningTiles.length >= 4 || self.points[playerId] >= 1000) {
-                return { 
-                    type: 'DO_RIICHI',
-                    payload: { tileIndex: r.index }
-                };
-            }
-            return { type: 'DISCARD', payload: { tileIndex: r.index } };
-        }
-    }
-}
+                    reachable.sort((a, b) => b.winningTiles.length - a.winningTiles.length);
+                    for (let r of reachable) {
+                        let norm = YakuHelper.safeNormalize(r.tile);
+                        if (!p.forbiddenDiscards.includes(norm)) {
+                            if (r.winningTiles.length >= 4 || self.points[playerId] >= 1000) {
+                                return { type: 'DO_RIICHI', payload: { tileIndex: r.index } };
+                            }
+                            return { type: 'DISCARD', payload: { tileIndex: r.index } };
+                        }
+                    }
+                }
 
                 let hand = p.hand;
                 let tileCounts = YakuHelper.countTiles(hand);
@@ -917,40 +914,31 @@ class MahjongGame {
             }
 
             if (action.type === 'RIICHI') {
-    if (this.points[playerId] < CONSTANTS.COST.RIICHI) return; 
+                if (this.points[playerId] < CONSTANTS.COST.RIICHI) return; 
+                let discards = [];
+                let p = this.players[playerId];
+                let isMenzen = p.melds.filter(m => m.isOpen).length === 0;
 
-    let discards = [];
-    let p = this.players[playerId];
-    let isMenzen = p.melds.filter(m => m.isOpen).length === 0;
+                for (let i = 0; i < p.hand.length; i++) {
+                    let testHand = [...p.hand]; 
+                    testHand.splice(i, 1);
+                    let winning = this.getWinningTiles(playerId, testHand, true); // 立直を仮定して計算
+                    if (winning.length > 0) {
+                        discards.push({ index: i, tile: p.hand[i], winningTiles: winning });
+                    }
+                }
 
-    for (let i = 0; i < p.hand.length; i++) {
-        let testHand = [...p.hand]; 
-        testHand.splice(i, 1);
-        let winning = this.getWinningTiles(playerId, testHand, isMenzen);
-        if (winning.length > 0) {
-            discards.push({ index: i, tile: p.hand[i], winningTiles: winning });
-        }
-    }
-
-    if (discards.length > 0) {
-        const playerInfo = this.room.players.get(playerId);
-        if (playerInfo && playerInfo.isAI) {
-            this.handlePlayerAction(playerId, { 
-                type: 'DO_RIICHI', 
-                payload: { tileIndex: discards[0].index } 
-            });
-        } else if (playerInfo && playerInfo.ws) {
-            playerInfo.ws.send(JSON.stringify({ 
-                type: 'REACH_OPTIONS', 
-                payload: { discards } 
-            }));
-
-            // ★これ追加
-            this.emitGameState();
-        }
-    }
-    return;
-}
+                if (discards.length > 0) {
+                    const playerInfo = this.room.players.get(playerId);
+                    if (playerInfo && playerInfo.isAI) {
+                        this.handlePlayerAction(playerId, { type: 'DO_RIICHI', payload: { tileIndex: discards[0].index } });
+                    } else if (playerInfo && playerInfo.ws) {
+                        playerInfo.ws.send(JSON.stringify({ type: 'REACH_OPTIONS', payload: { discards } }));
+                        this.emitGameState();
+                    }
+                }
+                return;
+            }
 
             if (action.type === 'DO_RIICHI') {
                 this.players[playerId].riichi = true;
@@ -961,8 +949,7 @@ class MahjongGame {
                 this.isIppatsuValid = true; 
                 this.rinshan = false; 
                 
-                // ① DO_RIICHI 実行後に必ず state を再送信する
-                this.emitGameState();
+                this.emitGameState(); 
                 
                 this.handlePlayerDiscard(playerId, action.payload.tileIndex);
                 return;
@@ -1132,13 +1119,7 @@ class MahjongGame {
                             }
                             let level = this.settings.cpuLevel || 'normal';
                             let bestAction = this.ai.chooseDiscard(playerId, level);
-
-                            if (bestAction.type === 'DO_RIICHI') {
-                                  this.handlePlayerAction(playerId, bestAction);
-                                                  return;
-                                }
-
-                                this.handlePlayerAction(playerId, bestAction);
+                            this.handlePlayerAction(playerId, bestAction);
                         }
                     } else {
                         let canWin = this.checkWin(playerId, null, true);
@@ -1212,19 +1193,16 @@ class MahjongGame {
         let kanOptions = { ankan: [], kakan: [] };
         let forbiddenDiscards = [];
         
-        // ② viewerId ごとに winningTiles を計算して state に含める
         let winningTiles = [];
         let pTarget = this.players[targetPlayerId];
         let isMenzenTarget = pTarget.melds.filter(m => m.isOpen).length === 0;
 
         if (this.isTenpai(targetPlayerId)) {
             if (pTarget.hand.length % 3 === 2) {
-                // ツモ番中(14枚)の場合は、引いた牌を除外して計算
                 let baseHandForWinning = [...pTarget.hand];
                 baseHandForWinning.pop();
                 winningTiles = this.getWinningTiles(targetPlayerId, baseHandForWinning, isMenzenTarget);
             } else {
-                // 順番待ちなど(13枚)の場合はそのまま計算
                 winningTiles = this.getWinningTiles(targetPlayerId, pTarget.hand, isMenzenTarget);
             }
         }
@@ -1240,18 +1218,18 @@ class MahjongGame {
             if (pTarget.hand.length % 3 === 2 && !pTarget.riichi) {
                 if (this.checkWin(targetPlayerId, null, true)) allowedActions.push('TSUMO');
                 
-                if (this.points[targetPlayerId] >= 1000 && !pTarget.riichi && isMenzenTarget) {
-    let canRiichi = false;
-    for (let i = 0; i < pTarget.hand.length; i++) {
-        let testHand = [...pTarget.hand];
-        testHand.splice(i, 1);
-        if (this.getWinningTiles(targetPlayerId, testHand, true).length > 0) {
-            canRiichi = true;
-            break;
-        }
-    }
-    if (canRiichi) allowedActions.push('RIICHI');
-}
+                if (this.points[targetPlayerId] >= 1000 && isMenzenTarget) {
+                    let canRiichi = false;
+                    for (let i = 0; i < pTarget.hand.length; i++) {
+                        let testHand = [...pTarget.hand];
+                        testHand.splice(i, 1);
+                        if (this.getWinningTiles(targetPlayerId, testHand, true).length > 0) {
+                            canRiichi = true;
+                            break;
+                        }
+                    }
+                    if (canRiichi) allowedActions.push('RIICHI');
+                }
                 
                 kanOptions = this.getKanOptions(targetPlayerId);
                 if (kanOptions.ankan.length > 0) allowedActions.push('ANKAN');
@@ -1288,43 +1266,17 @@ class MahjongGame {
         let roundName = CONSTANTS.WINDS[['1z','2z','3z','4z'].indexOf(this.roundWind)].replace('z', '') + this.kyoku + '局';
 
         return {
-    phase: this.phase,
-    turnPlayerId: this.turnManager.getCurrent(),
-    wallCount: this.wall.length,
-
-    hands: maskedHands,
-    melds: mappedMelds,
-    discards: mappedDiscards,
-
-    allowedActions: allowedActions,
-    chiOptions: chiOptions,
-    kanOptions: kanOptions,
-    forbiddenDiscards: forbiddenDiscards,
-
-    lastDiscard: {
-        playerId: this.lastDiscardPlayer,
-        tile: this.chankanTile !== null ? this.chankanTile : this.lastDiscardTile
-    },
-
-    winner: this.winner,
-    winningType: this.winningType,
-    winningYaku: this.winningYaku,
-
-    riichiPlayers: mappedRiichi,
-    riichiIndex: mappedRiichiIndex,
-    kita: mappedKita,
-    players: mappedPlayers,
-
-    roundWind: this.roundWind,
-    kyoku: this.kyoku,
-    honba: this.honba,
-    kyoutaku: this.kyoutaku,
-
-    doraIndicators: this.doraIndicators,
-
-    // ←これが待ち牌表示用
-    winningTiles: winningTiles
-};
+            phase: this.phase, turnPlayerId: this.turnManager.getCurrent(), wallCount: this.wall.length,
+            hands: maskedHands, melds: mappedMelds, discards: mappedDiscards, allowedActions: allowedActions,
+            chiOptions: chiOptions, kanOptions: kanOptions, forbiddenDiscards: forbiddenDiscards,
+            lastDiscard: { playerId: this.lastDiscardPlayer, tile: this.chankanTile !== null ? this.chankanTile : this.lastDiscardTile },
+            winner: this.winner, winningType: this.winningType, winningYaku: this.winningYaku, 
+            riichiPlayers: mappedRiichi, kitaPlayers: mappedKita, riichiIndex: mappedRiichiIndex, doraIndicators: this.doraIndicators,
+            players: mappedPlayers, kyoutaku: this.kyoutaku,
+            roundInfo: `${roundName} ${this.honba}本場`,
+            finalResults: this.finalResults, endReason: this.endReason,
+            winningTiles: winningTiles
+        };
     }
 }
 
