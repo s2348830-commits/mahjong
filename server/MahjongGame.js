@@ -1216,24 +1216,22 @@ class MahjongGame {
             }
 
             if (pTarget.hand.length % 3 === 2 && !pTarget.riichi) {
-    
-    // ★★★テスト用：条件を無視して強制的に「RIICHI」を許可する★★★
-    allowedActions.push('RIICHI');
-
     if (this.checkWin(targetPlayerId, null, true)) allowedActions.push('TSUMO');
     
+    // ▼ここから修正▼
     if (this.points[targetPlayerId] >= 1000 && isMenzenTarget) {
-                    let canRiichi = false;
-                    for (let i = 0; i < pTarget.hand.length; i++) {
-                        let testHand = [...pTarget.hand];
-                        testHand.splice(i, 1);
-                        if (this.getWinningTiles(targetPlayerId, testHand, true,).length > 0) {
-                            canRiichi = true;
-                            break;
-                        }
-                    }
-                    if (canRiichi) allowedActions.push('RIICHI');
-                }
+        let canRiichi = false;
+        for (let i = 0; i < pTarget.hand.length; i++) {
+            let testHand = [...pTarget.hand];
+            testHand.splice(i, 1);
+            // ★ポイント: 以前お伝えした通り、getWinningTilesの引数を「3つ」にします
+            if (this.getWinningTiles(targetPlayerId, testHand, true).length > 0) {
+                canRiichi = true;
+                break;
+            }
+        }
+        if (canRiichi) allowedActions.push('RIICHI');
+    }
                 
                 kanOptions = this.getKanOptions(targetPlayerId);
                 if (kanOptions.ankan.length > 0) allowedActions.push('ANKAN');
