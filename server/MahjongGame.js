@@ -1265,7 +1265,7 @@ class MahjongGame {
             players: mappedPlayers, kyoutaku: this.kyoutaku,
             roundInfo: `${roundName} ${this.honba}本場`,
             finalResults: this.finalResults, endReason: this.endReason,
-            winningTiles: winningTiles // 追加: 待ち牌情報
+            winningTiles: winningTiles, winningTiles: winningTiles // 追加: 待ち牌情報
         };
     }
 }
