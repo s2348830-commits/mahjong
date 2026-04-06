@@ -88,7 +88,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
 
 /* ★追加: 待ち牌を左上に固定表示 */
 #winning-tiles-container { 
-    position: fixed; top: 20px; left: 20px; transform: none; 
+    position: fixed !important; top: 20px !important; left: 20px !important; transform: none !important; 
     background: rgba(0,0,0,0.8); padding: 10px 20px; border-radius: 8px; 
     z-index: 10000; text-align: center; 
 }
@@ -263,9 +263,11 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     
     /* ★追加: スマホ版 待ち牌表示の調整 */
     #winning-tiles-container { top: 10px; left: 10px; padding: 5px 10px; }
-    #winning-tiles-container .tile { transform: scale(0.7); margin: -10px; }
+    #winning-tiles-container .tile { transform: scale(0.65); margin: -10px; }
 
     /* 左右プレイヤーの位置修正 (画面外に出ないよう調整) */
+    .player-area.bottom .tile { width: min(8.5vh, 6.8vw); height: min(11.5vh, 9.2vw); }
+    
     .player-area.bottom { bottom: 2vh; left: 50%; transform: translateX(-50%); }
     .player-area.top    { top: 2vh; left: 50%; transform: translateX(-50%) rotate(180deg); }
     .player-area.left   { left: 6vh; top: 50%; transform: translate(-50%, -50%) rotate(90deg); transform-origin: center center; }
@@ -294,7 +296,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     .player-name-label { padding: 2px 6px; font-size: 0.7rem; margin-bottom: 2px; }
     
     /* 各プレイヤーの手牌のすぐ内側（中央寄り）に点数を配置 */
-    #score-bottom { top: auto; bottom: 12.5vh; left: 50%; transform: translateX(-50%); } 
+    #score-bottom { top: auto; bottom: 15vh; left: 50%; transform: translateX(-50%); } 
     #score-top    { top: 12.5vh; bottom: auto; left: 50%; transform: translateX(-50%) rotate(180deg); }
     #score-left   { top: 50%; bottom: auto; left: 12.5vh; transform: translateY(-50%) rotate(90deg); }
     #score-right  { top: 50%; bottom: auto; right: 12.5vh; transform: translateY(-50%) rotate(-90deg); }
