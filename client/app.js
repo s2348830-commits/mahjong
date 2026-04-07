@@ -164,8 +164,6 @@ function render() {
             Renderer.updateLocalSelection();
             
             UI.renderReachModal(state.reachOptions);
-            
-            // ★待ち牌表示 (左上) の更新
             UI.updateWinningTilesDisplay(state.game.winningTiles || state.currentWinningTiles || []);
 
             const prevGame = prevState ? prevState.game : null;
@@ -370,7 +368,6 @@ const Renderer = {
         const actionArea = document.getElementById('action-buttons');
         if (state.phase !== PHASE.RESULT && state.phase !== PHASE.FINAL_RESULT && game.allowedActions?.length > 0 && state.dealAnimationStep === -1) {
             actionArea.style.display = 'flex';
-            // ★リーチボタン等を含む全アクションボタンの表示制御
             ['TSUMO', 'RON', 'PON', 'CHI', 'RIICHI', 'PASS', 'KYUUSHU', 'KITA'].forEach(action => {
                 const btnId = action === 'KYUUSHU' ? 'btn-kyuushu' : `btn-${action.toLowerCase()}`;
                 const btn = document.getElementById(btnId);
@@ -428,7 +425,6 @@ const Renderer = {
 
         ['bottom', 'right', 'top', 'left'].forEach(pos => {
             document.getElementById(`area-${pos}`).style.display = 'none';
-            // ★CSS Gridを壊さないように display: '' にする
             document.getElementById(`discard-${pos}`).style.display = '';
             const nameEl = document.getElementById(`name-${pos}`);
             if (nameEl) nameEl.style.display = 'none';
@@ -487,7 +483,6 @@ const Renderer = {
         handDiv.innerHTML = '';
         let displayHand = rawHand.map((t, i) => ({ tileCode: t, originalIndex: i, isTsumo: false }));
 
-        // サーバーから伏せ牌（back）以外が送られてきた場合（＝勝者、聴牌者、または自分）のみソートして表示
         const isMasked = rawHand.every(t => t === 'back');
 
         if (!isMasked && (pid === state.playerId || game.phase === 'FINISHED' || game.phase === 'FINAL_RESULT' || (state.room && state.room.settings && state.room.settings.openHands))) {
@@ -598,7 +593,6 @@ const Renderer = {
             discardDiv.innerHTML = '';
         }
 
-        // appendChild を使用して再描画し、CSS Grid を壊さない
         for (let i = discardDiv.children.length; i < rawDiscards.length; i++) {
             if (discardDiv.children.length >= 15) {
                 discardDiv.removeChild(discardDiv.firstChild);
@@ -613,7 +607,6 @@ const Renderer = {
                 dTile.dataset.pid = pid;
             }
 
-            // ★リーチ宣言牌を横向きにする
             if (i === game.riichiIndex?.[pid]) {
                 dTile.classList.add('riichi-tile');
             }
@@ -677,7 +670,6 @@ const Renderer = {
             
             el.style.opacity = '0';
             
-            // クローンを作成してアニメーションを実行（元のGridを壊さない）
             const clone = el.cloneNode(true);
             document.body.appendChild(clone);
             clone.style.position = 'fixed';
@@ -736,6 +728,7 @@ const UI = {
         });
     },
 
+    // ★ 修正箇所：立直の選択肢のみを抽出表示する
     renderReachModal(discards) {
         const modal = document.getElementById('reach-modal');
         if (!discards || discards.length === 0) {
@@ -747,20 +740,23 @@ const UI = {
         const handDiv = document.getElementById('reach-hand');
         handDiv.innerHTML = '';
         
-        state.game.hands[state.playerId].forEach((tileCode, idx) => {
-            const tileDiv = Utils.createTileElement(tileCode);
-            if (discards.find(d => d.index === idx)) {
-                tileDiv.classList.add('reachable-tile');
-                tileDiv.onclick = () => {
-                    Network.sendAction('DO_RIICHI', { tileIndex: idx });
-                    dispatch({ type: 'CLEAR_REACH_OPTIONS' });
-                    dispatch({ type: 'SET_SELECTED_TILE', payload: -1 });
-                };
-            } else tileDiv.classList.add('disabled-tile');
+        discards.forEach(d => {
+            const tileDiv = Utils.createTileElement(d.tile);
+            tileDiv.style.cursor = 'pointer';
+            tileDiv.style.transition = 'transform 0.1s, box-shadow 0.1s';
+            tileDiv.onmouseenter = () => { tileDiv.style.transform = 'translateY(-10px)'; tileDiv.style.boxShadow = '0 0 10px #f1c40f'; };
+            tileDiv.onmouseleave = () => { tileDiv.style.transform = ''; tileDiv.style.boxShadow = ''; };
+            
+            tileDiv.onclick = () => {
+                Network.sendAction('DO_RIICHI', { tileIndex: d.index });
+                dispatch({ type: 'CLEAR_REACH_OPTIONS' });
+                dispatch({ type: 'SET_SELECTED_TILE', payload: -1 });
+            };
             handDiv.appendChild(tileDiv);
         });
     },
 
+    // ★ 修正箇所：チーの選択肢表示をリッチにする
     showChiModal(options) {
         const modal = document.getElementById('chi-modal');
         modal.style.display = 'flex';
@@ -770,9 +766,15 @@ const UI = {
 
         options.forEach((opt, idx) => {
             const optDiv = document.createElement('div');
-            optDiv.className = 'hand reachable-tile';
+            optDiv.className = 'hand';
             optDiv.style.padding = '10px';
             optDiv.style.background = 'rgba(0,0,0,0.4)';
+            optDiv.style.borderRadius = '8px';
+            optDiv.style.cursor = 'pointer';
+            optDiv.style.transition = 'transform 0.1s, background 0.2s';
+            optDiv.onmouseenter = () => { optDiv.style.background = 'rgba(241,196,15,0.3)'; optDiv.style.transform = 'translateY(-5px)'; };
+            optDiv.onmouseleave = () => { optDiv.style.background = 'rgba(0,0,0,0.4)'; optDiv.style.transform = ''; };
+            
             optDiv.onclick = () => {
                 Network.sendAction('CHI', { tiles: opt });
                 modal.style.display = 'none';
@@ -782,6 +784,97 @@ const UI = {
         });
     },
 
+    // ★ 追加箇所：ポンの選択肢表示用モーダル
+    showPonModal(targetTile) {
+        const modal = document.getElementById('pon-modal');
+        modal.style.display = 'flex';
+        const container = document.getElementById('pon-options');
+        container.innerHTML = '';
+        const doraTiles = Utils.getDoraTiles(state.game.doraIndicators);
+        
+        const optDiv = document.createElement('div');
+        optDiv.className = 'hand';
+        optDiv.style.padding = '10px';
+        optDiv.style.background = 'rgba(0,0,0,0.4)';
+        optDiv.style.borderRadius = '8px';
+        optDiv.style.cursor = 'pointer';
+        optDiv.style.transition = 'transform 0.1s, background 0.2s';
+        optDiv.onmouseenter = () => { optDiv.style.background = 'rgba(241,196,15,0.3)'; optDiv.style.transform = 'translateY(-5px)'; };
+        optDiv.onmouseleave = () => { optDiv.style.background = 'rgba(0,0,0,0.4)'; optDiv.style.transform = ''; };
+        
+        optDiv.onclick = () => {
+            Network.sendAction('PON');
+            modal.style.display = 'none';
+        };
+        
+        let count = 0;
+        let hand = state.game.hands[state.playerId];
+        let normTarget = targetTile.replace('0', '5');
+        let displayTiles = [];
+        for (let t of hand) {
+            if (t.replace('0', '5') === normTarget && count < 2) {
+                displayTiles.push(t);
+                count++;
+            }
+        }
+        
+        displayTiles.forEach(tile => optDiv.appendChild(Utils.createTileElement(tile, false, Utils.isDora(tile, doraTiles))));
+        container.appendChild(optDiv);
+    },
+
+    // ★ 追加箇所：明槓の選択肢表示用モーダル
+    showMinkanModal(targetTile) {
+        const modal = document.getElementById('kan-modal');
+        modal.style.display = 'flex';
+        const container = document.getElementById('kan-options');
+        container.innerHTML = '';
+        const doraTiles = Utils.getDoraTiles(state.game.doraIndicators);
+
+        const optDiv = document.createElement('div');
+        optDiv.className = 'hand';
+        optDiv.style.padding = '10px';
+        optDiv.style.background = 'rgba(0,0,0,0.4)';
+        optDiv.style.borderRadius = '8px';
+        optDiv.style.display = 'flex';
+        optDiv.style.flexDirection = 'column';
+        optDiv.style.alignItems = 'center';
+        optDiv.style.cursor = 'pointer';
+        optDiv.style.transition = 'transform 0.1s, background 0.2s';
+        optDiv.onmouseenter = () => { optDiv.style.background = 'rgba(241,196,15,0.3)'; optDiv.style.transform = 'translateY(-5px)'; };
+        optDiv.onmouseleave = () => { optDiv.style.background = 'rgba(0,0,0,0.4)'; optDiv.style.transform = ''; };
+
+        optDiv.onclick = () => {
+            Network.sendAction('MINKAN');
+            modal.style.display = 'none';
+        };
+        
+        const text = document.createElement('span');
+        text.innerText = '明槓';
+        text.style.color = '#fff';
+        text.style.marginBottom = '5px';
+        text.style.fontWeight = 'bold';
+        optDiv.appendChild(text);
+
+        const tilesDiv = document.createElement('div');
+        tilesDiv.className = 'hand';
+        
+        let count = 0;
+        let hand = state.game.hands[state.playerId];
+        let normTarget = targetTile.replace('0', '5');
+        let displayTiles = [];
+        for (let t of hand) {
+            if (t.replace('0', '5') === normTarget && count < 3) {
+                displayTiles.push(t);
+                count++;
+            }
+        }
+        
+        displayTiles.forEach(tile => tilesDiv.appendChild(Utils.createTileElement(tile, false, Utils.isDora(tile, doraTiles))));
+        optDiv.appendChild(tilesDiv);
+        container.appendChild(optDiv);
+    },
+
+    // ★ 修正箇所：カンの選択肢表示をリッチにする
     showKanModal(options) {
         const modal = document.getElementById('kan-modal');
         modal.style.display = 'flex';
@@ -791,12 +884,18 @@ const UI = {
 
         const createOpt = (tile, typeName) => {
             const optDiv = document.createElement('div');
-            optDiv.className = 'hand reachable-tile';
+            optDiv.className = 'hand';
             optDiv.style.padding = '10px';
             optDiv.style.background = 'rgba(0,0,0,0.4)';
+            optDiv.style.borderRadius = '8px';
             optDiv.style.display = 'flex';
             optDiv.style.flexDirection = 'column';
             optDiv.style.alignItems = 'center';
+            optDiv.style.cursor = 'pointer';
+            optDiv.style.transition = 'transform 0.1s, background 0.2s';
+            optDiv.onmouseenter = () => { optDiv.style.background = 'rgba(241,196,15,0.3)'; optDiv.style.transform = 'translateY(-5px)'; };
+            optDiv.onmouseleave = () => { optDiv.style.background = 'rgba(0,0,0,0.4)'; optDiv.style.transform = ''; };
+
             optDiv.onclick = () => {
                 Network.sendAction(typeName, { tile: tile });
                 modal.style.display = 'none';
@@ -806,6 +905,7 @@ const UI = {
             text.innerText = typeName === 'ANKAN' ? '暗槓' : '加槓';
             text.style.color = '#fff';
             text.style.marginBottom = '5px';
+            text.style.fontWeight = 'bold';
             optDiv.appendChild(text);
 
             const tilesDiv = document.createElement('div');
@@ -920,25 +1020,28 @@ const UI = {
     joinRoom(roomId) { Network.sendAction('JOIN_ROOM', { roomId }); },
     toggleReady() { Network.sendAction('TOGGLE_READY'); },
     
+    // ★ 修正箇所：ボタンからのアクション送信を新モーダルに接続
     sendGameAction(type) { 
         if (type === 'CANCEL_REACH') { dispatch({ type: 'CLEAR_REACH_OPTIONS' }); return; }
         
         if (type === 'CHI') {
             const opts = state.game.chiOptions;
-            if (opts && opts.length === 1) Network.sendAction('CHI', { tiles: opts[0] });
-            else if (opts && opts.length > 1) this.showChiModal(opts);
+            if (opts && opts.length > 0) this.showChiModal(opts);
+            return;
+        }
+
+        if (type === 'PON') {
+            this.showPonModal(state.game.lastDiscard.tile);
             return;
         }
 
         if (type === 'KAN') {
             const opts = state.game.kanOptions;
             if (state.game.phase === 'DRAW') {
-                const totalOpts = (opts.ankan ? opts.ankan.length : 0) + (opts.kakan ? opts.kakan.length : 0);
-                if (totalOpts === 1) {
-                    if (opts.ankan && opts.ankan.length === 1) Network.sendAction('ANKAN', { tile: opts.ankan[0] });
-                    else if (opts.kakan && opts.kakan.length === 1) Network.sendAction('KAKAN', { tile: opts.kakan[0] });
-                } else if (totalOpts > 1) this.showKanModal(opts);
-            } else if (state.game.phase === 'ACTION_WAIT') Network.sendAction('MINKAN');
+                this.showKanModal(opts);
+            } else if (state.game.phase === 'ACTION_WAIT') {
+                this.showMinkanModal(state.game.lastDiscard.tile);
+            }
             return;
         }
 

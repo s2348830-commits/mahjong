@@ -263,7 +263,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     
     /* ★追加: スマホ版 待ち牌表示の調整 */
     #winning-tiles-container { top: 10px; left: 10px; padding: 5px 10px; }
-    #winning-tiles-container .tile { transform: scale(0.65); margin: -10px; }
+    #winning-tiles-container .tile { transform: scale(1); margin: -10px; }
 
     /* 左右プレイヤーの位置修正 (画面外に出ないよう調整) */
     .player-area.bottom .tile { width: min(8.5vh, 6.8vw); height: min(11.5vh, 9.2vw); }
@@ -289,7 +289,7 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
         padding: 4px 8px; background: rgba(0,0,0,0.5); border-radius: 4px;
     }
     #dora-area > div:first-child { font-size: 0.7rem; }
-    #dora-indicators .tile { transform: scale(0.65); }
+    #dora-indicators .tile { transform: scale(1); }
 
     /* 点数表示を回転して相手の手配上中央に見やすく配置 */
     .player-score { padding: 4px 8px; font-size: 0.8rem; border-radius: 4px; background: rgba(0,0,0,0.7); }
