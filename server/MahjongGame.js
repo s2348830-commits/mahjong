@@ -362,7 +362,7 @@ class MahjongGame {
                     }
                 }
             }, 500);
-            
+
             return true;
         }
         return false;
@@ -1274,6 +1274,7 @@ class MahjongGame {
                 if (this.checkWin(targetPlayerId, null, true)) allowedActions.push('TSUMO');
             }
         } else if (this.phase === 'ACTION_WAIT' && this.waitingFor.includes(targetPlayerId)) {
+            // ★アクションをまだ返していない場合のみボタンの選択肢を含める
             if (!this.actionResponses[targetPlayerId]) {
                 let actualTargetTile = this.chankanTile !== null ? this.chankanTile : this.lastDiscardTile;
                 if (!this.isFuriten(targetPlayerId) && this.checkWin(targetPlayerId, actualTargetTile, false, this.chankanTile !== null)) {
