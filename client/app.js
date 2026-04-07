@@ -751,6 +751,10 @@ const UI = {
                 Network.sendAction('DO_RIICHI', { tileIndex: d.index });
                 dispatch({ type: 'CLEAR_REACH_OPTIONS' });
                 dispatch({ type: 'SET_SELECTED_TILE', payload: -1 });
+                
+                // ★追加：アクション実行後にアクションボタン群を非表示にする
+                const actionButtons = document.getElementById('action-buttons');
+                if (actionButtons) actionButtons.style.display = 'none';
             };
             handDiv.appendChild(tileDiv);
         });
@@ -778,6 +782,10 @@ const UI = {
             optDiv.onclick = () => {
                 Network.sendAction('CHI', { tiles: opt });
                 modal.style.display = 'none';
+                
+                // ★追加：アクション実行後にアクションボタン群を非表示にする
+                const actionButtons = document.getElementById('action-buttons');
+                if (actionButtons) actionButtons.style.display = 'none';
             };
             opt.forEach(tile => optDiv.appendChild(Utils.createTileElement(tile, false, Utils.isDora(tile, doraTiles))));
             container.appendChild(optDiv);
@@ -805,6 +813,10 @@ const UI = {
         optDiv.onclick = () => {
             Network.sendAction('PON');
             modal.style.display = 'none';
+            
+            // ★追加：アクション実行後にアクションボタン群を非表示にする
+            const actionButtons = document.getElementById('action-buttons');
+            if (actionButtons) actionButtons.style.display = 'none';
         };
         
         let count = 0;
@@ -846,6 +858,10 @@ const UI = {
         optDiv.onclick = () => {
             Network.sendAction('MINKAN');
             modal.style.display = 'none';
+            
+            // ★追加：アクション実行後にアクションボタン群を非表示にする
+            const actionButtons = document.getElementById('action-buttons');
+            if (actionButtons) actionButtons.style.display = 'none';
         };
         
         const text = document.createElement('span');
@@ -899,6 +915,10 @@ const UI = {
             optDiv.onclick = () => {
                 Network.sendAction(typeName, { tile: tile });
                 modal.style.display = 'none';
+                
+                // ★追加：アクション実行後にアクションボタン群を非表示にする
+                const actionButtons = document.getElementById('action-buttons');
+                if (actionButtons) actionButtons.style.display = 'none';
             };
             
             const text = document.createElement('span');
@@ -1045,7 +1065,12 @@ const UI = {
             return;
         }
 
+        // ツモ、ロン、パスなどの即時アクションを送信する
         Network.sendAction(type); 
+        
+        // ★追加：アクション送信直後にアクションボタン群を非表示にする（パスやツモ直後の誤操作防止）
+        const actionButtons = document.getElementById('action-buttons');
+        if (actionButtons) actionButtons.style.display = 'none';
     },
 
     kickPlayer(targetId) { if (confirm(`キックしますか？`)) Network.sendAction('KICK_PLAYER', { targetId }); },
