@@ -728,7 +728,31 @@ const UI = {
         });
     },
 
-    // ★ 修正箇所：立直の選択肢のみを抽出表示する
+    // ★ 追加箇所: モーダル用のキャンセルボタンを生成するヘルパー関数
+    createCancelButton(modalId, customAction) {
+        const cancelBtn = document.createElement('div');
+        cancelBtn.innerText = 'キャンセル';
+        cancelBtn.style.marginTop = '15px';
+        cancelBtn.style.padding = '8px 20px';
+        cancelBtn.style.background = '#e74c3c';
+        cancelBtn.style.color = '#fff';
+        cancelBtn.style.borderRadius = '5px';
+        cancelBtn.style.cursor = 'pointer';
+        cancelBtn.style.fontWeight = 'bold';
+        cancelBtn.style.textAlign = 'center';
+        cancelBtn.style.display = 'inline-block';
+        cancelBtn.onclick = () => {
+            const modal = document.getElementById(modalId);
+            if (modal) modal.style.display = 'none';
+            // ★キャンセル時にアクションボタンを再表示
+            const actionButtons = document.getElementById('action-buttons');
+            if (actionButtons) actionButtons.style.display = 'flex'; 
+            if (customAction) customAction();
+        };
+        return cancelBtn;
+    },
+
+    // ★ 修正箇所：立直の選択肢表示とキャンセル対応
     renderReachModal(discards) {
         const modal = document.getElementById('reach-modal');
         if (!discards || discards.length === 0) {
@@ -737,6 +761,11 @@ const UI = {
         }
         
         modal.style.display = 'flex';
+
+        // ★追加：牌を選ぶUIが出たらアクションボタン群を一時的に非表示にする
+        const actionButtons = document.getElementById('action-buttons');
+        if (actionButtons) actionButtons.style.display = 'none';
+
         const handDiv = document.getElementById('reach-hand');
         handDiv.innerHTML = '';
         
@@ -751,16 +780,21 @@ const UI = {
                 Network.sendAction('DO_RIICHI', { tileIndex: d.index });
                 dispatch({ type: 'CLEAR_REACH_OPTIONS' });
                 dispatch({ type: 'SET_SELECTED_TILE', payload: -1 });
-                
-                // ★追加：アクション実行後にアクションボタン群を非表示にする
-                const actionButtons = document.getElementById('action-buttons');
+                // アクション実行後は非表示のまま
                 if (actionButtons) actionButtons.style.display = 'none';
             };
             handDiv.appendChild(tileDiv);
         });
+
+        // ★追加：キャンセルボタンの設置
+        const cancelBtn = this.createCancelButton('reach-modal', () => {
+            dispatch({ type: 'CLEAR_REACH_OPTIONS' });
+        });
+        cancelBtn.style.display = 'block'; // リーチ時は下部に配置
+        handDiv.appendChild(cancelBtn);
     },
 
-    // ★ 修正箇所：チーの選択肢表示をリッチにする
+    // ★ 修正箇所：チーの選択肢表示とキャンセル対応
     showChiModal(options) {
         const modal = document.getElementById('chi-modal');
         modal.style.display = 'flex';
@@ -782,17 +816,18 @@ const UI = {
             optDiv.onclick = () => {
                 Network.sendAction('CHI', { tiles: opt });
                 modal.style.display = 'none';
-                
-                // ★追加：アクション実行後にアクションボタン群を非表示にする
                 const actionButtons = document.getElementById('action-buttons');
                 if (actionButtons) actionButtons.style.display = 'none';
             };
             opt.forEach(tile => optDiv.appendChild(Utils.createTileElement(tile, false, Utils.isDora(tile, doraTiles))));
             container.appendChild(optDiv);
         });
+
+        // ★追加：キャンセルボタンの設置
+        container.appendChild(this.createCancelButton('chi-modal'));
     },
 
-    // ★ 追加箇所：ポンの選択肢表示用モーダル
+    // ★ 修正箇所：ポンの選択肢表示とキャンセル対応
     showPonModal(targetTile) {
         const modal = document.getElementById('pon-modal');
         modal.style.display = 'flex';
@@ -813,8 +848,6 @@ const UI = {
         optDiv.onclick = () => {
             Network.sendAction('PON');
             modal.style.display = 'none';
-            
-            // ★追加：アクション実行後にアクションボタン群を非表示にする
             const actionButtons = document.getElementById('action-buttons');
             if (actionButtons) actionButtons.style.display = 'none';
         };
@@ -832,9 +865,12 @@ const UI = {
         
         displayTiles.forEach(tile => optDiv.appendChild(Utils.createTileElement(tile, false, Utils.isDora(tile, doraTiles))));
         container.appendChild(optDiv);
+
+        // ★追加：キャンセルボタンの設置
+        container.appendChild(this.createCancelButton('pon-modal'));
     },
 
-    // ★ 追加箇所：明槓の選択肢表示用モーダル
+    // ★ 修正箇所：明槓の選択肢表示とキャンセル対応
     showMinkanModal(targetTile) {
         const modal = document.getElementById('kan-modal');
         modal.style.display = 'flex';
@@ -858,8 +894,6 @@ const UI = {
         optDiv.onclick = () => {
             Network.sendAction('MINKAN');
             modal.style.display = 'none';
-            
-            // ★追加：アクション実行後にアクションボタン群を非表示にする
             const actionButtons = document.getElementById('action-buttons');
             if (actionButtons) actionButtons.style.display = 'none';
         };
@@ -888,9 +922,12 @@ const UI = {
         displayTiles.forEach(tile => tilesDiv.appendChild(Utils.createTileElement(tile, false, Utils.isDora(tile, doraTiles))));
         optDiv.appendChild(tilesDiv);
         container.appendChild(optDiv);
+
+        // ★追加：キャンセルボタンの設置
+        container.appendChild(this.createCancelButton('kan-modal'));
     },
 
-    // ★ 修正箇所：カンの選択肢表示をリッチにする
+    // ★ 修正箇所：カンの選択肢表示とキャンセル対応
     showKanModal(options) {
         const modal = document.getElementById('kan-modal');
         modal.style.display = 'flex';
@@ -915,8 +952,6 @@ const UI = {
             optDiv.onclick = () => {
                 Network.sendAction(typeName, { tile: tile });
                 modal.style.display = 'none';
-                
-                // ★追加：アクション実行後にアクションボタン群を非表示にする
                 const actionButtons = document.getElementById('action-buttons');
                 if (actionButtons) actionButtons.style.display = 'none';
             };
@@ -938,6 +973,9 @@ const UI = {
 
         if(options.ankan) options.ankan.forEach(t => container.appendChild(createOpt(t, 'ANKAN')));
         if(options.kakan) options.kakan.forEach(t => container.appendChild(createOpt(t, 'KAKAN')));
+
+        // ★追加：キャンセルボタンの設置
+        container.appendChild(this.createCancelButton('kan-modal'));
     },
 
     updateWinningTilesDisplay(winningTiles) {
@@ -1040,17 +1078,28 @@ const UI = {
     joinRoom(roomId) { Network.sendAction('JOIN_ROOM', { roomId }); },
     toggleReady() { Network.sendAction('TOGGLE_READY'); },
     
-    // ★ 修正箇所：ボタンからのアクション送信を新モーダルに接続
+    // ★ 修正箇所：ボタンからのアクション送信を新モーダルに接続し、表示制御を連動
     sendGameAction(type) { 
-        if (type === 'CANCEL_REACH') { dispatch({ type: 'CLEAR_REACH_OPTIONS' }); return; }
+        if (type === 'CANCEL_REACH') { 
+            dispatch({ type: 'CLEAR_REACH_OPTIONS' }); 
+            const actionButtons = document.getElementById('action-buttons');
+            if (actionButtons) actionButtons.style.display = 'flex';
+            return; 
+        }
         
         if (type === 'CHI') {
             const opts = state.game.chiOptions;
-            if (opts && opts.length > 0) this.showChiModal(opts);
+            if (opts && opts.length > 0) {
+                const actionButtons = document.getElementById('action-buttons');
+                if (actionButtons) actionButtons.style.display = 'none'; // ★追加: モーダルを開く前にボタンを消す
+                this.showChiModal(opts);
+            }
             return;
         }
 
         if (type === 'PON') {
+            const actionButtons = document.getElementById('action-buttons');
+            if (actionButtons) actionButtons.style.display = 'none'; // ★追加
             this.showPonModal(state.game.lastDiscard.tile);
             return;
         }
@@ -1058,17 +1107,20 @@ const UI = {
         if (type === 'KAN') {
             const opts = state.game.kanOptions;
             if (state.game.phase === 'DRAW') {
+                const actionButtons = document.getElementById('action-buttons');
+                if (actionButtons) actionButtons.style.display = 'none'; // ★追加
                 this.showKanModal(opts);
             } else if (state.game.phase === 'ACTION_WAIT') {
+                const actionButtons = document.getElementById('action-buttons');
+                if (actionButtons) actionButtons.style.display = 'none'; // ★追加
                 this.showMinkanModal(state.game.lastDiscard.tile);
             }
             return;
         }
 
-        // ツモ、ロン、パスなどの即時アクションを送信する
         Network.sendAction(type); 
         
-        // ★追加：アクション送信直後にアクションボタン群を非表示にする（パスやツモ直後の誤操作防止）
+        // ツモやパスなどのアクション送信直後にアクションボタン群を非表示にする
         const actionButtons = document.getElementById('action-buttons');
         if (actionButtons) actionButtons.style.display = 'none';
     },
