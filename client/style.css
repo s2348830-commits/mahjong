@@ -274,10 +274,10 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     .player-area.right  { right: 6vh; top: 50%; transform: translate(50%, -50%) rotate(-90deg); transform-origin: center center; }
 
     /* 河の位置調整 (中央の基準点から卓全体に合わせて四方に展開) */
-    .discard-area.bottom { transform: translate(-50%, -50%) rotate(0deg) translateY(29.2vh); }
-    .discard-area.top    { transform: translate(-50%, -50%) rotate(180deg) translateY(29.2vh); }
-    .discard-area.left   { transform: translate(-50%, -50%) rotate(90deg) translateY(29.2vh); }
-    .discard-area.right  { transform: translate(-50%, -50%) rotate(-90deg) translateY(29.2vh); }
+    .discard-area.bottom { transform: translate(-50%, -50%) rotate(0deg) translateY(19.6vh); }
+    .discard-area.top    { transform: translate(-50%, -50%) rotate(180deg) translateY(19.6vh); }
+    .discard-area.left   { transform: translate(-50%, -50%) rotate(90deg) translateY(19.6vh); }
+    .discard-area.right  { transform: translate(-50%, -50%) rotate(-90deg) translateY(19.6vh); }
 
     /* 局情報・ドラを右上に配置 */
     #round-info { 
@@ -296,10 +296,10 @@ button { padding: 10px 20px; cursor: pointer; background: #34db42; color: white;
     .player-name-label { padding: 2px 6px; font-size: 0.7rem; margin-bottom: 2px; }
     
     /* 各プレイヤーの手牌のすぐ内側（中央寄り）に点数を配置 */
-    #score-bottom { top: auto; bottom: 15vh; left: 50%; transform: translateX(-50%); } 
-    #score-top    { top: 12.5vh; bottom: auto; left: 50%; transform: translateX(-50%) rotate(180deg); }
-    #score-left   { top: 50%; bottom: auto; left: 12.5vh; transform: translateY(-50%) rotate(90deg); }
-    #score-right  { top: 50%; bottom: auto; right: 12.5vh; transform: translateY(-50%) rotate(-90deg); }
+    #score-bottom { top: auto; bottom: 42vh; left: 50%; transform: translateX(-50%); } 
+    #score-top    { top: 42vh; bottom: auto; left: 50%; transform: translateX(-50%) rotate(180deg); }
+    #score-left   { top: 50%; bottom: auto; left: calc(50vw - 8vh); transform: translate(-50%, -50%) rotate(90deg); }
+    #score-right  { top: 50%; bottom: auto; right: calc(50vw - 8vh); transform: translate(50%, -50%) rotate(-90deg); }
 
     /* タイマーとアクションボタンを fixed で右下に完全固定 (見切れないように) */
     #action-timer-display { 
